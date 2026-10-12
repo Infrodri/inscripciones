@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { SessionScanActions } from '@/components/admin/SessionScanActions';
 
 export function EventCollections({ eventId }: { eventId: string }) {
   const queryClient = useQueryClient();
@@ -43,10 +44,15 @@ export function EventCollections({ eventId }: { eventId: string }) {
     <div className="mt-8 grid gap-6 md:grid-cols-3">
       <section>
         <h2 className="font-serif text-lg text-[#0A2A5E]">Sesiones</h2>
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-2 space-y-2">
           {(sessions.data?.data ?? []).map((s) => (
             <li key={s.id} className="text-sm">
-              {new Date(s.startsAt).toLocaleString('es-BO', { timeZone: 'America/La_Paz' })}
+              <span>
+                {new Date(s.startsAt).toLocaleString('es-BO', { timeZone: 'America/La_Paz' })}
+              </span>
+              <div className="mt-1">
+                <SessionScanActions sessionId={s.id} />
+              </div>
             </li>
           ))}
         </ul>

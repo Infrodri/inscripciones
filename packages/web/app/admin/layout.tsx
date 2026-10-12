@@ -14,6 +14,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <Link href="/admin/eventos" className="block">
                 Eventos
               </Link>
+              <Link href="/admin/escaner" className="block">
+                Escáner
+              </Link>
               <Link href="/admin/usuarios" className="block">
                 Usuarios
               </Link>
