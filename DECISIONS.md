@@ -108,3 +108,7 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
     dependencias nuevas; sin ellas no hay DOM ni render de componentes).
     `vitest` reutiliza la versión del repo. `esbuild.jsx automatic` en la
     config de web porque el tsconfig usa `preserve` (Next).
+40. Check-in: `qr_token` tiene índice único (`participants_qr_token_key`);
+    el Seq Scan del EXPLAIN es decisión del planificador con tabla pequeña.
+    Búsqueda manual con `take: 10`. Medido local: 50 check-ins, total 307ms,
+    promedio 6.1ms, p95 9ms.
