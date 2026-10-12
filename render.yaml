@@ -8,7 +8,7 @@ services:
     plan: free
     healthCheckPath: /health
     buildCommand: >-
-      npm ci &&
+      npm ci --include=dev &&
       npx prisma generate --schema packages/api/prisma/schema.prisma &&
       npm run build -w packages/infrastructure &&
       npm run build -w packages/api
