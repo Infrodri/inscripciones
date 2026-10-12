@@ -1,0 +1,40 @@
+{
+  "dependencies": {
+    "@inscripciones/infrastructure": "0.1.0",
+    "@prisma/client": "5.22.0",
+    "bcryptjs": "2.4.3",
+    "exceljs": "4.4.0",
+    "express": "5.1.0",
+    "express-rate-limit": "7.4.1",
+    "jsonwebtoken": "9.0.2",
+    "multer": "2.4.0",
+    "pg": "8.13.0",
+    "sharp": "0.33.5",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "2.4.6",
+    "@types/express": "4.17.21",
+    "@types/jsonwebtoken": "9.0.7",
+    "@types/multer": "1.4.12",
+    "@types/node": "20.16.0",
+    "@types/pg": "8.11.0",
+    "prisma": "5.22.0",
+    "typescript": "5.5.4",
+    "vitest": "2.1.8"
+  },
+  "name": "@inscripciones/api",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc --watch -p tsconfig.json",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev",
+    "seed": "node dist/prisma/seed.js",
+    "seed:reference": "node dist/prisma/seedReference.js",
+    "create-admin": "node dist/scripts/create-admin.js",
+    "start": "node dist/api/app.js",
+    "test": "vitest run"
+  },
+  "version": "0.1.0"
+}

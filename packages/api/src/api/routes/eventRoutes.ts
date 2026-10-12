@@ -1,0 +1,228 @@
+import { Router } from 'express';
+import multer from 'multer';
+import sharp from 'sharp';
+import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
+import { getPrisma } from '../../infrastructure/prisma.js';
+import { DomainError } from '../../domain/errors.js';
+import { validateEventInput } from '../../application/eventService.js';
+import { validateBody } from '../middlewares/validateMiddleware.js';
+import { requireRole } from '../middlewares/roleMiddleware.js';
+import type { AuthRequest } from '../middlewares/authMiddleware.js';
+import { parsePagination, paginatedResponse } from '../../shared/pagination.js';
+import type { FileStorage } from '@inscripciones/infrastructure/fileStorage.js';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+const eventSchema = z.object({
+  slug: z.string().min(1),
+  title: z.string().min(1),
+  eventKind: z.string().min(1),
+  institution: z.string().min(1),
+  commemoration: z.string().nullable().optional(),
+  organizer: z.string().min(1),
+  location: z.string().min(1),
+  status: z.enum(['BORRADOR', 'ABIERTO', 'CERRADO', 'FINALIZADO']).optional(),
+});
+
+async function validateBanner(
+  buffer: Buffer,
+  mimetype: string
+): Promise<{ width: number; height: number }> {
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(mimetype)) {
+    throw new DomainError('UNSUPPORTED_FILE', 'El afiche debe ser PNG, JPG o WebP');
+  }
+  try {
+    const meta = await sharp(buffer).metadata();
+    if (!meta.width || !meta.height || !meta.format) {
+      throw new DomainError('UNSUPPORTED_FILE', 'El archivo no es una imagen válida');
+    }
+    return { width: meta.width, height: meta.height };
+  } catch (err) {
+    if (err instanceof DomainError) throw err;
+    throw new DomainError('UNSUPPORTED_FILE', 'El archivo no es una imagen válida');
+  }
+}
+
+export function eventRoutes(publicStorage: FileStorage): Router {
+  const router = Router();
+
+  router.get('/', async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const params = parsePagination(req.query);
+      const [items, total] = await Promise.all([
+        prisma.event.findMany({
+          skip: (params.page - 1) * params.pageSize,
+          take: params.pageSize,
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.event.count(),
+      ]);
+      res.json(paginatedResponse(items, total, params));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post(
+    '/',
+    requireRole('ADMIN'),
+    validateBody(eventSchema),
+    async (req: AuthRequest, res, next) => {
+      try {
+        validateEventInput(req.body);
+        const prisma = getPrisma();
+        const created = await prisma.event.create({
+          data: { ...req.body, createdBy: req.user?.id },
+        });
+        res.status(201).json(created);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.get('/:id', async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      res.json(event);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post(
+    '/:id/banner',
+    requireRole('ADMIN'),
+    upload.single('banner'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        if (!req.file) throw new DomainError('VALIDATION_ERROR', 'Debe adjuntar el afiche');
+        await validateBanner(req.file.buffer, req.file.mimetype);
+        const prisma = getPrisma();
+        const ext = req.file.mimetype === 'image/png' ? 'png' : 'jpg';
+        const key = `banners/${req.params.id}/${randomUUID()}.${ext}`;
+        // Copia reducida a 1200px de ancho para og:image/share, mismo bucket público.
+        const shareBuffer = await sharp(req.file.buffer)
+          .resize({ width: 1200, withoutEnlargement: true })
+          .jpeg({ quality: 80 })
+          .toBuffer();
+        const shareKey = `banners/${req.params.id}/share-${randomUUID()}.jpg`;
+        await publicStorage.save(req.file.buffer, key, req.file.mimetype);
+        await publicStorage.save(shareBuffer, shareKey, 'image/jpeg');
+        const updated = await prisma.event.update({
+          where: { id: req.params.id },
+          data: { bannerPath: key, shareImagePath: shareKey },
+        });
+        res.json({ bannerPath: updated.bannerPath, shareImagePath: updated.shareImagePath });
+      } catch (err) {
+        const fileErr = err as { code?: string };
+        if (fileErr?.code === 'LIMIT_FILE_SIZE') {
+          next(new DomainError('FILE_TOO_LARGE', 'El afiche supera los 10 MB'));
+          return;
+        }
+        next(err);
+      }
+    }
+  );
+
+  router.post('/:id/publish', requireRole('ADMIN'), async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const updated = await prisma.event.update({
+        where: { id: req.params.id },
+        data: { status: 'ABIERTO' },
+      });
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/:id/duplicate', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+    try {
+      const body = z
+        .object({
+          title: z.string().min(1),
+          slug: z.string().min(1),
+          daysShift: z.number().default(1),
+        })
+        .parse(req.body);
+      const prisma = getPrisma();
+      const source = await prisma.event.findUnique({
+        where: { id: req.params.id },
+        include: { speakers: true, sponsors: true, sessions: true, certificateTemplates: true },
+      });
+      if (!source) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      const shiftMs = body.daysShift * 24 * 3_600_000;
+      const created = await prisma.event.create({
+        data: {
+          slug: body.slug,
+          title: body.title,
+          eventKind: source.eventKind,
+          institution: source.institution,
+          commemoration: source.commemoration,
+          organizer: source.organizer,
+          audienceNote: source.audienceNote,
+          description: source.description,
+          location: source.location,
+          modality: source.modality,
+          capacity: source.capacity,
+          status: 'BORRADOR',
+          isFree: source.isFree,
+          contactWhatsapp: source.contactWhatsapp,
+          issuesCertificate: source.issuesCertificate,
+          minAttendancePercent: source.minAttendancePercent,
+          checkinWindowMinutes: source.checkinWindowMinutes,
+          createdBy: req.user?.id,
+          speakers: {
+            create: source.speakers.map((s) => ({
+              fullName: s.fullName,
+              titleProfession: s.titleProfession,
+              role: s.role,
+              institution: s.institution,
+              position: s.position,
+            })),
+          },
+          sponsors: {
+            create: source.sponsors.map((s) => ({ name: s.name, position: s.position })),
+          },
+          sessions: {
+            create: source.sessions.map((s) => ({
+              startsAt: new Date(s.startsAt.getTime() + shiftMs),
+              endsAt: s.endsAt ? new Date(s.endsAt.getTime() + shiftMs) : null,
+              location: s.location,
+              label: s.label,
+            })),
+          },
+          // Plantillas: se copian las filas (comparten el archivo privado).
+          // No se copian inscritos, asistencias ni receptores manuales.
+          certificateTemplates: {
+            create: source.certificateTemplates.map((t) => ({
+              roleKind: t.roleKind,
+              name: t.name,
+              filePath: t.filePath,
+              widthPx: t.widthPx,
+              heightPx: t.heightPx,
+              pageWidthMm: t.pageWidthMm,
+              pageHeightMm: t.pageHeightMm,
+              nameBox: t.nameBox ?? {},
+              isDefault: t.isDefault,
+            })),
+          },
+        },
+      });
+      res.status(201).json(created);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  return router;
+}

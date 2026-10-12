@@ -1,0 +1,7 @@
+node_modules
+packages/*/dist
+packages/web/.next
+uploads
+*.tsbuildinfo
+package-lock.json
+packages/api/assets/fonts/*.ttf

@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: inscripciones
+      POSTGRES_PASSWORD: inscripciones
+      POSTGRES_DB: inscripciones
+    ports:
+      # 5434 en el host: el 5432 local lo ocupa otro proyecto (notaria_local_db). Ver DECISIONS.md.
+      - '5434:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:

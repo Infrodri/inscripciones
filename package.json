@@ -1,0 +1,25 @@
+{
+  "engines": {
+    "node": ">=22"
+  },
+  "name": "inscripciones",
+  "packageManager": "npm@10",
+  "private": true,
+  "scripts": {
+    "build": "npm run build -w packages/infrastructure && npm run build -w packages/api && npm run build -w packages/web",
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w packages/api\" \"npm run dev -w packages/web\"",
+    "lint": "eslint eslint.config.mjs packages/api packages/infrastructure packages/web && prettier --check package.json tsconfig.base.json .prettierrc README.md CHANGELOG.md DECISIONS.md packages/api packages/infrastructure packages/web",
+    "test": "npm run test -w packages/api && npm run test -w packages/infrastructure"
+  },
+  "devDependencies": {
+    "concurrently": "9.1.0",
+    "eslint": "8.57.1",
+    "prettier": "3.3.3",
+    "typescript": "5.5.4",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "2.1.8"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}

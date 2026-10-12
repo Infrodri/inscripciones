@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum EventStatus {
+  BORRADOR
+  ABIERTO
+  CERRADO
+  FINALIZADO
+}
+
+enum Modality {
+  PRESENCIAL
+  VIRTUAL
+  HIBRIDO
+}
+
+enum ParticipantType {
+  ESTUDIANTE
+  DOCENTE
+  PROFESIONAL
+  PUBLICO
+}
+
+enum Source {
+  ONLINE
+  WALK_IN
+}
+
+enum SpeakerRole {
+  EXPOSITOR
+  MODERADOR
+}
+
+enum AttendanceMethod {
+  QR
+  MANUAL
+}
+
+enum RoleKind {
+  ASISTENTE
+  EXPOSITOR
+  ORGANIZADOR
+  OTRO
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         Role
+  active       Boolean  @default(true)
+  createdAt    DateTime @map("created_at") @db.Timestamptz() @default(now())
+  updatedAt    DateTime @map("updated_at") @db.Timestamptz() @updatedAt
+  createdEvents Event[] @relation("EventCreatedBy")
+  createdRecipients CertificateRecipient[] @relation("RecipientCreatedBy")
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Event {
+  id                    String          @id @default(uuid())
+  slug                  String          @unique
+  title                 String
+  eventKind             String          @map("event_kind")
+  institution           String
+  commemoration         String?
+  organizer             String
+  audienceNote          String?         @map("audience_note")
+  description           String?
+  location              String
+  mapUrl                String?         @map("map_url")
+  modality              Modality        @default(PRESENCIAL)
+  capacity              Int?
+  registrationDeadline  DateTime?       @map("registration_deadline") @db.Timestamptz()
+  status                EventStatus     @default(BORRADOR)
+  isFree                Boolean         @map("is_free") @default(true)
+  contactWhatsapp       String?         @map("contact_whatsapp")
+  issuesCertificate     Boolean         @map("issues_certificate") @default(true)
+  minAttendancePercent  Int             @map("min_attendance_percent") @default(80)
+  checkinWindowMinutes  Int             @map("checkin_window_minutes") @default(60)
+  bannerPath            String?         @map("banner_path")
+  shareImagePath        String?         @map("share_image_path")
+  createdBy             String?         @map("created_by")
+  creator               User?           @relation("EventCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  createdAt             DateTime        @map("created_at") @db.Timestamptz() @default(now())
+  updatedAt             DateTime        @map("updated_at") @db.Timestamptz() @updatedAt
+  sponsors              Sponsor[]
+  speakers              Speaker[]
+  sessions              Session[]
+  participants          Participant[]
+  certificateTemplates  CertificateTemplate[]
+  certificateRecipients CertificateRecipient[]
+
+  @@index([createdBy])
+  @@map("events")
+}
+
+model Sponsor {
+  id        String   @id @default(uuid())
+  eventId   String   @map("event_id")
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name      String
+  logoPath  String?  @map("logo_path")
+  position  Int      @default(0)
+  createdAt DateTime @map("created_at") @db.Timestamptz() @default(now())
+  updatedAt DateTime @map("updated_at") @db.Timestamptz() @updatedAt
+
+  @@index([eventId])
+  @@map("sponsors")
+}
+
+model Speaker {
+  id              String      @id @default(uuid())
+  eventId         String      @map("event_id")
+  event           Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  fullName        String      @map("full_name")
+  titleProfession String?     @map("title_profession")
+  role            SpeakerRole
+  institution     String?
+  photoPath       String?     @map("photo_path")
+  position        Int         @default(0)
+  createdAt       DateTime    @map("created_at") @db.Timestamptz() @default(now())
+  updatedAt       DateTime    @map("updated_at") @db.Timestamptz() @updatedAt
+  recipients      CertificateRecipient[]
+
+  @@index([eventId])
+  @@map("speakers")
+}
+
+model Session {
+  id         String       @id @default(uuid())
+  eventId    String       @map("event_id")
+  event      Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  startsAt   DateTime     @map("starts_at") @db.Timestamptz()
+  endsAt     DateTime?    @map("ends_at") @db.Timestamptz()
+  // CHECK (ends_at IS NULL OR ends_at > starts_at) -> ver migration.sql manual
+  location   String?
+  label      String?
+  createdAt  DateTime     @map("created_at") @db.Timestamptz() @default(now())
+  updatedAt  DateTime     @map("updated_at") @db.Timestamptz() @updatedAt
+  attendances Attendance[]
+
+  @@index([eventId])
+  @@map("sessions")
+}
+
+model Participant {
+  id              String          @id @default(uuid())
+  eventId         String          @map("event_id")
+  event           Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  firstName       String          @map("first_name")
+  lastName        String          @map("last_name")
+  ci              String
+  email           String
+  phone           String?
+  type            ParticipantType
+  institution     String?
+  career          String?
+  semester        String?
+  qrToken         String          @unique @map("qr_token")
+  certificateCode String?         @unique @map("certificate_code")
+  dataConsentAt   DateTime        @map("data_consent_at") @db.Timestamptz()
+  source          Source          @default(ONLINE)
+  createdAt       DateTime        @map("created_at") @db.Timestamptz() @default(now())
+  updatedAt       DateTime        @map("updated_at") @db.Timestamptz() @updatedAt
+  attendances     Attendance[]
+
+  @@unique([eventId, ci])
+  @@unique([eventId, email])
+  @@index([eventId])
+  @@map("participants")
+}
+
+model Attendance {
+  id            String           @id @default(uuid())
+  participantId String           @map("participant_id")
+  participant   Participant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  sessionId     String           @map("session_id")
+  session       Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  scannedAt     DateTime         @map("scanned_at") @db.Timestamptz() @default(now())
+  registeredBy  String?          @map("registered_by")
+  method        AttendanceMethod @default(QR)
+  voidedAt      DateTime?        @map("voided_at") @db.Timestamptz()
+  voidedBy      String?          @map("voided_by")
+  voidReason    String?          @map("void_reason")
+  createdAt     DateTime         @map("created_at") @db.Timestamptz() @default(now())
+  updatedAt     DateTime         @map("updated_at") @db.Timestamptz() @updatedAt
+
+  @@unique([participantId, sessionId])
+  @@index([participantId])
+  @@index([sessionId])
+  @@map("attendances")
+}
+
+model CertificateTemplate {
+  id            String   @id @default(uuid())
+  eventId       String   @map("event_id")
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  roleKind      RoleKind @map("role_kind")
+  name          String
+  filePath      String   @map("file_path")
+  widthPx       Int      @map("width_px")
+  heightPx      Int      @map("height_px")
+  pageWidthMm   Float    @map("page_width_mm")
+  pageHeightMm  Float    @map("page_height_mm")
+  nameBox       Json     @map("name_box")
+  isDefault     Boolean  @map("is_default") @default(false)
+  // Índice único parcial (una default por evento+rol):
+  // CREATE UNIQUE INDEX ... WHERE is_default = true -> ver migration.sql manual
+  createdAt     DateTime @map("created_at") @db.Timestamptz() @default(now())
+  updatedAt     DateTime @map("updated_at") @db.Timestamptz() @updatedAt
+  recipients    CertificateRecipient[]
+
+  @@index([eventId])
+  @@index([eventId, roleKind])
+  @@map("certificate_templates")
+}
+
+model CertificateRecipient {
+  id              String   @id @default(uuid())
+  eventId         String   @map("event_id")
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  roleKind        RoleKind @map("role_kind")
+  templateId      String   @map("template_id")
+  template        CertificateTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  fullName        String   @map("full_name")
+  speakerId       String?  @map("speaker_id")
+  speaker         Speaker? @relation(fields: [speakerId], references: [id], onDelete: SetNull)
+  note            String?
+  certificateCode String?  @unique @map("certificate_code")
+  createdBy       String?  @map("created_by")
+  creator         User?    @relation("RecipientCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  createdAt       DateTime @map("created_at") @db.Timestamptz() @default(now())
+  updatedAt       DateTime @map("updated_at") @db.Timestamptz() @updatedAt
+
+  @@index([eventId])
+  @@index([templateId])
+  @@index([speakerId])
+  @@map("certificate_recipients")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String   @map("entity_id")
+  metadata  Json     @default("{}")
+  createdAt DateTime @map("created_at") @db.Timestamptz() @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
