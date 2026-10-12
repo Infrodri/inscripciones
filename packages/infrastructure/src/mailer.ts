@@ -8,6 +8,16 @@ export interface MailConfig {
   from: string;
 }
 
+export interface MailMessage {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  qrPng?: Buffer;
+}
+
+export const QR_CONTENT_ID = 'qr@inscripciones';
+
 export function createMailer(config: MailConfig) {
   const transporter = nodemailer.createTransport({
     host: config.host,
@@ -15,15 +25,24 @@ export function createMailer(config: MailConfig) {
     auth: { user: config.user, pass: config.pass },
   });
   return {
-    sendQrMail(to: string, subject: string, html: string, qrPng?: Buffer): Promise<void> {
+    sendMail(message: MailMessage): Promise<void> {
       return transporter
         .sendMail({
           from: config.from,
-          to,
-          subject,
-          html,
-          attachments: qrPng
-            ? [{ filename: 'qr.png', content: qrPng, contentType: 'image/png' }]
+          to: message.to,
+          subject: message.subject,
+          text: message.text,
+          html: message.html,
+          // El QR va incrustado (cid) y a la vez adjunto como PNG.
+          attachments: message.qrPng
+            ? [
+                {
+                  filename: 'qr.png',
+                  content: message.qrPng,
+                  contentType: 'image/png',
+                  cid: QR_CONTENT_ID,
+                },
+              ]
             : [],
         })
         .then(() => undefined);

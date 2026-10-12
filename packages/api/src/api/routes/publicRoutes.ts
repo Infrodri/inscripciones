@@ -10,6 +10,7 @@ import {
   assertRegistrationOpen,
   buildParticipantRow,
 } from '../../application/registrationService.js';
+import { buildConfirmationMail } from '../../application/confirmationMail.js';
 import { bannerPublicUrl, qrPngUrl, type PublicUrlEnv } from '../../shared/urls.js';
 import { logger } from '../../shared/logger.js';
 import type { AppEnv } from '../env.js';
@@ -110,6 +111,27 @@ export function publicRoutes(env: AppEnv): Router {
         let mailSent = false;
         if (env.SMTP_HOST) {
           try {
+            const fullEvent = await prisma.event.findUnique({
+              where: { slug: req.params.slug },
+              include: { sessions: { orderBy: { startsAt: 'asc' } } },
+            });
+            const mail = buildConfirmationMail(
+              {
+                firstName: participant.firstName,
+                lastName: participant.lastName,
+                email: participant.email,
+              },
+              {
+                title: fullEvent?.title ?? req.params.slug,
+                institution: fullEvent?.institution ?? '',
+                location: fullEvent?.location ?? '',
+                contactWhatsapp: fullEvent?.contactWhatsapp ?? null,
+                sessions: (fullEvent?.sessions ?? []).map((s) => ({
+                  startsAt: s.startsAt,
+                  location: s.location,
+                })),
+              }
+            );
             const qrPng = await qrPngBuffer(participant.qrToken);
             await createMailer({
               host: env.SMTP_HOST,
@@ -117,12 +139,7 @@ export function publicRoutes(env: AppEnv): Router {
               user: env.SMTP_USER ?? '',
               pass: env.SMTP_PASS ?? '',
               from: env.MAIL_FROM,
-            }).sendQrMail(
-              participant.email,
-              `Inscripción confirmada: ${req.params.slug}`,
-              `<p>Su inscripción fue registrada. Presente este código QR al ingresar:</p>`,
-              qrPng
-            );
+            }).sendMail({ ...mail, qrPng });
             mailSent = true;
           } catch (err) {
             // El correo no hace fallar la inscripción: el QR ya está en pantalla.
