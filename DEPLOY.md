@@ -60,7 +60,7 @@ DATABASE_URL="<pooler>" DIRECT_URL="<directa>" npm run seed:reference -w package
    - Build Command: `cd ../.. && npm run build -w packages/web`
    - Output Directory: el de Next.js por defecto (`.next` dentro de
      `packages/web`; el build corre con cwd en el paquete).
-4. Variables: `NEXT_PUBLIC_API_URL=https://<servicio>.onrender.com/api/v1`,
+4. Variables: `NEXT_PUBLIC_API_URL=https://<servicio>.onrender.com` (solo host, sin `/api/v1`),
    `NEXT_PUBLIC_SITE_URL=https://<dominio-vercel>`,
    `NEXT_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co`.
 5. Deploy.

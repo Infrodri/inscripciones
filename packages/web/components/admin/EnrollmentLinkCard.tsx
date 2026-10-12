@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { apiUrl } from '@/lib/api';
 import { CopyBroadcastButton } from '@/components/CopyBroadcastButton';
 
 export function EnrollmentLinkCard({ slug }: { slug: string }) {
@@ -10,7 +11,7 @@ export function EnrollmentLinkCard({ slug }: { slug: string }) {
     process.env.NEXT_PUBLIC_SITE_URL ??
     (typeof window !== 'undefined' ? window.location.origin : '');
   const url = `${site}/e/${slug}`;
-  const qrPng = `${process.env.NEXT_PUBLIC_API_URL}/public/events/${slug}/link-qr.png`;
+  const qrPng = apiUrl(`/public/events/${slug}/link-qr.png`);
 
   async function copy(): Promise<void> {
     try {

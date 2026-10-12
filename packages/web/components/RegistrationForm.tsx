@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { apiUrl, configErrorMessage } from '@/lib/api';
 
 const schema = z.object({
   firstName: z.string().min(1, 'El nombre es obligatorio'),
@@ -72,17 +73,19 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
     const values = parsed.data;
     setServerError(null);
     try {
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/public/events/${slug}/registrations`,
-        { ...values, website: '' }
-      );
+      const res = await axios.post(apiUrl(`/public/events/${slug}/registrations`), {
+        ...values,
+        website: '',
+      });
       setSuccess(res.data as Success);
       toast.success('Inscripción registrada');
     } catch (error) {
+      const configMessage = configErrorMessage(error);
       const message =
-        (axios.isAxiosError(error) &&
+        configMessage ??
+        ((axios.isAxiosError(error) &&
           (error.response?.data?.error?.message as string | undefined)) ||
-        'No se pudo registrar';
+          'No se pudo registrar');
       setServerError(message);
       toast.error(message);
     }

@@ -1,12 +1,12 @@
 import { RegistrationForm } from '@/components/RegistrationForm';
+import { buildApiBaseUrl } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
-const API_BASE = process.env.API_URL_INTERNAL ?? process.env.NEXT_PUBLIC_API_URL;
-
 export default async function InscripcionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const res = await fetch(`${API_BASE}/public/events/${slug}`, { cache: 'no-store' });
+  const apiBase = buildApiBaseUrl(process.env.API_URL_INTERNAL ?? process.env.NEXT_PUBLIC_API_URL);
+  const res = await fetch(`${apiBase}/public/events/${slug}`, { cache: 'no-store' });
   const event = res.ok
     ? ((await res.json()) as {
         requireCareer?: boolean;

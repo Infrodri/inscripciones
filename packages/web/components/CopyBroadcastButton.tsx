@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { apiUrl } from '@/lib/api';
 
 export function CopyBroadcastButton({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
 
   async function copy(): Promise<void> {
-    const eventRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/public/events/${slug}`);
+    const eventRes = await fetch(apiUrl(`/public/events/${slug}`));
     if (!eventRes.ok) return;
     const event = (await eventRes.json()) as {
       title: string;

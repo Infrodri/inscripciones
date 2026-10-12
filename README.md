@@ -2,13 +2,14 @@
 
 ## Requisitos
 
-- Node >=22 (`.nvmrc`: 25), npm 10, Docker.
+- Node >=22 (`.nvmrc`: 24), npm 10, Docker.
 
 ## Desarrollo local
 
 ```bash
 docker compose up -d
 cp .env.example .env
+cp packages/web/.env.example packages/web/.env.local
 npm install
 npm run test -w packages/api
 npm run dev

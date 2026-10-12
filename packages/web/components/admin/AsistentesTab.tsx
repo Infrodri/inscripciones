@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api, apiErrorMessage, getToken } from '@/lib/api';
+import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
 
 interface Template {
   id: string;
@@ -25,7 +25,7 @@ interface Participant {
 }
 
 async function fetchBlobUrl(path: string): Promise<string> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
+  const res = await fetch(apiUrl(path), {
     headers: { Authorization: `Bearer ${getToken() ?? ''}` },
   });
   if (!res.ok) {

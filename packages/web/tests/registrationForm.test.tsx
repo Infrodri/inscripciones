@@ -5,6 +5,12 @@ import { RegistrationForm } from '../components/RegistrationForm';
 
 vi.mock('axios', () => ({
   default: {
+    create: (): unknown => ({
+      interceptors: {
+        request: { use: (): void => undefined },
+        response: { use: (): void => undefined },
+      },
+    }),
     post: vi.fn(),
     isAxiosError: (e: unknown): boolean => (e as { isAxiosError?: boolean })?.isAxiosError === true,
   },

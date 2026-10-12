@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { api, apiErrorMessage, getToken } from '@/lib/api';
+import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
 
 interface Template {
   id: string;
@@ -28,7 +28,7 @@ interface Speaker {
 }
 
 async function downloadPdf(url: string, filename: string): Promise<void> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
+  const res = await fetch(apiUrl(url), {
     headers: { Authorization: `Bearer ${getToken() ?? ''}` },
   });
   if (!res.ok) {

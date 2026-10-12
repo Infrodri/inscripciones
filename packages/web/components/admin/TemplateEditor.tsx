@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { api, apiErrorMessage, getToken } from '@/lib/api';
+import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
 
 interface NameBox {
   xPct: number;
@@ -26,7 +26,7 @@ interface TemplateDetail {
 }
 
 async function fetchBlobUrl(path: string): Promise<string> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
+  const res = await fetch(apiUrl(path), {
     headers: { Authorization: `Bearer ${getToken() ?? ''}` },
   });
   if (!res.ok) throw new Error('No se pudo cargar la imagen');

@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { buildApiBaseUrl } from '@/lib/api';
 import { CopyBroadcastButton } from '@/components/CopyBroadcastButton';
 
 export const dynamic = 'force-dynamic';
 
-const API_BASE = process.env.API_URL_INTERNAL ?? process.env.NEXT_PUBLIC_API_URL;
+const apiBase = (): string =>
+  buildApiBaseUrl(process.env.API_URL_INTERNAL ?? process.env.NEXT_PUBLIC_API_URL);
 
 interface PublicEvent {
   slug: string;
@@ -34,7 +36,7 @@ interface PublicEvent {
 }
 
 async function getEvent(slug: string): Promise<PublicEvent | null> {
-  const res = await fetch(`${API_BASE}/public/events/${slug}`, { cache: 'no-store' });
+  const res = await fetch(`${apiBase()}/public/events/${slug}`, { cache: 'no-store' });
   if (!res.ok) return null;
   return (await res.json()) as PublicEvent;
 }
