@@ -26,7 +26,12 @@ describe('RegistrationForm', () => {
   });
 
   it('muestra errores de validación con el formulario vacío', async () => {
-    render(<RegistrationForm slug="evento" />);
+    render(
+      <RegistrationForm
+        slug="evento"
+        required={{ career: false, semester: false, institution: false, phone: false }}
+      />
+    );
     fireEvent.click(screen.getByText('Confirmar inscripción'));
     expect(await screen.findByText('El nombre es obligatorio')).toBeDefined();
     expect(mockedPost).not.toHaveBeenCalled();
@@ -43,7 +48,12 @@ describe('RegistrationForm', () => {
         notice: null,
       },
     });
-    render(<RegistrationForm slug="evento" />);
+    render(
+      <RegistrationForm
+        slug="evento"
+        required={{ career: false, semester: false, institution: false, phone: false }}
+      />
+    );
     fillValid();
     fireEvent.click(screen.getByText('Confirmar inscripción'));
     await waitFor(() => expect(mockedPost).toHaveBeenCalledTimes(1));
@@ -57,7 +67,12 @@ describe('RegistrationForm', () => {
       isAxiosError: true,
       response: { data: { error: { message: 'El registro ya existe' } } },
     });
-    render(<RegistrationForm slug="evento" />);
+    render(
+      <RegistrationForm
+        slug="evento"
+        required={{ career: false, semester: false, institution: false, phone: false }}
+      />
+    );
     fillValid();
     fireEvent.click(screen.getByText('Confirmar inscripción'));
     await waitFor(() => expect(mockedPost).toHaveBeenCalledTimes(1));

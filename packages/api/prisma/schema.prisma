@@ -92,6 +92,11 @@ model Event {
   issuesCertificate     Boolean         @map("issues_certificate") @default(true)
   minAttendancePercent  Int             @map("min_attendance_percent") @default(80)
   checkinWindowMinutes  Int             @map("checkin_window_minutes") @default(60)
+  // Campos configurables del formulario: true = obligatorio (siempre visibles).
+  requireCareer         Boolean         @map("require_career") @default(false)
+  requireSemester       Boolean         @map("require_semester") @default(false)
+  requireInstitution    Boolean         @map("require_institution") @default(false)
+  requirePhone          Boolean         @map("require_phone") @default(false)
   bannerPath            String?         @map("banner_path")
   shareImagePath        String?         @map("share_image_path")
   createdBy             String?         @map("created_by")

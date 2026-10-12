@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { EnrollmentLinkCard } from '@/components/admin/EnrollmentLinkCard';
 import { EventBanner } from '@/components/admin/EventBanner';
 import { EventCollections } from '@/components/admin/EventCollections';
 import { ParticipantsTable } from '@/components/admin/ParticipantsTable';
@@ -31,6 +32,16 @@ function Detail({ params }: { params: Promise<{ id: string }> }) {
 
   async function publish(): Promise<void> {
     try {
+      const pub = (await api.get(`/public/events/${data?.slug}`)).data as {
+        bannerUrl: string | null;
+        sessions: unknown[];
+      };
+      const warnings: string[] = [];
+      if (!pub.bannerUrl) warnings.push('sin afiche');
+      if (pub.sessions.length === 0) warnings.push('sin sesiones');
+      const extra =
+        warnings.length > 0 ? ` Advertencia: el evento está ${warnings.join(' y ')}.` : '';
+      if (!window.confirm(`¿Publicar este evento?${extra}`)) return;
       await api.post(`/events/${id}/publish`);
       await queryClient.invalidateQueries({ queryKey: ['event', id] });
       toast.success('Evento publicado');
@@ -90,6 +101,9 @@ function Detail({ params }: { params: Promise<{ id: string }> }) {
         </a>
       </p>
       <div id="datos" className="mt-6">
+        <EnrollmentLinkCard slug={data.slug} />
+      </div>
+      <div className="mt-6">
         <EventBanner eventId={id} slug={data.slug} />
       </div>
       <div id="sesiones" className="mt-6">

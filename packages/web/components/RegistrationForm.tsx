@@ -30,7 +30,14 @@ interface Success {
   notice: string | null;
 }
 
-export function RegistrationForm({ slug }: { slug: string }) {
+export interface RequiredFields {
+  career: boolean;
+  semester: boolean;
+  institution: boolean;
+  phone: boolean;
+}
+
+export function RegistrationForm({ slug, required }: { slug: string; required: RequiredFields }) {
   const [success, setSuccess] = useState<Success | null>(null);
   const {
     register,
@@ -48,6 +55,19 @@ export function RegistrationForm({ slug }: { slug: string }) {
       }
       return;
     }
+    const extra: Partial<Record<'career' | 'semester' | 'institution' | 'phone', string>> = {};
+    if (required.career && !parsed.data.career?.trim())
+      extra.career = 'En este evento la carrera es obligatoria';
+    if (required.semester && !parsed.data.semester?.trim())
+      extra.semester = 'En este evento el semestre es obligatorio';
+    if (required.institution && !parsed.data.institution?.trim())
+      extra.institution = 'En este evento la institución es obligatoria';
+    if (required.phone && !parsed.data.phone?.trim())
+      extra.phone = 'En este evento el celular es obligatorio';
+    for (const [field, message] of Object.entries(extra)) {
+      setError(field as keyof FormValues, { message });
+    }
+    if (Object.keys(extra).length > 0) return;
     const values = parsed.data;
     try {
       const res = await axios.post(
@@ -121,8 +141,9 @@ export function RegistrationForm({ slug }: { slug: string }) {
         {errors.email ? <p>{errors.email.message}</p> : null}
       </div>
       <div>
-        <label htmlFor="phone">Celular (opcional)</label>
+        <label htmlFor="phone">Celular{required.phone ? '' : ' (opcional)'}</label>
         <input id="phone" {...register('phone')} className="block w-full rounded border p-2" />
+        {errors.phone ? <p>{errors.phone.message}</p> : null}
       </div>
       <div>
         <label htmlFor="type">Tipo</label>
@@ -134,12 +155,27 @@ export function RegistrationForm({ slug }: { slug: string }) {
         </select>
       </div>
       <div>
-        <label htmlFor="institution">Institución (opcional)</label>
+        <label htmlFor="institution">Institución{required.institution ? '' : ' (opcional)'}</label>
         <input
           id="institution"
           {...register('institution')}
           className="block w-full rounded border p-2"
         />
+        {errors.institution ? <p>{errors.institution.message}</p> : null}
+      </div>
+      <div>
+        <label htmlFor="career">Carrera{required.career ? '' : ' (opcional)'}</label>
+        <input id="career" {...register('career')} className="block w-full rounded border p-2" />
+        {errors.career ? <p>{errors.career.message}</p> : null}
+      </div>
+      <div>
+        <label htmlFor="semester">Semestre{required.semester ? '' : ' (opcional)'}</label>
+        <input
+          id="semester"
+          {...register('semester')}
+          className="block w-full rounded border p-2"
+        />
+        {errors.semester ? <p>{errors.semester.message}</p> : null}
       </div>
       <div>
         <input id="dataConsent" type="checkbox" {...register('dataConsent')} />

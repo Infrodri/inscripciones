@@ -50,6 +50,10 @@ function publicEventView(event: Record<string, unknown>, env: PublicUrlEnv, regi
     isFree: event['isFree'],
     contactWhatsapp: event['contactWhatsapp'],
     issuesCertificate: event['issuesCertificate'],
+    requireCareer: event['requireCareer'] ?? false,
+    requireSemester: event['requireSemester'] ?? false,
+    requireInstitution: event['requireInstitution'] ?? false,
+    requirePhone: event['requirePhone'] ?? false,
     bannerUrl: event['bannerPath'] ? bannerPublicUrl(env, event['bannerPath'] as string) : null,
     shareImageUrl: event['shareImagePath']
       ? bannerPublicUrl(env, event['shareImagePath'] as string)
@@ -63,6 +67,33 @@ function publicEventView(event: Record<string, unknown>, env: PublicUrlEnv, regi
       (!event['registrationDeadline'] ||
         new Date() <= new Date(event['registrationDeadline'] as string)),
   };
+}
+
+function assertRequiredFields(
+  event: {
+    requireCareer: boolean;
+    requireSemester: boolean;
+    requireInstitution: boolean;
+    requirePhone: boolean;
+  },
+  body: {
+    career?: string | null;
+    semester?: string | null;
+    institution?: string | null;
+    phone?: string | null;
+  }
+): void {
+  const missing: Array<[boolean, string | null | undefined, string]> = [
+    [event.requireCareer, body.career, 'la carrera'],
+    [event.requireSemester, body.semester, 'el semestre'],
+    [event.requireInstitution, body.institution, 'la institución'],
+    [event.requirePhone, body.phone, 'el celular'],
+  ];
+  for (const [required, value, label] of missing) {
+    if (required && (!value || String(value).trim() === '')) {
+      throw new DomainError('VALIDATION_ERROR', `En este evento ${label} es obligatorio`);
+    }
+  }
 }
 
 export function publicRoutes(env: AppEnv): Router {
@@ -104,6 +135,7 @@ export function publicRoutes(env: AppEnv): Router {
           // Bloqueo por evento: resiste carreras de cupo en inscripciones concurrentes.
           await tx.$queryRaw`SELECT id FROM events WHERE id = ${event.id} FOR UPDATE`;
           assertRegistrationOpen(event, new Date());
+          assertRequiredFields(event, req.body);
           const registered = await tx.participant.count({ where: { eventId: event.id } });
           assertCapacity(registered, event.capacity);
           return tx.participant.create({ data: buildParticipantRow(event.id, req.body) });
@@ -172,6 +204,23 @@ export function publicRoutes(env: AppEnv): Router {
       });
       if (!participant) throw new DomainError('INVALID_QR', 'El código QR no es válido');
       const png = await qrPngBuffer(req.params.qrToken);
+      res.header('Content-Type', 'image/png');
+      res.send(png);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // QR del enlace público, para afiches o proyección (contenido: URL absoluta).
+  router.get('/events/:slug/link-qr.png', async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const event = await prisma.event.findUnique({
+        where: { slug: req.params.slug },
+        select: { id: true },
+      });
+      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      const png = await qrPngBuffer(`${env.PUBLIC_SITE_URL}/e/${req.params.slug}`);
       res.header('Content-Type', 'image/png');
       res.send(png);
     } catch (err) {
