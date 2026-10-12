@@ -43,6 +43,7 @@ function statusFor(code: string): number {
     case 'FORBIDDEN':
       return 403;
     case 'NOT_FOUND':
+    case 'NOT_ENROLLED':
       return 404;
     case 'REGISTRATION_CLOSED':
     case 'CAPACITY_REACHED':
@@ -59,6 +60,8 @@ function statusFor(code: string): number {
     case 'TEMPLATE_ROLE_MISMATCH':
     case 'NO_DEFAULT_TEMPLATE':
       return 422;
+    case 'RATE_LIMITED':
+      return 429;
     default:
       return 400;
   }

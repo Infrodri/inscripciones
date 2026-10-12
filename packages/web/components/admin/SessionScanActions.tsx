@@ -20,12 +20,18 @@ export function SessionScanActions({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <span className="flex gap-2">
+    <span className="flex flex-wrap gap-2">
       <Link
         href={scanPath(sessionId)}
         className="rounded bg-[#0A2A5E] px-2 py-1 text-sm text-white"
       >
         Abrir escáner
+      </Link>
+      <Link
+        href={`${scanPath(sessionId)}/proyectar`}
+        className="rounded border border-[#C9A227] px-2 py-1 text-sm"
+      >
+        Registro por QR (proyectar)
       </Link>
       <button
         type="button"

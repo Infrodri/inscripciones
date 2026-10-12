@@ -15,6 +15,7 @@ import { sessionRoutes } from './routes/sessionRoutes.js';
 import { speakerRoutes } from './routes/speakerRoutes.js';
 import { sponsorRoutes } from './routes/sponsorRoutes.js';
 import { userRoutes } from './routes/userRoutes.js';
+import { selfCheckinAdminRoutes, selfCheckinPublicRoutes } from './routes/selfCheckinRoutes.js';
 import { errorMiddleware } from './middlewares/errorMiddleware.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
 import { parseEnv, type AppEnv } from './env.js';
@@ -55,6 +56,8 @@ export function buildApp(env: AppEnv): express.Express {
   });
 
   const publicLimiter = rateLimit({ windowMs: 60_000, max: 30 });
+  // QR de sala ANTES del limitador general: tiene su propio límite de 60/min.
+  app.use('/api/v1', selfCheckinPublicRoutes(env));
   app.use('/api/v1/public/', publicLimiter);
 
   // Sin auth: prueba la BD con una consulta trivial.
@@ -74,6 +77,7 @@ export function buildApp(env: AppEnv): express.Express {
   app.use('/api/v1/events', authMiddleware(env.JWT_SECRET), eventRoutes(storage.publicStorage));
   app.use('/api/v1/participants', authMiddleware(env.JWT_SECRET), participantRoutes());
   app.use('/api/v1', authMiddleware(env.JWT_SECRET), attendanceRoutes());
+  app.use('/api/v1', authMiddleware(env.JWT_SECRET), selfCheckinAdminRoutes(env));
   // Certificados: solo ADMIN (el router lo exige; las plantillas son privadas).
   app.use(
     '/api/v1',

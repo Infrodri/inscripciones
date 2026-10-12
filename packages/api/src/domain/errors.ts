@@ -15,6 +15,8 @@ export const ERROR_CODES = [
   'TEMPLATE_ROLE_MISMATCH',
   'NO_DEFAULT_TEMPLATE',
   'DUPLICATE_RECIPIENT',
+  'NOT_ENROLLED',
+  'RATE_LIMITED',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

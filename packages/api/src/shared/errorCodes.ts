@@ -17,6 +17,8 @@ export const ERROR_CODES: ErrorCode[] = [
   'TEMPLATE_ROLE_MISMATCH',
   'NO_DEFAULT_TEMPLATE',
   'DUPLICATE_RECIPIENT',
+  'NOT_ENROLLED',
+  'RATE_LIMITED',
 ];
 
 export interface ApiErrorBody {

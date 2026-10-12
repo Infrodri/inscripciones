@@ -21,8 +21,10 @@ const mockedPost = axios.post as unknown as ReturnType<typeof vi.fn>;
 function fillValid(): void {
   fireEvent.change(screen.getByLabelText('Nombres'), { target: { value: 'Ana' } });
   fireEvent.change(screen.getByLabelText('Apellidos'), { target: { value: 'Pérez' } });
-  fireEvent.change(screen.getByLabelText('CI'), { target: { value: '123' } });
-  fireEvent.change(screen.getByLabelText('Correo'), { target: { value: 'ana@test.com' } });
+  fireEvent.change(screen.getByLabelText('CI'), { target: { value: 'ABC12345' } });
+  fireEvent.change(screen.getByLabelText('Correo (opcional)'), {
+    target: { value: 'ana@test.com' },
+  });
   fireEvent.click(screen.getByLabelText(/Acepto el tratamiento/));
 }
 

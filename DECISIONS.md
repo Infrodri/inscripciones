@@ -112,3 +112,22 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
     el Seq Scan del EXPLAIN es decisión del planificador con tabla pequeña.
     Búsqueda manual con `take: 10`. Medido local: 50 check-ins, total 307ms,
     promedio 6.1ms, p95 9ms.
+
+## QR rápido (formulario + sala)
+
+41. Email nullable con único parcial natural (NULLs no colisionan en PG);
+    teléfono opcional normalizado a `+591XXXXXXXX` (acepta +591/591/espacios/
+    guiones; exige 8 dígitos desde 6 o 7); CI `^[A-Z0-9]{5,15}$` validado con
+    trim en zod y mayúsculas en `normalizeCi`. Tests viejos adaptados a CI
+    sin guiones.
+42. `require_*` = exigir (siempre visibles). Sin correo no hay mail y el
+    éxito avisa "No indicaste correo…".
+43. Token de sala HMAC-SHA256(`JWT_SECRET`, `self-checkin:{session}:{ventana}`)
+    base64url, ventana 45 s (actual + anterior), `timingSafeEqual`, solo
+    `crypto`. Respuesta abreviada "Ana P.", sin PII.
+44. Límites: 60/min por IP en rutas de sala (montadas antes del limitador
+    general de 30/min) + 5 fallos por token+CI cada 10 min en memoria
+    (códigos `RATE_LIMITED` 429 y `NOT_ENROLLED` 404 nuevos).
+45. Limitación conocida: alguien presente podría teclear el CI de otro
+    inscrito; se acepta para el evento (mitiga: ventana de 45 s + registro
+    abierto solo durante la sesión + auditoría open/close).

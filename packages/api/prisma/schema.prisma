@@ -46,6 +46,7 @@ enum SpeakerRole {
 enum AttendanceMethod {
   QR
   MANUAL
+  SELF_QR
 }
 
 enum RoleKind {
@@ -155,6 +156,7 @@ model Session {
   // CHECK (ends_at IS NULL OR ends_at > starts_at) -> ver migration.sql manual
   location   String?
   label      String?
+  selfCheckinOpen Boolean @map("self_checkin_open") @default(false)
   createdAt  DateTime     @map("created_at") @db.Timestamptz() @default(now())
   updatedAt  DateTime     @map("updated_at") @db.Timestamptz() @updatedAt
   attendances Attendance[]
