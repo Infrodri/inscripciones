@@ -112,6 +112,25 @@ export function attendanceRoutes(): Router {
     }
   );
 
+  // Quienes marcaron en una sesión (ADMIN o STAFF), con hora y método.
+  router.get('/sessions/:id/attendances', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const session = await prisma.session.findUnique({ where: { id: req.params.id } });
+      if (!session) throw new DomainError('NOT_FOUND', 'Sesión no encontrada');
+      const items = await prisma.attendance.findMany({
+        where: { sessionId: session.id, voidedAt: null },
+        include: {
+          participant: { select: { id: true, firstName: true, lastName: true, ci: true } },
+        },
+        orderBy: { scannedAt: 'asc' },
+      });
+      res.json({ data: items });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // Anulación con motivo y auditoría (solo ADMIN). No borra la fila.
   router.post(
     '/attendances/:id/void',

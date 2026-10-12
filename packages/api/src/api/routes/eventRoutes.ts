@@ -166,6 +166,83 @@ export function eventRoutes(publicStorage: FileStorage): Router {
     }
   });
 
+  // Cerrar inscripciones (solo desde ABIERTO) y reabrir (solo desde CERRADO).
+  // No tocan BORRADOR ni FINALIZADO.
+  router.post('/:id/close', requireRole('ADMIN'), async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      if (event.status !== 'ABIERTO') {
+        throw new DomainError('VALIDATION_ERROR', 'Solo se puede cerrar un evento abierto');
+      }
+      const updated = await prisma.event.update({
+        where: { id: event.id },
+        data: { status: 'CERRADO' },
+      });
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/:id/reopen', requireRole('ADMIN'), async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      if (event.status !== 'CERRADO') {
+        throw new DomainError('VALIDATION_ERROR', 'Solo se puede reabrir un evento cerrado');
+      }
+      const updated = await prisma.event.update({
+        where: { id: event.id },
+        data: { status: 'ABIERTO' },
+      });
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.patch(
+    '/:id',
+    requireRole('ADMIN'),
+    validateBody(eventSchema.partial()),
+    async (req, res, next) => {
+      try {
+        if (
+          req.body.capacity !== undefined &&
+          req.body.capacity !== null &&
+          req.body.capacity < 0
+        ) {
+          throw new DomainError('VALIDATION_ERROR', 'El cupo no puede ser negativo');
+        }
+        if (
+          req.body.minAttendancePercent !== undefined &&
+          (req.body.minAttendancePercent < 0 || req.body.minAttendancePercent > 100)
+        ) {
+          throw new DomainError(
+            'VALIDATION_ERROR',
+            'El porcentaje mínimo debe estar entre 0 y 100'
+          );
+        }
+        const prisma = getPrisma();
+        const updated = await prisma.event.update({
+          where: { id: req.params.id },
+          data: {
+            ...req.body,
+            registrationDeadline: req.body.registrationDeadline
+              ? new Date(req.body.registrationDeadline)
+              : undefined,
+          },
+        });
+        res.json(updated);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   router.post('/:id/duplicate', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
     try {
       const body = z

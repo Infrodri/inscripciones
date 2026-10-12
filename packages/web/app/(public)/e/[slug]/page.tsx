@@ -124,7 +124,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           Inscribirme{event.spotsLeft !== null ? ` (${event.spotsLeft} cupos)` : ''}
         </Link>
       ) : (
-        <p className="mt-6">La inscripción a este evento está cerrada.</p>
+        <p className="mt-6 rounded-[8px] border border-[#D9DEE7] bg-white p-4">
+          Las inscripciones están cerradas por el momento. Si ya te inscribiste, guarda tu código
+          QR: lo necesitarás en la puerta.
+        </p>
       )}
       <div className="mt-6">
         <CopyBroadcastButton slug={event.slug} />
