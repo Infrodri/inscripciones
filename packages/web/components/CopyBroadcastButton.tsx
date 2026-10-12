@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { apiUrl } from '@/lib/api';
+import { formatFechaHora } from '@/lib/format';
+import { Button } from '@/components/ui/Button';
 
 export function CopyBroadcastButton({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function copy(): Promise<void> {
     const eventRes = await fetch(apiUrl(`/public/events/${slug}`));
@@ -15,27 +18,19 @@ export function CopyBroadcastButton({ slug }: { slug: string }) {
       sessions: Array<{ startsAt: string }>;
     };
     const first = event.sessions[0];
-    const when = first
-      ? new Date(first.startsAt).toLocaleString('es-BO', {
-          timeZone: 'America/La_Paz',
-          dateStyle: 'full',
-          timeStyle: 'short',
-        })
-      : '';
+    const when = first ? formatFechaHora(first.startsAt) : '';
     const site = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
     const url = `${site}/e/${slug}`;
     const text = `${event.title}\n${when}\n${event.location}\nInscripción: ${url}`;
     await navigator.clipboard.writeText(text);
     setCopied(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), 2000);
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => void copy()}
-      className="rounded border border-[#C9A227] px-4 py-2"
-    >
-      {copied ? 'Mensaje copiado' : 'Copiar mensaje de difusión'}
-    </button>
+    <Button variant="secundario" onClick={() => void copy()}>
+      {copied ? '¡Copiado!' : 'Copiar mensaje de difusión'}
+    </Button>
   );
 }

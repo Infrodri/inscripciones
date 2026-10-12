@@ -5,6 +5,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { FileDropzone } from '@/components/ui/FileDropzone';
+import { Input } from '@/components/ui/Input';
 import { TemplateEditor } from '@/components/admin/TemplateEditor';
 
 export interface Template {
@@ -43,7 +46,10 @@ export function TemplateManager({ eventId }: { eventId: string }) {
 
   async function upload(e: React.FormEvent): Promise<void> {
     e.preventDefault();
-    if (!file) return;
+    if (!file) {
+      toast.error('Elija la imagen de la plantilla');
+      return;
+    }
     if (file.size > 15 * 1024 * 1024) {
       toast.error('La plantilla supera los 15 MB');
       return;
@@ -84,36 +90,34 @@ export function TemplateManager({ eventId }: { eventId: string }) {
   return (
     <div>
       <h2 className="font-serif text-lg">Subir plantilla (PNG/JPG, máx. 15 MB)</h2>
-      <form onSubmit={(e) => void upload(e)} className="mt-2 flex flex-wrap items-end gap-2">
-        <input
-          type="file"
-          accept="image/png,image/jpeg"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          aria-label="Imagen de plantilla"
-          required
+      <form onSubmit={(e) => void upload(e)} className="mt-2 max-w-xl space-y-3">
+        <FileDropzone
+          etiqueta="Imagen de plantilla"
+          acepta="image/png,image/jpeg"
+          archivo={file}
+          onArchivo={setFile}
+          progreso={progress}
         />
-        <input
+        <Input
+          id="tpl-nombre"
+          etiqueta="Nombre"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Nombre"
           required
-          className="rounded border p-1"
-          aria-label="Nombre de plantilla"
         />
-        <select
+        <Input
+          id="tpl-rol"
+          etiqueta="Rol"
+          desplegable
           value={roleKind}
           onChange={(e) => setRoleKind(e.target.value)}
-          className="rounded border p-1"
-          aria-label="Rol"
         >
           <option value="ASISTENTE">Asistente</option>
           <option value="EXPOSITOR">Expositor</option>
           <option value="ORGANIZADOR">Organizador</option>
           <option value="OTRO">Otro</option>
-        </select>
-        <button type="submit" className="min-h-[44px] rounded bg-[#0A2A5E] px-3 py-1 text-white">
-          Subir
-        </button>
+        </Input>
+        <Button type="submit">Subir</Button>
       </form>
       {progress !== null ? (
         <p role="status" className="mt-2 text-sm">

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { buildApiBaseUrl } from '@/lib/api';
+import { formatFechaHora } from '@/lib/format';
 import { CopyBroadcastButton } from '@/components/CopyBroadcastButton';
 
 export const dynamic = 'force-dynamic';
@@ -60,14 +61,6 @@ export async function generateMetadata({
   };
 }
 
-function formatLaPaz(iso: string): string {
-  return new Date(iso).toLocaleString('es-BO', {
-    timeZone: 'America/La_Paz',
-    dateStyle: 'full',
-    timeStyle: 'short',
-  });
-}
-
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const event = await getEvent(slug);
@@ -105,7 +98,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       <ul className="mt-2">
         {event.sessions.map((s) => (
           <li key={s.id}>
-            {formatLaPaz(s.startsAt)}
+            {formatFechaHora(s.startsAt)}
             {s.location ? ` — ${s.location}` : ''}
           </li>
         ))}

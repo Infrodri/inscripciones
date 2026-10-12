@@ -6,6 +6,8 @@ import { z } from 'zod';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { apiUrl, configErrorMessage } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 const schema = z.object({
   firstName: z.string().trim().min(1, 'El nombre es obligatorio'),
@@ -122,78 +124,61 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
 
   return (
     <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="mt-6 space-y-4">
-      <div>
-        <label htmlFor="firstName">Nombres</label>
-        <input
-          id="firstName"
-          {...register('firstName')}
-          className="block w-full rounded border p-2"
-        />
-        {errors.firstName ? <p>{errors.firstName.message}</p> : null}
-      </div>
-      <div>
-        <label htmlFor="lastName">Apellidos</label>
-        <input
-          id="lastName"
-          {...register('lastName')}
-          className="block w-full rounded border p-2"
-        />
-        {errors.lastName ? <p>{errors.lastName.message}</p> : null}
-      </div>
-      <div>
-        <label htmlFor="ci">CI</label>
-        <input id="ci" {...register('ci')} className="block w-full rounded border p-2" />
-        {errors.ci ? <p>{errors.ci.message}</p> : null}
-      </div>
-      <div>
-        <label htmlFor="email">Correo (opcional)</label>
-        <input
-          id="email"
-          type="email"
-          {...register('email')}
-          className="block w-full rounded border p-2"
-        />
-        {errors.email ? <p>{errors.email.message}</p> : null}
-      </div>
-      <div>
-        <label htmlFor="phone">Celular{required.phone ? '' : ' (opcional)'}</label>
-        <input id="phone" {...register('phone')} className="block w-full rounded border p-2" />
-        {errors.phone ? <p>{errors.phone.message}</p> : null}
-      </div>
-      <div>
-        <label htmlFor="type">Tipo</label>
-        <select id="type" {...register('type')} className="block w-full rounded border p-2">
-          <option value="ESTUDIANTE">Estudiante</option>
-          <option value="DOCENTE">Docente</option>
-          <option value="PROFESIONAL">Profesional</option>
-          <option value="PUBLICO">Público</option>
-        </select>
-      </div>
-      <div>
-        <label htmlFor="institution">
-          Carrera o institución{required.institution ? '' : ' (opcional)'}
-        </label>
-        <input
-          id="institution"
-          {...register('institution')}
-          className="block w-full rounded border p-2"
-        />
-        {errors.institution ? <p>{errors.institution.message}</p> : null}
-      </div>
-      <div>
-        <label htmlFor="career">Carrera{required.career ? '' : ' (opcional)'}</label>
-        <input id="career" {...register('career')} className="block w-full rounded border p-2" />
-        {errors.career ? <p>{errors.career.message}</p> : null}
-      </div>
-      <div>
-        <label htmlFor="semester">Semestre{required.semester ? '' : ' (opcional)'}</label>
-        <input
-          id="semester"
-          {...register('semester')}
-          className="block w-full rounded border p-2"
-        />
-        {errors.semester ? <p>{errors.semester.message}</p> : null}
-      </div>
+      <Input
+        id="firstName"
+        etiqueta="Nombres"
+        {...register('firstName')}
+        error={errors.firstName?.message}
+      />
+      <Input
+        id="lastName"
+        etiqueta="Apellidos"
+        {...register('lastName')}
+        error={errors.lastName?.message}
+      />
+      <Input id="ci" etiqueta="CI" {...register('ci')} error={errors.ci?.message} />
+      <Input
+        id="email"
+        etiqueta="Correo"
+        opcional=" (opcional)"
+        type="email"
+        {...register('email')}
+        error={errors.email?.message}
+      />
+      <Input
+        id="phone"
+        etiqueta="Celular"
+        opcional={required.phone ? undefined : ' (opcional)'}
+        {...register('phone')}
+        error={errors.phone?.message}
+      />
+      <Input id="type" etiqueta="Tipo" desplegable {...register('type')}>
+        <option value="ESTUDIANTE">Estudiante</option>
+        <option value="DOCENTE">Docente</option>
+        <option value="PROFESIONAL">Profesional</option>
+        <option value="PUBLICO">Público</option>
+      </Input>
+      <Input
+        id="institution"
+        etiqueta="Carrera o institución"
+        opcional={required.institution ? undefined : ' (opcional)'}
+        {...register('institution')}
+        error={errors.institution?.message}
+      />
+      <Input
+        id="career"
+        etiqueta="Carrera"
+        opcional={required.career ? undefined : ' (opcional)'}
+        {...register('career')}
+        error={errors.career?.message}
+      />
+      <Input
+        id="semester"
+        etiqueta="Semestre"
+        opcional={required.semester ? undefined : ' (opcional)'}
+        {...register('semester')}
+        error={errors.semester?.message}
+      />
       <div>
         <input id="dataConsent" type="checkbox" {...register('dataConsent')} />
         <label htmlFor="dataConsent"> Acepto el tratamiento de mis datos para este evento</label>
@@ -204,13 +189,9 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
           {serverError}
         </p>
       ) : null}
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="min-h-[44px] rounded bg-[#0A2A5E] px-6 py-3 text-white"
-      >
-        {isSubmitting ? 'Registrando…' : 'Confirmar inscripción'}
-      </button>
+      <Button type="submit" cargando={isSubmitting} className="w-full">
+        Confirmar inscripción
+      </Button>
     </form>
   );
 }

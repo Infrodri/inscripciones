@@ -5,6 +5,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { PageHeader } from '@/components/ui/Table';
 
 interface UserRow {
   id: string;
@@ -42,7 +45,7 @@ export default function UsuariosPage() {
 
   return (
     <div className="max-w-xl">
-      <h1 className="font-serif text-2xl text-[#0A2A5E]">Usuarios</h1>
+      <PageHeader titulo="Usuarios" />
       {isLoading ? <p>Cargando…</p> : null}
       {isError ? <p>No se pudieron cargar los usuarios.</p> : null}
       <ul className="mt-4 space-y-1">
@@ -54,35 +57,30 @@ export default function UsuariosPage() {
       </ul>
       <h2 className="mt-6 font-serif text-lg">Nuevo STAFF</h2>
       <form onSubmit={(e) => void submit(e)} className="mt-2 space-y-3">
-        <input
+        <Input
+          id="u-nombre"
+          etiqueta="Nombre"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Nombre"
-          className="block w-full rounded border p-2"
           required
-          aria-label="Nombre"
         />
-        <input
+        <Input
+          id="u-correo"
+          etiqueta="Correo"
+          type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          type="email"
-          placeholder="Correo"
-          className="block w-full rounded border p-2"
           required
-          aria-label="Correo"
         />
-        <input
+        <Input
+          id="u-clave"
+          etiqueta="Contraseña (mín. 8)"
+          type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          type="password"
-          placeholder="Contraseña (mín. 8)"
-          className="block w-full rounded border p-2"
           required
-          aria-label="Contraseña"
         />
-        <button type="submit" className="min-h-[44px] rounded bg-[#0A2A5E] px-4 py-2 text-white">
-          Crear STAFF
-        </button>
+        <Button type="submit">Crear STAFF</Button>
       </form>
     </div>
   );

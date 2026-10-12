@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 interface Template {
   id: string;
@@ -113,66 +115,57 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => void fromSpeakers()}
-        className="rounded border border-[#C9A227] px-3 py-1"
-      >
+      <Button variant="secundario" onClick={() => void fromSpeakers()}>
         Cargar desde expositores del evento
-      </button>
-      <form onSubmit={(e) => void submit(e)} className="mt-3 grid max-w-xl gap-2">
-        <label className="text-sm">
-          Nombre completo con título, tal como debe imprimirse
-          <input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-            className="block w-full rounded border p-1"
-            placeholder="Dr. César Suárez Saavedra"
-          />
-        </label>
-        <label className="text-sm">
-          Plantilla (solo EXPOSITOR)
-          <select
-            value={templateId}
-            onChange={(e) => setTemplateId(e.target.value)}
-            className="block w-full rounded border p-1"
-          >
-            <option value="">Predeterminada</option>
-            {(templates.data?.data ?? []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-                {t.isDefault ? ' (predeterminada)' : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          Vínculo a expositor (opcional)
-          <select
-            value={speakerId}
-            onChange={(e) => setSpeakerId(e.target.value)}
-            className="block w-full rounded border p-1"
-          >
-            <option value="">Sin vínculo</option>
-            {(speakers.data?.data ?? []).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.fullName} ({s.role})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          Nota interna (no se imprime)
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="block w-full rounded border p-1"
-          />
-        </label>
-        <button type="submit" className="w-fit rounded bg-[#0A2A5E] px-4 py-1 text-white">
-          Agregar expositor
-        </button>
+      </Button>
+      <form onSubmit={(e) => void submit(e)} className="mt-3 grid max-w-xl gap-3">
+        <Input
+          id="exp-nombre"
+          etiqueta="Nombre completo con título, tal como debe imprimirse"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          required
+          placeholder="Dr. César Suárez Saavedra"
+        />
+        <Input
+          id="exp-plantilla"
+          etiqueta="Plantilla (solo EXPOSITOR)"
+          desplegable
+          value={templateId}
+          onChange={(e) => setTemplateId(e.target.value)}
+        >
+          <option value="">Predeterminada</option>
+          {(templates.data?.data ?? []).map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+              {t.isDefault ? ' (predeterminada)' : ''}
+            </option>
+          ))}
+        </Input>
+        <Input
+          id="exp-speaker"
+          etiqueta="Vínculo a expositor"
+          opcional=" (opcional)"
+          desplegable
+          value={speakerId}
+          onChange={(e) => setSpeakerId(e.target.value)}
+        >
+          <option value="">Sin vínculo</option>
+          {(speakers.data?.data ?? []).map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.fullName} ({s.role})
+            </option>
+          ))}
+        </Input>
+        <Input
+          id="exp-nota"
+          etiqueta="Nota interna (no se imprime)"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <div>
+          <Button type="submit">Agregar expositor</Button>
+        </div>
       </form>
       <ul className="mt-4 space-y-1">
         {(recipients.data?.data ?? []).map((r) => (
@@ -181,18 +174,18 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
           </li>
         ))}
       </ul>
-      <button
-        type="button"
-        onClick={() =>
-          void downloadPdf(
-            `/events/${eventId}/exports/certificates.pdf?roleKind=EXPOSITOR&scope=all`,
-            'certificados-expositores.pdf'
-          )
-        }
-        className="mt-3 rounded bg-[#0A2A5E] px-3 py-1 text-white"
-      >
-        Exportar expositores
-      </button>
+      <div className="mt-3">
+        <Button
+          onClick={() =>
+            void downloadPdf(
+              `/events/${eventId}/exports/certificates.pdf?roleKind=EXPOSITOR&scope=all`,
+              'certificados-expositores.pdf'
+            )
+          }
+        >
+          Exportar expositores
+        </Button>
+      </div>
     </div>
   );
 }

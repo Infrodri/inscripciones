@@ -3,6 +3,7 @@
 import axios from 'axios';
 import { use, useEffect, useState } from 'react';
 import { apiBaseUrl, configErrorMessage } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
 import { formatLaPaz } from '@/lib/scanWindow';
 
 type Result =
@@ -77,18 +78,18 @@ export default function AutoCheckinPage({ params }: { params: Promise<{ token: s
 
   const bg =
     result.kind === 'ok'
-      ? 'bg-green-600'
+      ? 'bg-[#1E7B4F]'
       : result.kind === 'dup'
-        ? 'bg-amber-500'
+        ? 'bg-[#B7791F]'
         : result.kind === 'error'
-          ? 'bg-red-600'
+          ? 'bg-[#B42318]'
           : '';
 
   return (
     <main className="mx-auto max-w-md p-4">
       <h1 className="font-serif text-2xl text-[#0A2A5E]">Registro de asistencia</h1>
       {loadError ? (
-        <p role="alert" className="mt-4 rounded bg-red-600 p-6 text-center text-lg text-white">
+        <p role="alert" className="mt-4 rounded bg-[#B42318] p-6 text-center text-lg text-white">
           {loadError}
         </p>
       ) : !info ? (
@@ -115,13 +116,14 @@ export default function AutoCheckinPage({ params }: { params: Promise<{ token: s
                 inputMode="text"
               />
             </div>
-            <button
+            <Button
               type="submit"
+              cargando={busy}
               disabled={busy || !info.open}
-              className="min-h-[48px] w-full rounded bg-[#0A2A5E] px-6 py-3 text-lg text-white disabled:opacity-50"
+              className="w-full py-3 text-lg"
             >
-              {busy ? 'Registrando…' : 'Registrar mi asistencia'}
-            </button>
+              Registrar mi asistencia
+            </Button>
           </form>
         </div>
       ) : (

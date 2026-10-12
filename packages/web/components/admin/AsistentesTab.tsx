@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 interface Template {
   id: string;
@@ -149,13 +151,13 @@ export function AsistentesTab({
       <p>
         Inscritos: <strong>{total}</strong> — Aptos: <strong>{eligible}</strong>
       </p>
-      <div className="mt-3">
-        <label htmlFor="tpl">Plantilla</label>
-        <select
+      <div className="mt-3 max-w-md">
+        <Input
           id="tpl"
+          etiqueta="Plantilla"
+          desplegable
           value={templateId}
           onChange={(e) => setTemplateId(e.target.value)}
-          className="ml-2 rounded border p-1"
         >
           <option value="">Predeterminada del rol</option>
           {(templates.data?.data ?? []).map((t) => (
@@ -164,7 +166,7 @@ export function AsistentesTab({
               {t.isDefault ? ' (predeterminada)' : ''}
             </option>
           ))}
-        </select>
+        </Input>
       </div>
       <fieldset className="mt-3">
         <legend className="text-sm font-medium">Alcance</legend>
@@ -214,21 +216,12 @@ export function AsistentesTab({
         </ul>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => void preview()}
-          className="min-h-[44px] rounded border px-3 py-2"
-        >
+        <Button variant="secundario" onClick={() => void preview()}>
           Vista previa
-        </button>
-        <button
-          type="button"
-          onClick={() => void download('certificados-asistentes.pdf')}
-          disabled={busy}
-          className="min-h-[44px] rounded bg-[#0A2A5E] px-3 py-2 text-white disabled:opacity-50"
-        >
-          {busy ? 'Generando…' : 'Descargar PDF'}
-        </button>
+        </Button>
+        <Button onClick={() => void download('certificados-asistentes.pdf')} cargando={busy}>
+          Descargar PDF
+        </Button>
       </div>
       <p className="mt-2 text-sm">
         Siempre genere primero la vista previa de 1 página. Una página por persona, en orden de

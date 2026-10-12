@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
 
 interface Participant {
   id: string;
@@ -72,35 +73,29 @@ export function ParticipantsTable({ eventId, slug }: { eventId: string; slug: st
         <h2 className="font-serif text-lg text-[#0A2A5E]">
           Inscritos ({data?.pagination.total ?? 0})
         </h2>
-        <div className="flex gap-2">
-          <button
-            type="button"
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secundario"
             onClick={() => void download('participants', 'xlsx', eventId, slug)}
-            className="rounded border px-2 py-1"
           >
             XLSX
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="secundario"
             onClick={() => void download('participants', 'csv', eventId, slug)}
-            className="rounded border px-2 py-1"
           >
             CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => void downloadPdf(eventId, slug)}
-            className="rounded border px-2 py-1"
-          >
+          </Button>
+          <Button variant="secundario" onClick={() => void downloadPdf(eventId, slug)}>
             Lista PDF
-          </button>
+          </Button>
         </div>
       </div>
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Buscar por nombre, CI o correo"
-        className="mt-2 w-full rounded border p-2"
+        className="mt-2 w-full rounded-[8px] border border-[#D9DEE7] p-2"
         aria-label="Buscar inscritos"
       />
       {(data?.data.length ?? 0) === 0 ? (

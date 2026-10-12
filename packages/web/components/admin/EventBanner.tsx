@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { FileDropzone } from '@/components/ui/FileDropzone';
 
 export function EventBanner({ eventId, slug }: { eventId: string; slug: string }) {
   const queryClient = useQueryClient();
@@ -51,22 +53,17 @@ export function EventBanner({ eventId, slug }: { eventId: string; slug: string }
           Sin afiche: la página pública muestra el encabezado institucional.
         </p>
       )}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          aria-label="Archivo del afiche"
-          className="max-w-full"
+      <div className="mt-2 max-w-md space-y-2">
+        <FileDropzone
+          etiqueta="Archivo del afiche (PNG/JPG/WebP, máx. 10 MB)"
+          acepta="image/png,image/jpeg,image/webp"
+          archivo={file}
+          onArchivo={setFile}
+          progreso={null}
         />
-        <button
-          type="button"
-          onClick={() => void upload()}
-          disabled={!file || busy}
-          className="min-h-[44px] rounded bg-[#0A2A5E] px-4 py-2 text-white disabled:opacity-50"
-        >
-          {busy ? 'Subiendo…' : 'Subir afiche'}
-        </button>
+        <Button onClick={() => void upload()} disabled={!file} cargando={busy}>
+          Subir afiche
+        </Button>
       </div>
     </section>
   );

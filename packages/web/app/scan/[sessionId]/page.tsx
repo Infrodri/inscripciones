@@ -6,6 +6,7 @@ import { use, useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, getToken } from '@/lib/api';
 import { toScanResult, type ScanResult } from '@/lib/scan';
+import { Button } from '@/components/ui/Button';
 import { WalkinForm } from '@/components/WalkinForm';
 
 const QrScanner = dynamic(() => import('@/components/QrScanner').then((m) => m.QrScanner), {
@@ -68,11 +69,11 @@ export default function ScanPage({ params }: { params: Promise<{ sessionId: stri
 
   const bg =
     result.kind === 'ok'
-      ? 'bg-green-600'
+      ? 'bg-[#1E7B4F]'
       : result.kind === 'dup'
-        ? 'bg-amber-500'
+        ? 'bg-[#B7791F]'
         : result.kind === 'error'
-          ? 'bg-red-600'
+          ? 'bg-[#B42318]'
           : '';
 
   return (
@@ -90,13 +91,9 @@ export default function ScanPage({ params }: { params: Promise<{ sessionId: stri
               }}
             />
           ) : (
-            <button
-              type="button"
-              onClick={() => setScanning(true)}
-              className="w-full rounded bg-[#0A2A5E] px-6 py-4 text-lg text-white"
-            >
+            <Button onClick={() => setScanning(true)} className="w-full py-4 text-lg">
               Iniciar escáner
-            </button>
+            </Button>
           )}
           <p className="mt-2 text-sm">
             La cámara se activa solo al pulsar el botón. Apunte al QR del inscrito.
@@ -123,7 +120,7 @@ export default function ScanPage({ params }: { params: Promise<{ sessionId: stri
           <button
             type="button"
             onClick={restart}
-            className="mt-6 rounded bg-white px-6 py-3 text-black"
+            className="mt-6 min-h-[44px] rounded-[8px] bg-white px-6 py-3 text-black"
           >
             Escanear otro
           </button>

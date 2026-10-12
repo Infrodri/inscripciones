@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
 
 interface NameBox {
   xPct: number;
@@ -245,23 +246,13 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
         </label>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => void save()}
-          className="rounded bg-[#0A2A5E] px-3 py-1 text-white"
-        >
-          Guardar caja
-        </button>
-        <button
-          type="button"
-          onClick={() => void longestName()}
-          className="rounded border px-3 py-1"
-        >
+        <Button onClick={() => void save()}>Guardar caja</Button>
+        <Button variant="secundario" onClick={() => void longestName()}>
           Probar con el nombre más largo
-        </button>
-        <button type="button" onClick={() => void preview()} className="rounded border px-3 py-1">
+        </Button>
+        <Button variant="secundario" onClick={() => void preview()}>
           Vista previa PDF
-        </button>
+        </Button>
       </div>
     </div>
   );

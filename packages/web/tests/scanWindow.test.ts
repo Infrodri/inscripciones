@@ -37,8 +37,8 @@ describe('isSessionActiveNow', () => {
 });
 
 describe('formatLaPaz', () => {
-  it('muestra fecha en español', () => {
-    expect(formatLaPaz(STARTS)).toMatch(/12 de octubre de 2026/);
+  it('usa el formato único', () => {
+    expect(formatLaPaz(STARTS)).toBe('lun 12 oct 2026 · 18:00');
   });
 });
 

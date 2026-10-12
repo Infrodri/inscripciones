@@ -6,6 +6,10 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { PageHeader } from '@/components/ui/Table';
 
 export default function NuevoEventoPage() {
   const router = useRouter();
@@ -98,15 +102,15 @@ export default function NuevoEventoPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="font-serif text-2xl text-[#0A2A5E]">Nuevo evento</h1>
+      <PageHeader titulo="Nuevo evento" />
       <form onSubmit={(e) => void submit(e)} className="mt-4 space-y-4">
-        <div>
-          <label htmlFor="duplicateFrom">Duplicar de… (opcional)</label>
-          <select
+        <Card>
+          <Input
             id="duplicateFrom"
+            etiqueta="Duplicar de… (opcional)"
+            desplegable
             value={duplicateFrom}
             onChange={(e) => setDuplicateFrom(e.target.value)}
-            className="block w-full rounded border p-2"
           >
             <option value="">Evento nuevo</option>
             {(events?.data ?? []).map((e) => (
@@ -114,163 +118,142 @@ export default function NuevoEventoPage() {
                 {e.title}
               </option>
             ))}
-          </select>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <label htmlFor="title">Título</label>
-            <input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="block w-full rounded border p-2"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="slug">Slug</label>
-            <input
+          </Input>
+        </Card>
+        <Card>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <Input
+                id="title"
+                etiqueta="Título"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
+            </div>
+            <Input
               id="slug"
+              etiqueta="Slug"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
-              className="block w-full rounded border p-2"
               required
             />
-          </div>
-          <div>
-            <label htmlFor="eventKind">Tipo</label>
-            <input
+            <Input
               id="eventKind"
+              etiqueta="Tipo"
               value={eventKind}
               onChange={(e) => setEventKind(e.target.value)}
-              className="block w-full rounded border p-2"
               required
             />
-          </div>
-          <div className="md:col-span-2">
-            <label htmlFor="institution">Institución</label>
-            <input
-              id="institution"
-              value={institution}
-              onChange={(e) => setInstitution(e.target.value)}
-              className="block w-full rounded border p-2"
-              required={!duplicateFrom}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label htmlFor="commemoration">Conmemoración (opcional)</label>
-            <input
-              id="commemoration"
-              value={commemoration}
-              onChange={(e) => setCommemoration(e.target.value)}
-              className="block w-full rounded border p-2"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label htmlFor="organizer">Organiza</label>
-            <input
-              id="organizer"
-              value={organizer}
-              onChange={(e) => setOrganizer(e.target.value)}
-              className="block w-full rounded border p-2"
-              required={!duplicateFrom}
-            />
-          </div>
-          <div>
-            <label htmlFor="location">Lugar</label>
-            <input
+            <div className="md:col-span-2">
+              <Input
+                id="institution"
+                etiqueta="Institución"
+                value={institution}
+                onChange={(e) => setInstitution(e.target.value)}
+                required={!duplicateFrom}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Input
+                id="commemoration"
+                etiqueta="Conmemoración"
+                opcional=" (opcional)"
+                value={commemoration}
+                onChange={(e) => setCommemoration(e.target.value)}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Input
+                id="organizer"
+                etiqueta="Organiza"
+                value={organizer}
+                onChange={(e) => setOrganizer(e.target.value)}
+                required={!duplicateFrom}
+              />
+            </div>
+            <Input
               id="location"
+              etiqueta="Lugar"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="block w-full rounded border p-2"
               required={!duplicateFrom}
             />
-          </div>
-          <div>
-            <label htmlFor="modality">Modalidad</label>
-            <select
+            <Input
               id="modality"
+              etiqueta="Modalidad"
+              desplegable
               value={modality}
               onChange={(e) => setModality(e.target.value)}
-              className="block w-full rounded border p-2"
             >
               <option value="PRESENCIAL">Presencial</option>
               <option value="VIRTUAL">Virtual</option>
               <option value="HIBRIDO">Híbrido</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="capacity">Cupo (vacío = sin límite)</label>
-            <input
+            </Input>
+            <Input
               id="capacity"
+              etiqueta="Cupo"
+              opcional=" (vacío = sin límite)"
               type="number"
               min={0}
               value={capacity}
               onChange={(e) => setCapacity(e.target.value)}
-              className="block w-full rounded border p-2"
             />
-          </div>
-          <div>
-            <label htmlFor="deadline">Fecha límite (opcional)</label>
-            <input
+            <Input
               id="deadline"
+              etiqueta="Fecha límite"
+              opcional=" (opcional)"
               type="datetime-local"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
-              className="block w-full rounded border p-2"
             />
-          </div>
-          <div>
-            <label htmlFor="whatsapp">WhatsApp de contacto (opcional)</label>
-            <input
+            <Input
               id="whatsapp"
+              etiqueta="WhatsApp de contacto"
+              opcional=" (opcional)"
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
-              className="block w-full rounded border p-2"
             />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              id="issuesCertificate"
-              type="checkbox"
-              checked={issuesCertificate}
-              onChange={(e) => setIssuesCertificate(e.target.checked)}
-              className="h-5 w-5"
-            />
-            <label htmlFor="issuesCertificate">Emite certificados</label>
-          </div>
-        </div>
-        {!duplicateFrom ? (
-          <fieldset className="rounded border p-3">
-            <legend className="px-1 text-sm font-medium">Primera sesión (obligatoria)</legend>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label htmlFor="sessionAt">Fecha y hora</label>
-                <input
-                  id="sessionAt"
-                  type="datetime-local"
-                  value={sessionAt}
-                  onChange={(e) => setSessionAt(e.target.value)}
-                  className="block w-full rounded border p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="sessionEndsAt">Fin (opcional)</label>
-                <input
-                  id="sessionEndsAt"
-                  type="datetime-local"
-                  value={sessionEndsAt}
-                  onChange={(e) => setSessionEndsAt(e.target.value)}
-                  className="block w-full rounded border p-2"
-                />
-              </div>
+            <div className="flex min-h-[44px] items-center gap-2">
+              <input
+                id="issuesCertificate"
+                type="checkbox"
+                checked={issuesCertificate}
+                onChange={(e) => setIssuesCertificate(e.target.checked)}
+                className="h-5 w-5"
+              />
+              <label htmlFor="issuesCertificate">Emite certificados</label>
             </div>
-          </fieldset>
+          </div>
+        </Card>
+        {!duplicateFrom ? (
+          <Card>
+            <h2 className="font-serif text-lg text-[#0A2A5E]">Primera sesión (obligatoria)</h2>
+            <div className="mt-2 grid gap-4 md:grid-cols-2">
+              <Input
+                id="sessionAt"
+                etiqueta="Fecha y hora"
+                type="datetime-local"
+                value={sessionAt}
+                onChange={(e) => setSessionAt(e.target.value)}
+                required
+              />
+              <Input
+                id="sessionEndsAt"
+                etiqueta="Fin"
+                opcional=" (opcional)"
+                type="datetime-local"
+                value={sessionEndsAt}
+                onChange={(e) => setSessionEndsAt(e.target.value)}
+              />
+            </div>
+          </Card>
         ) : null}
         {!duplicateFrom ? (
-          <fieldset className="rounded border p-3">
-            <legend className="px-1 text-sm font-medium">Campos obligatorios del formulario</legend>
+          <Card>
+            <h2 className="font-serif text-lg text-[#0A2A5E]">
+              Campos obligatorios del formulario
+            </h2>
             {(
               [
                 ['requireCareer', requireCareer, setRequireCareer, 'Carrera'],
@@ -290,25 +273,20 @@ export default function NuevoEventoPage() {
                 <label htmlFor={id}>{label}</label>
               </div>
             ))}
-          </fieldset>
+          </Card>
         ) : null}
-        <div>
-          <label htmlFor="banner">Afiche (PNG/JPG/WebP, máx. 10 MB)</label>
-          <input
+        <Card>
+          <Input
             id="banner"
+            etiqueta="Afiche (PNG/JPG/WebP, máx. 10 MB)"
             type="file"
             accept="image/png,image/jpeg,image/webp"
             onChange={(e) => setBanner(e.target.files?.[0] ?? null)}
-            className="block w-full"
           />
-        </div>
-        <button
-          type="submit"
-          disabled={busy}
-          className="min-h-[44px] rounded bg-[#0A2A5E] px-6 py-2 text-white"
-        >
-          {busy ? 'Creando…' : 'Crear evento'}
-        </button>
+        </Card>
+        <Button type="submit" cargando={busy}>
+          Crear evento
+        </Button>
       </form>
     </div>
   );

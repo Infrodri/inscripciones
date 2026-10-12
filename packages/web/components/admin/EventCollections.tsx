@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { formatFechaHora } from '@/lib/format';
 import { SessionScanActions } from '@/components/admin/SessionScanActions';
 
 export function EventCollections({ eventId }: { eventId: string }) {
@@ -47,9 +48,7 @@ export function EventCollections({ eventId }: { eventId: string }) {
         <ul className="mt-2 space-y-2">
           {(sessions.data?.data ?? []).map((s) => (
             <li key={s.id} className="text-sm">
-              <span>
-                {new Date(s.startsAt).toLocaleString('es-BO', { timeZone: 'America/La_Paz' })}
-              </span>
+              <span>{formatFechaHora(s.startsAt)}</span>
               <div className="mt-1">
                 <SessionScanActions sessionId={s.id} />
               </div>

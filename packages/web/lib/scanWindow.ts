@@ -1,6 +1,8 @@
 // Réplica exacta de la ventana del API (domain/sessionWindow): desde
 // startsAt - window hasta (endsAt ?? startsAt + 4h) + window. Todo en UTC;
 // America/La_Paz solo en presentación.
+import { formatFechaHora } from './format';
+
 export function isSessionActiveNow(
   nowMs: number,
   startsAtIso: string,
@@ -14,11 +16,7 @@ export function isSessionActiveNow(
 }
 
 export function formatLaPaz(iso: string): string {
-  return new Date(iso).toLocaleString('es-BO', {
-    timeZone: 'America/La_Paz',
-    dateStyle: 'full',
-    timeStyle: 'short',
-  });
+  return formatFechaHora(iso);
 }
 
 export function scanPath(sessionId: string): string {

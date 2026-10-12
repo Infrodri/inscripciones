@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 interface Template {
   id: string;
@@ -114,12 +116,13 @@ export function OrganizadoresTab({ eventId }: { eventId: string }) {
 
   return (
     <div>
-      <label className="text-sm">
-        Variante de plantilla (firma)
-        <select
+      <div className="max-w-md">
+        <Input
+          id="org-variante"
+          etiqueta="Variante de plantilla (firma)"
+          desplegable
           value={templateId}
           onChange={(e) => setTemplateId(e.target.value)}
-          className="ml-2 rounded border p-1"
         >
           <option value="">Predeterminada</option>
           {(templates.data?.data ?? []).map((t) => (
@@ -128,47 +131,40 @@ export function OrganizadoresTab({ eventId }: { eventId: string }) {
               {t.isDefault ? ' (predeterminada)' : ''}
             </option>
           ))}
-        </select>
-      </label>
-      <form onSubmit={(e) => void submit(e)} className="mt-3 grid max-w-xl gap-2">
-        <label className="text-sm">
-          Nombre con título/grado, tal como debe imprimirse
-          <input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-            className="block w-full rounded border p-1"
-          />
-        </label>
-        <label className="text-sm">
-          Cargo (nota interna, no se imprime)
-          <input
-            value={cargo}
-            onChange={(e) => setCargo(e.target.value)}
-            className="block w-full rounded border p-1"
-          />
-        </label>
-        <button type="submit" className="w-fit rounded bg-[#0A2A5E] px-4 py-1 text-white">
-          Agregar organizador
-        </button>
+        </Input>
+      </div>
+      <form onSubmit={(e) => void submit(e)} className="mt-3 grid max-w-xl gap-3">
+        <Input
+          id="org-nombre"
+          etiqueta="Nombre con título/grado, tal como debe imprimirse"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          required
+        />
+        <Input
+          id="org-cargo"
+          etiqueta="Cargo (nota interna, no se imprime)"
+          value={cargo}
+          onChange={(e) => setCargo(e.target.value)}
+        />
+        <div>
+          <Button type="submit">Agregar organizador</Button>
+        </div>
       </form>
       <div className="mt-4 max-w-xl">
-        <label className="text-sm">
-          Pegado de lista (un nombre por línea, misma variante)
-          <textarea
-            value={paste}
-            onChange={(e) => setPaste(e.target.value)}
-            rows={4}
-            className="block w-full rounded border p-1"
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => void submitPaste()}
-          className="mt-2 rounded border px-3 py-1"
-        >
-          Cargar lista
-        </button>
+        <Input
+          id="org-lista"
+          etiqueta="Pegado de lista (un nombre por línea, misma variante)"
+          multiline
+          rows={4}
+          value={paste}
+          onChange={(e) => setPaste(e.target.value)}
+        />
+        <div className="mt-2">
+          <Button variant="secundario" onClick={() => void submitPaste()}>
+            Cargar lista
+          </Button>
+        </div>
       </div>
       <ul className="mt-4 space-y-1">
         {(recipients.data?.data ?? []).map((r) => (
@@ -179,32 +175,29 @@ export function OrganizadoresTab({ eventId }: { eventId: string }) {
         ))}
       </ul>
       <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
+        <Button
           onClick={() =>
             void downloadPdf(
               `/events/${eventId}/exports/certificates.pdf?roleKind=ORGANIZADOR&scope=all`,
               'certificados-organizadores.pdf'
             )
           }
-          className="rounded bg-[#0A2A5E] px-3 py-1 text-white"
         >
           Exportar organizadores
-        </button>
+        </Button>
         {(templates.data?.data ?? []).map((t) => (
-          <button
+          <Button
             key={t.id}
-            type="button"
+            variant="secundario"
             onClick={() =>
               void downloadPdf(
                 `/events/${eventId}/exports/certificates.pdf?roleKind=ORGANIZADOR&scope=all&templateId=${t.id}`,
                 `certificados-${t.name}.pdf`
               )
             }
-            className="rounded border px-3 py-1"
           >
             Solo: {t.name}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

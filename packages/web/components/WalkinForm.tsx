@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 export function WalkinForm({
   sessionId,
@@ -44,43 +46,40 @@ export function WalkinForm({
 
   return (
     <form onSubmit={(e) => void submit(e)} className="mt-2 space-y-2">
-      <div className="grid grid-cols-2 gap-2">
-        <input
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <Input
+          id="walkin-firstName"
+          etiqueta="Nombres"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
-          placeholder="Nombres"
           required
-          className="rounded border p-2"
-          aria-label="Nombres"
         />
-        <input
+        <Input
+          id="walkin-lastName"
+          etiqueta="Apellidos"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
-          placeholder="Apellidos"
           required
-          className="rounded border p-2"
-          aria-label="Apellidos"
         />
-        <input
+        <Input
+          id="walkin-ci"
+          etiqueta="CI"
           value={ci}
           onChange={(e) => setCi(e.target.value)}
-          placeholder="CI"
           required
-          className="rounded border p-2"
-          aria-label="CI"
         />
-        <input
+        <Input
+          id="walkin-email"
+          etiqueta="Correo"
+          opcional=" (opcional)"
+          type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          type="email"
-          placeholder="Correo (opcional)"
-          className="rounded border p-2"
-          aria-label="Correo (opcional)"
         />
       </div>
-      <button type="submit" disabled={busy} className="rounded bg-[#0A2A5E] px-4 py-2 text-white">
-        {busy ? 'Inscribiendo…' : 'Inscribir en puerta'}
-      </button>
+      <Button type="submit" cargando={busy}>
+        Inscribir en puerta
+      </Button>
     </form>
   );
 }

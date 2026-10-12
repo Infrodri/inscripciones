@@ -2,7 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api, apiErrorMessage } from '@/lib/api';
-import { formatLaPaz, isSessionActiveNow } from '@/lib/scanWindow';
+import { isSessionActiveNow } from '@/lib/scanWindow';
+import { formatFechaHora } from '@/lib/format';
 import { SessionScanActions } from '@/components/admin/SessionScanActions';
 
 interface EventRow {
@@ -72,8 +73,8 @@ export default function EscanerPage() {
                     <li key={s.id} className="text-sm">
                       <span>
                         {s.label ? `${s.label} — ` : ''}
-                        {formatLaPaz(s.startsAt)}{' '}
-                        {active ? <strong className="text-green-700">· Activa ahora</strong> : null}
+                        {formatFechaHora(s.startsAt)}{' '}
+                        {active ? <strong className="text-[#1E7B4F]">· Activa ahora</strong> : null}
                       </span>
                       <div className="mt-1">
                         <SessionScanActions sessionId={s.id} />

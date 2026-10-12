@@ -2,12 +2,41 @@
 
 @theme {
   --color-navy: #0a2a5e;
+  --color-navy-hover: #1f4e96;
   --color-gold: #c9a227;
-  --font-serif: Georgia, 'Times New Roman', serif;
-  --font-sans: Arial, Helvetica, sans-serif;
+  --color-canvas: #f5f6f9;
+  --color-surface: #ffffff;
+  --color-line: #d9dee7;
+  --color-ink: #1b2433;
+  --color-muted: #5b6677;
+  --color-ok: #1e7b4f;
+  --color-ok-bg: #e6f4ec;
+  --color-warn: #b7791f;
+  --color-warn-bg: #faf3e3;
+  --color-danger: #b42318;
+  --color-danger-bg: #fdecea;
+  --radius-md: 8px;
+  --shadow-soft: 0 1px 3px rgb(16 34 68 / 0.12);
+  --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter', Arial, Helvetica, sans-serif;
+}
+
+html {
+  font-size: 16px;
 }
 
 body {
-  background: #ffffff;
-  color: #1a1a1a;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+a {
+  color: var(--color-navy-hover);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-navy);
+  outline-offset: 2px;
 }

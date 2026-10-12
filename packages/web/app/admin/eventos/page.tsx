@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { api, apiErrorMessage } from '@/lib/api';
+import { Badge } from '@/components/ui/Badge';
+import { EmptyState, PageHeader } from '@/components/ui/Table';
 
 interface EventRow {
   id: string;
@@ -22,33 +24,44 @@ export default function EventosPage() {
   if (!data || data.data.length === 0) {
     return (
       <div>
-        <h1 className="font-serif text-2xl text-[#0A2A5E]">Eventos</h1>
-        <p className="mt-4">Aún no hay eventos. Cree el primero.</p>
-        <Link
-          href="/admin/eventos/nuevo"
-          className="mt-4 inline-block rounded bg-[#0A2A5E] px-4 py-2 text-white"
-        >
-          Nuevo evento
-        </Link>
+        <PageHeader titulo="Eventos" />
+        <div className="mt-4">
+          <EmptyState
+            mensaje="Aún no hay eventos. Cree el primero."
+            accion={
+              <Link
+                href="/admin/eventos/nuevo"
+                className="inline-block min-h-[44px] rounded-[8px] bg-[#0A2A5E] px-4 py-2 text-white"
+              >
+                Nuevo evento
+              </Link>
+            }
+          />
+        </div>
       </div>
     );
   }
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="font-serif text-2xl text-[#0A2A5E]">Eventos</h1>
-        <Link href="/admin/eventos/nuevo" className="rounded bg-[#0A2A5E] px-4 py-2 text-white">
-          Nuevo evento
-        </Link>
-      </div>
+      <PageHeader
+        titulo="Eventos"
+        accion={
+          <Link
+            href="/admin/eventos/nuevo"
+            className="inline-block min-h-[44px] rounded-[8px] bg-[#0A2A5E] px-4 py-2 text-white"
+          >
+            Nuevo evento
+          </Link>
+        }
+      />
       <ul className="mt-4 space-y-2">
         {data.data.map((e) => (
-          <li key={e.id} className="rounded border p-3">
+          <li key={e.id} className="rounded-[8px] border border-[#D9DEE7] bg-white p-3">
             <Link href={`/admin/eventos/${e.id}`} className="font-medium">
               {e.title}
             </Link>
-            <p className="text-sm">
-              {e.slug} — {e.status}
+            <p className="mt-1 text-sm text-[#5B6677]">
+              {e.slug} — <Badge tono={e.status}>{e.status}</Badge>
             </p>
           </li>
         ))}

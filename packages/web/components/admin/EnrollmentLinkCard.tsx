@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { apiUrl } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { CopyBroadcastButton } from '@/components/CopyBroadcastButton';
 
 export function EnrollmentLinkCard({ slug }: { slug: string }) {
@@ -23,22 +25,16 @@ export function EnrollmentLinkCard({ slug }: { slug: string }) {
   }
 
   return (
-    <section aria-label="Enlace de inscripción" className="rounded border border-[#C9A227] p-3">
+    <Card>
       <h2 className="font-serif text-lg text-[#0A2A5E]">Enlace de inscripción</h2>
       <p className="mt-1 break-all text-sm">{url}</p>
       <div className="mt-2 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => void copy()}
-          className="min-h-[44px] rounded bg-[#0A2A5E] px-3 py-2 text-sm text-white"
-        >
-          {copied ? 'Copiado' : 'Copiar'}
-        </button>
+        <Button onClick={() => void copy()}>{copied ? 'Copiado' : 'Copiar'}</Button>
         <a
           href={url}
           target="_blank"
           rel="noreferrer"
-          className="min-h-[44px] rounded border px-3 py-2 text-sm"
+          className="inline-flex min-h-[44px] items-center rounded-[8px] border border-[#D9DEE7] px-4 py-2"
         >
           Abrir
         </a>
@@ -53,6 +49,6 @@ export function EnrollmentLinkCard({ slug }: { slug: string }) {
           </a>
         </div>
       </div>
-    </section>
+    </Card>
   );
 }

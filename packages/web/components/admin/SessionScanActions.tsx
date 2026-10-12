@@ -23,20 +23,20 @@ export function SessionScanActions({ sessionId }: { sessionId: string }) {
     <span className="flex flex-wrap gap-2">
       <Link
         href={scanPath(sessionId)}
-        className="rounded bg-[#0A2A5E] px-2 py-1 text-sm text-white"
+        className="inline-flex min-h-[44px] items-center rounded-[8px] bg-[#0A2A5E] px-2 py-1 text-sm text-white"
       >
         Abrir escáner
       </Link>
       <Link
         href={`${scanPath(sessionId)}/proyectar`}
-        className="rounded border border-[#C9A227] px-2 py-1 text-sm"
+        className="inline-flex min-h-[44px] items-center rounded-[8px] border border-[#C9A227] px-2 py-1 text-sm"
       >
         Registro por QR (proyectar)
       </Link>
       <button
         type="button"
         onClick={() => void copyLink()}
-        className="rounded border px-2 py-1 text-sm"
+        className="min-h-[44px] rounded-[8px] border border-[#D9DEE7] px-2 py-1 text-sm"
       >
         {copied ? 'Copiado' : 'Copiar enlace del escáner'}
       </button>
