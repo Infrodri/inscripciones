@@ -99,3 +99,8 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
     temporal: `npm ci` → `npm run build` → `npm test` 57/57.
 37. `render.yaml` ya generaba Prisma y construía infrastructure antes que api;
     la web no importa infrastructure en runtime (solo transpilePackages).
+
+## Prod (tareas)
+
+38. Vercel: Root `packages/web` + fuera-de-raíz incluido + `cd ../..`
+    en install/build (fijado en `packages/web/vercel.json`).

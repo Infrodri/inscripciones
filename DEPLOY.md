@@ -48,14 +48,23 @@ DATABASE_URL="<pooler>" DIRECT_URL="<directa>" npm run seed:reference -w package
    igual que el dominio final de la web.
 4. Deploy → probar `https://<servicio>.onrender.com/health` (200 `{"ok":true}`).
 
-## 4. Vercel: web
+## 4. Vercel: web (monorepo npm workspaces)
 
-1. Importar el repo; **Root Directory** `packages/web`.
-2. Variables: `NEXT_PUBLIC_API_URL=https://<servicio>.onrender.com/api/v1`,
+1. Importar el repo; **Root Directory** `packages/web` (Framework Preset:
+   Next.js).
+2. Activar **"Include source files outside of the Root Directory"**: el
+   install necesita el `package-lock.json` de la raíz para los workspaces.
+3. Comandos (ya fijados en `packages/web/vercel.json`; si el dashboard los
+   pide, usar estos valores exactos):
+   - Install Command: `cd ../.. && npm ci`
+   - Build Command: `cd ../.. && npm run build -w packages/web`
+   - Output Directory: el de Next.js por defecto (`.next` dentro de
+     `packages/web`; el build corre con cwd en el paquete).
+4. Variables: `NEXT_PUBLIC_API_URL=https://<servicio>.onrender.com/api/v1`,
    `NEXT_PUBLIC_SITE_URL=https://<dominio-vercel>`,
    `NEXT_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co`.
-3. Deploy.
-4. Volver a Render: añadir `https://<dominio-vercel>` a `CORS_ORIGINS`
+5. Deploy.
+6. Volver a Render: añadir `https://<dominio-vercel>` a `CORS_ORIGINS`
    (separadas por coma) y redesplegar.
 
 ## 5. Brevo/SMTP
