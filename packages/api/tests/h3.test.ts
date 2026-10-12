@@ -211,4 +211,12 @@ describe('H3 asistencia', () => {
     expect(stats.sessions).toBe(2);
     expect(stats.eligible).toBe(0);
   });
+
+  it('STAFF lee eventos y sesiones para la vista del escáner', async () => {
+    const events = await api('/api/v1/events', staffToken);
+    expect(events.status).toBe(200);
+    const sessions = await api(`/api/v1/sessions/event/${eventId}`, staffToken);
+    expect(sessions.status).toBe(200);
+    expect(((await sessions.json()) as { data: unknown[] }).data.length).toBe(2);
+  });
 });
