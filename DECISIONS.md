@@ -79,3 +79,8 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 32. Receptores: `note` es referencia interna (cargo/observación), nunca se
     imprime; `bulk` reporta creados/duplicados; `from-speakers` usa la
     default de EXPOSITOR y omite existentes sin fallar.
+
+## H7
+
+33. Organizadores reutiliza el mismo formulario y `bulk` que expositores;
+    cada variante de firma es una plantilla propia del rol ORGANIZADOR.

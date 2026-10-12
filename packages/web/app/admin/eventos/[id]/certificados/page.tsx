@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { TemplateManager } from '@/components/admin/TemplateManager';
 import { AsistentesTab } from '@/components/admin/AsistentesTab';
 import { ExpositoresTab } from '@/components/admin/ExpositoresTab';
+import { OrganizadoresTab } from '@/components/admin/OrganizadoresTab';
 
 const TABS = ['Plantillas', 'Asistentes', 'Expositores', 'Organizadores', 'Exportar'] as const;
 
@@ -43,7 +44,7 @@ function Tabs({ params }: { params: Promise<{ id: string }> }) {
         {tab === 'Plantillas' ? <TemplateManager eventId={id} /> : null}
         {tab === 'Asistentes' ? <AsistentesTab eventId={id} /> : null}
         {tab === 'Expositores' ? <ExpositoresTab eventId={id} /> : null}
-        {tab === 'Organizadores' ? <p>Disponible en el hito H7.</p> : null}
+        {tab === 'Organizadores' ? <OrganizadoresTab eventId={id} /> : null}
         {tab === 'Exportar' ? <AsistentesTab eventId={id} /> : null}
       </div>
     </div>

@@ -1,6 +1,11 @@
 # CHANGELOG
 
-## [0.6.0] — feat(h6): expositores
+## [0.7.0] — feat(h7): organizadores
+
+- Alta individual y pegado de lista (misma variante para todas las líneas);
+  cargo como nota interna; exportación total o por variante de firma.
+- Web: pestaña Organizadores.
+- Tests: 55/55.
 
 - Receptores manuales: alta individual, masiva (`bulk`) y `from-speakers`
   con la default de EXPOSITOR; `TEMPLATE_ROLE_MISMATCH` y
