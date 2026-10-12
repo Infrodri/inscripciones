@@ -6,6 +6,7 @@ import { publicRoutes } from './routes/publicRoutes.js';
 import { participantRoutes } from './routes/participantRoutes.js';
 import { attendanceRoutes } from './routes/attendanceRoutes.js';
 import { certificateTemplateRoutes } from './routes/certificateTemplateRoutes.js';
+import { certificateRecipientRoutes } from './routes/certificateRecipientRoutes.js';
 import { certificateExportRoutes } from './routes/certificateExportRoutes.js';
 import { walkinRoutes } from './routes/walkinRoutes.js';
 import { exportRoutes } from './routes/exportRoutes.js';
@@ -78,6 +79,7 @@ export function buildApp(env: AppEnv): express.Express {
     authMiddleware(env.JWT_SECRET),
     certificateTemplateRoutes(storage.privateStorage)
   );
+  app.use('/api/v1', authMiddleware(env.JWT_SECRET), certificateRecipientRoutes());
   app.use(
     '/api/v1',
     authMiddleware(env.JWT_SECRET),

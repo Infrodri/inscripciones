@@ -1,6 +1,15 @@
 # CHANGELOG
 
-## [0.5.0] — feat(h5): certificados base
+## [0.6.0] — feat(h6): expositores
+
+- Receptores manuales: alta individual, masiva (`bulk`) y `from-speakers`
+  con la default de EXPOSITOR; `TEMPLATE_ROLE_MISMATCH` y
+  `DUPLICATE_RECIPIENT` (nombre normalizado insensible a caso).
+- Exportación del rol con su propia variante de plantilla; lista con marca
+  de exportado (`certificate_code`).
+- Web: pestaña Expositores (formulario propio, vínculo a speaker, nota
+  interna, exportar).
+- Tests: 53/53.
 
 - Plantillas: subida PNG/JPG 15 MB con detección de página A4/Carta,
   `set-default` transaccional, duplicar variante, archivo y `preview.pdf`

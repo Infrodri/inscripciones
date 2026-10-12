@@ -73,3 +73,9 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 30. Cabecera de reporte PDF por log (`logger.info certificates_exported`):
     no se puede fijar header después del streaming.
 31. Duplicar plantilla comparte el archivo privado (igual que el evento).
+
+## H6
+
+32. Receptores: `note` es referencia interna (cargo/observación), nunca se
+    imprime; `bulk` reporta creados/duplicados; `from-speakers` usa la
+    default de EXPOSITOR y omite existentes sin fallar.

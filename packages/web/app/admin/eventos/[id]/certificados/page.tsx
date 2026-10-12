@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { TemplateManager } from '@/components/admin/TemplateManager';
 import { AsistentesTab } from '@/components/admin/AsistentesTab';
+import { ExpositoresTab } from '@/components/admin/ExpositoresTab';
 
 const TABS = ['Plantillas', 'Asistentes', 'Expositores', 'Organizadores', 'Exportar'] as const;
 
@@ -41,7 +42,7 @@ function Tabs({ params }: { params: Promise<{ id: string }> }) {
       <div className="mt-4">
         {tab === 'Plantillas' ? <TemplateManager eventId={id} /> : null}
         {tab === 'Asistentes' ? <AsistentesTab eventId={id} /> : null}
-        {tab === 'Expositores' ? <p>Disponible en el hito H6.</p> : null}
+        {tab === 'Expositores' ? <ExpositoresTab eventId={id} /> : null}
         {tab === 'Organizadores' ? <p>Disponible en el hito H7.</p> : null}
         {tab === 'Exportar' ? <AsistentesTab eventId={id} /> : null}
       </div>
