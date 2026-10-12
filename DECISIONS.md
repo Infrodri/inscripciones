@@ -91,3 +91,11 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
     `dist`: hay que reconstruir infrastructure tras cambiarla
     (`npm run build` lo hace en orden).
 35. Sin sesiones, la lista sale como página general única.
+
+## Prod
+
+36. `postinstall` + `build` generan el cliente Prisma: sin esto, clon limpio
+    falla (tipos vacíos → implicit any + imports rotos). Verificado en clon
+    temporal: `npm ci` → `npm run build` → `npm test` 57/57.
+37. `render.yaml` ya generaba Prisma y construía infrastructure antes que api;
+    la web no importa infrastructure en runtime (solo transpilePackages).
