@@ -8,8 +8,8 @@
   "scripts": {
     "build": "npm run prisma:generate -w packages/api && npm run build -w packages/infrastructure && npm run build -w packages/api && npm run build -w packages/web",
     "postinstall": "npm run prisma:generate -w packages/api",
-    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w packages/api\" \"npm run dev -w packages/web\"",
-    "lint": "eslint eslint.config.mjs packages/api packages/infrastructure packages/web scripts && prettier --check package.json tsconfig.base.json .prettierrc README.md CHANGELOG.md DECISIONS.md DEPLOY.md render.yaml packages/api packages/infrastructure packages/web scripts",
+    "dev": "npm run build -w packages/api && concurrently -n api,web,serve -c blue,green,magenta \"npm run dev -w packages/api\" \"npm run dev -w packages/web\" \"node --watch packages/api/dist/src/api/app.js\"",
+    "lint": "eslint eslint.config.mjs packages/api packages/infrastructure packages/web scripts && prettier --check package.json tsconfig.base.json .prettierrc README.md CHANGELOG.md DECISIONS.md DEPLOY.md render.yaml docs packages/api packages/infrastructure packages/web scripts",
     "test": "npm run test -w packages/api && npm run test -w packages/infrastructure && npm run test -w packages/web",
     "smoke": "node scripts/smoke.ts"
   },
