@@ -33,7 +33,7 @@
     "seed": "node dist/prisma/seed.js",
     "seed:reference": "node dist/prisma/seedReference.js",
     "create-admin": "node dist/scripts/create-admin.js",
-    "start": "node dist/api/app.js",
+    "start": "node dist/src/api/app.js",
     "test": "vitest run"
   },
   "version": "0.1.0"

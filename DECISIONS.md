@@ -25,3 +25,19 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
    (el default de zod solo acepta `Z`).
 10. `@inscripciones/infrastructure` expone `exports` `./*.js` → `dist`
     (requerido por `moduleResolution: NodeNext` para imports profundos).
+
+## H2
+
+11. Rutas públicas bajo `/api/v1/public` con rate limit propio; honeypot
+    `website` devuelve 201 falso sin crear nada.
+12. Cupo resistente a carreras: `SELECT … FOR UPDATE` sobre el evento dentro
+    de la transacción + únicos de BD + captura de P2002.
+13. Correo fail-soft (decisión 11 del plan): `mailSent` + aviso en español, sin
+    colas; el QR siempre queda en pantalla.
+14. Exportaciones solo ADMIN: `exceljs` para xlsx, CSV manual con BOM.
+15. Listado de inscritos legible por ADMIN y STAFF (STAFF lo usa en puerta, H3).
+16. URLs absolutas de afiche/QR vía `API_PUBLIC_URL`; en Supabase, URL pública
+    del objeto. `og:image` sale del API, la web solo la usa.
+17. Sin `@hookform/resolvers`: validación zod manual (`safeParse` → `setError`)
+    para no agregar dependencias.
+18. Arranque del API compilado: `node dist/src/api/app.js` (rootDir ".").

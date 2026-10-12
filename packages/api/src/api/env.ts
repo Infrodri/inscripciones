@@ -5,6 +5,7 @@ const envSchema = z.object({
   DIRECT_URL: z.string().min(1, 'La variable DIRECT_URL es obligatoria').optional(),
   JWT_SECRET: z.string().min(16, 'La variable JWT_SECRET es obligatoria (mínimo 16 caracteres)'),
   JWT_EXPIRES_IN: z.string().default('24h'),
+  API_PUBLIC_URL: z.string().default('http://localhost:3001'),
   CORS_ORIGINS: z.string().min(1, 'La variable CORS_ORIGINS es obligatoria'),
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

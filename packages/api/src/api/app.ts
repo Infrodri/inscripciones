@@ -2,6 +2,9 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { authRoutes } from './routes/authRoutes.js';
 import { eventRoutes } from './routes/eventRoutes.js';
+import { publicRoutes } from './routes/publicRoutes.js';
+import { participantRoutes } from './routes/participantRoutes.js';
+import { exportRoutes } from './routes/exportRoutes.js';
 import { sessionRoutes } from './routes/sessionRoutes.js';
 import { speakerRoutes } from './routes/speakerRoutes.js';
 import { sponsorRoutes } from './routes/sponsorRoutes.js';
@@ -61,7 +64,10 @@ export function buildApp(env: AppEnv): express.Express {
 
   const storage = createStorage(env);
   app.use('/api/v1/auth', authRoutes(env.JWT_SECRET, env.JWT_EXPIRES_IN));
+  app.use('/api/v1/public', publicRoutes(env));
   app.use('/api/v1/events', authMiddleware(env.JWT_SECRET), eventRoutes(storage.publicStorage));
+  app.use('/api/v1/participants', authMiddleware(env.JWT_SECRET), participantRoutes());
+  app.use('/api/v1', authMiddleware(env.JWT_SECRET), exportRoutes());
   app.use('/api/v1/sessions', authMiddleware(env.JWT_SECRET), sessionRoutes());
   app.use('/api/v1/speakers', authMiddleware(env.JWT_SECRET), speakerRoutes());
   app.use('/api/v1/sponsors', authMiddleware(env.JWT_SECRET), sponsorRoutes());

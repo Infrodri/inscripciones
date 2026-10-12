@@ -24,8 +24,19 @@ const eventSchema = z.object({
   institution: z.string().min(1),
   commemoration: z.string().nullable().optional(),
   organizer: z.string().min(1),
+  audienceNote: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
   location: z.string().min(1),
+  mapUrl: z.string().nullable().optional(),
+  modality: z.enum(['PRESENCIAL', 'VIRTUAL', 'HIBRIDO']).optional(),
+  capacity: z.number().int().min(0).nullable().optional(),
+  registrationDeadline: z.string().datetime({ offset: true }).nullable().optional(),
   status: z.enum(['BORRADOR', 'ABIERTO', 'CERRADO', 'FINALIZADO']).optional(),
+  isFree: z.boolean().optional(),
+  contactWhatsapp: z.string().nullable().optional(),
+  issuesCertificate: z.boolean().optional(),
+  minAttendancePercent: z.number().int().min(0).max(100).optional(),
+  checkinWindowMinutes: z.number().int().min(0).optional(),
 });
 
 async function validateBanner(
@@ -77,7 +88,13 @@ export function eventRoutes(publicStorage: FileStorage): Router {
         validateEventInput(req.body);
         const prisma = getPrisma();
         const created = await prisma.event.create({
-          data: { ...req.body, createdBy: req.user?.id },
+          data: {
+            ...req.body,
+            registrationDeadline: req.body.registrationDeadline
+              ? new Date(req.body.registrationDeadline)
+              : undefined,
+            createdBy: req.user?.id,
+          },
         });
         res.status(201).json(created);
       } catch (err) {

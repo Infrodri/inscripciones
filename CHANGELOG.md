@@ -1,6 +1,16 @@
 # CHANGELOG
 
-## [0.1.1] — fix(h1): cierre
+## [0.2.0] — feat(h2): inscripción pública
+
+- API pública: `GET /public/events/:slug` (sin datos personales),
+  `POST /public/events/:slug/registrations` (honeypot + rate limit, cupo
+  transaccional con `FOR UPDATE`, duplicados por P2002),
+  `GET /public/registrations/:qrToken/qr.png`; QR por correo fail-soft.
+- Inscritos (ADMIN/STAFF) y exportaciones xlsx/csv (ADMIN).
+- Web: `/e/[slug]` (og:image), `/e/[slug]/inscripcion` (QR descargable),
+  admin (login, eventos, nuevo con afiche/duplicar, detalle con sesiones,
+  expositores, auspiciantes e inscritos, usuarios STAFF), difusión WhatsApp.
+- Tests: 32/32 (cupo concurrente, duplicados, cierre, honeypot, sin PII).
 
 - `typescript-eslint@8.71.1` + lint TS/TSX en `npm run lint`.
 - Afiche guarda original + copia 1200px en bucket público; `publish`/`duplicate`
