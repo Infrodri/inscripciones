@@ -42,10 +42,14 @@ function Tabs({ params }: { params: Promise<{ id: string }> }) {
       </div>
       <div className="mt-4">
         {tab === 'Plantillas' ? <TemplateManager eventId={id} /> : null}
-        {tab === 'Asistentes' ? <AsistentesTab eventId={id} /> : null}
+        {tab === 'Asistentes' ? (
+          <AsistentesTab eventId={id} onGoTemplates={() => setTab('Plantillas')} />
+        ) : null}
         {tab === 'Expositores' ? <ExpositoresTab eventId={id} /> : null}
         {tab === 'Organizadores' ? <OrganizadoresTab eventId={id} /> : null}
-        {tab === 'Exportar' ? <AsistentesTab eventId={id} /> : null}
+        {tab === 'Exportar' ? (
+          <AsistentesTab eventId={id} onGoTemplates={() => setTab('Plantillas')} />
+        ) : null}
       </div>
     </div>
   );

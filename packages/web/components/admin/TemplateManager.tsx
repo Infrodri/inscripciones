@@ -33,6 +33,7 @@ export function TemplateManager({ eventId }: { eventId: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState('');
   const [roleKind, setRoleKind] = useState('ASISTENTE');
+  const [progress, setProgress] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['templates', eventId],
@@ -43,6 +44,11 @@ export function TemplateManager({ eventId }: { eventId: string }) {
   async function upload(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('La plantilla supera los 15 MB');
+      return;
+    }
+    setProgress(0);
     try {
       const form = new FormData();
       form.append('file', file);
@@ -51,6 +57,11 @@ export function TemplateManager({ eventId }: { eventId: string }) {
       form.append('nameBox', JSON.stringify(DEFAULT_BOX));
       await api.post(`/events/${eventId}/certificate-templates/upload`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            setProgress(Math.round((progressEvent.loaded / progressEvent.total) * 100));
+          }
+        },
       });
       setFile(null);
       setName('');
@@ -59,6 +70,8 @@ export function TemplateManager({ eventId }: { eventId: string }) {
     } catch (error) {
       if (!axios.isAxiosError(error) || error.response?.status !== 401)
         toast.error(apiErrorMessage(error));
+    } finally {
+      setProgress(null);
     }
   }
 
@@ -98,10 +111,15 @@ export function TemplateManager({ eventId }: { eventId: string }) {
           <option value="ORGANIZADOR">Organizador</option>
           <option value="OTRO">Otro</option>
         </select>
-        <button type="submit" className="rounded bg-[#0A2A5E] px-3 py-1 text-white">
+        <button type="submit" className="min-h-[44px] rounded bg-[#0A2A5E] px-3 py-1 text-white">
           Subir
         </button>
       </form>
+      {progress !== null ? (
+        <p role="status" className="mt-2 text-sm">
+          Subiendo… {progress}%
+        </p>
+      ) : null}
       <ul className="mt-4 space-y-2">
         {(data?.data ?? []).map((t) => (
           <li key={t.id} className="flex items-center gap-3 rounded border p-2">

@@ -155,6 +155,22 @@ describe('H5 plantillas y asistente', () => {
     await prisma.attendance.create({
       data: { participantId: participant.id, sessionId: session.id, method: 'QR' },
     });
+    // Nombre muy largo con ñ/tildes: la reducción automática debe generar igual.
+    const longName = await prisma.participant.create({
+      data: {
+        eventId,
+        firstName: 'María Eugenia Santiváñez Rocha de la Fuente del Valle Muy Larga',
+        lastName: 'Peña Muñoz de los Santos',
+        ci: `H5L-${stamp}`,
+        email: `h5l-${stamp}@test.com`,
+        type: 'PUBLICO',
+        qrToken: `h5l-qr-${stamp}`,
+        dataConsentAt: new Date(),
+      },
+    });
+    await prisma.attendance.create({
+      data: { participantId: longName.id, sessionId: session.id, method: 'QR' },
+    });
     const res = await api(
       `/api/v1/events/${eventId}/exports/certificates.pdf?roleKind=ASISTENTE&scope=eligible`,
       adminToken
