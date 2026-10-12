@@ -5,17 +5,12 @@ import { useRouter } from 'next/navigation';
 import { use, useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, getToken } from '@/lib/api';
+import { toScanResult, type ScanResult } from '@/lib/scan';
 import { WalkinForm } from '@/components/WalkinForm';
 
 const QrScanner = dynamic(() => import('@/components/QrScanner').then((m) => m.QrScanner), {
   ssr: false,
 });
-
-type Result =
-  | { kind: 'idle' }
-  | { kind: 'ok'; name: string }
-  | { kind: 'dup'; name: string }
-  | { kind: 'error'; message: string };
 
 interface Found {
   id: string;
@@ -27,8 +22,8 @@ interface Found {
 export default function ScanPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = use(params);
   const router = useRouter();
-  const [result, setResult] = useState<Result>({ kind: 'idle' });
-  const [scanning, setScanning] = useState(true);
+  const [result, setResult] = useState<ScanResult>({ kind: 'idle' });
+  const [scanning, setScanning] = useState(false);
   const [q, setQ] = useState('');
   const [found, setFound] = useState<Found[]>([]);
 
@@ -41,17 +36,17 @@ export default function ScanPage({ params }: { params: Promise<{ sessionId: stri
       setScanning(false);
       try {
         const res = await api.post(`/sessions/${sessionId}/check-in`, body);
-        setResult({
-          kind: 'ok',
-          name: `${res.data.firstName as string} ${res.data.lastName as string}`,
-        });
+        setResult(toScanResult(res.data as { firstName: string; lastName: string }, null));
       } catch (error) {
-        const code = (
+        const apiError = (
           error as { response?: { data?: { error?: { code?: string; message?: string } } } }
         ).response?.data?.error;
-        if (code?.code === 'ALREADY_CHECKED_IN')
-          setResult({ kind: 'dup', name: code.message ?? '' });
-        else setResult({ kind: 'error', message: code?.message ?? apiErrorMessage(error) });
+        setResult(
+          toScanResult(null, {
+            code: apiError?.code,
+            message: apiError?.message ?? apiErrorMessage(error),
+          })
+        );
       }
     },
     [sessionId]
@@ -64,6 +59,11 @@ export default function ScanPage({ params }: { params: Promise<{ sessionId: stri
     } catch (error) {
       toast.error(apiErrorMessage(error));
     }
+  }
+
+  function restart(): void {
+    setResult({ kind: 'idle' });
+    setScanning(false);
   }
 
   const bg =
@@ -81,12 +81,29 @@ export default function ScanPage({ params }: { params: Promise<{ sessionId: stri
       {result.kind === 'idle' ? (
         <div className="mt-4">
           {scanning ? (
-            <QrScanner active={scanning} onScan={(text) => void checkin({ qrToken: text })} />
-          ) : null}
-          <p className="mt-2 text-sm">Apunte la cámara al QR del inscrito.</p>
+            <QrScanner
+              active={scanning}
+              onScan={(text) => void checkin({ qrToken: text })}
+              onError={(message) => {
+                setScanning(false);
+                setResult({ kind: 'error', message });
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setScanning(true)}
+              className="w-full rounded bg-[#0A2A5E] px-6 py-4 text-lg text-white"
+            >
+              Iniciar escáner
+            </button>
+          )}
+          <p className="mt-2 text-sm">
+            La cámara se activa solo al pulsar el botón. Apunte al QR del inscrito.
+          </p>
         </div>
       ) : (
-        <div className={`${bg} mt-4 rounded p-8 text-center text-white`}>
+        <div className={`${bg} mt-4 rounded p-8 text-center text-white`} role="status">
           {result.kind === 'ok' ? (
             <>
               <p className="text-2xl">Registrado</p>
@@ -105,10 +122,7 @@ export default function ScanPage({ params }: { params: Promise<{ sessionId: stri
           )}
           <button
             type="button"
-            onClick={() => {
-              setResult({ kind: 'idle' });
-              setScanning(true);
-            }}
+            onClick={restart}
             className="mt-6 rounded bg-white px-6 py-3 text-black"
           >
             Escanear otro
