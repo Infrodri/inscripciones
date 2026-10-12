@@ -10,5 +10,5 @@
     "paths": { "@/*": ["./*"] },
     "plugins": [{ "name": "next" }]
   },
-  "include": ["app", "lib", "components", "next.config.ts"]
+  "include": ["app", "lib", "components", "tests", "next.config.ts"]
 }

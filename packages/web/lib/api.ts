@@ -29,6 +29,17 @@ export function clearToken(): void {
 
 export const api = axios.create({ baseURL: process.env.NEXT_PUBLIC_API_URL });
 
+export function handleUnauthorized(
+  redirect: (url: string) => void = (url: string): void => {
+    window.location.href = url;
+  }
+): void {
+  clearToken();
+  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
+    redirect('/admin/login');
+  }
+}
+
 api.interceptors.request.use((config) => {
   const token = getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -38,12 +49,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.status === 401) {
-      clearToken();
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
-        window.location.href = '/admin/login';
-      }
-    }
+    if (error?.response?.status === 401) handleUnauthorized();
     return Promise.reject(error);
   }
 );

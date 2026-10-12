@@ -104,3 +104,7 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 
 38. Vercel: Root `packages/web` + fuera-de-raíz incluido + `cd ../..`
     en install/build (fijado en `packages/web/vercel.json`).
+39. Web tests: `jsdom@30.1.2` + `@testing-library/react@16.3.3` (únicas
+    dependencias nuevas; sin ellas no hay DOM ni render de componentes).
+    `vitest` reutiliza la versión del repo. `esbuild.jsx automatic` en la
+    config de web porque el tsconfig usa `preserve` (Next).
