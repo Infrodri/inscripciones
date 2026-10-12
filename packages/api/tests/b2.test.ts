@@ -103,4 +103,28 @@ describe('B2 campos configurables y QR del enlace', () => {
     const missing = await api('/api/v1/public/events/no-existe/link-qr.png', null);
     expect(missing.status).toBe(404);
   });
+
+  it('guarda normalizado y aparece en la lista del admin', async () => {
+    const res = await api(`/api/v1/public/events/b2-${stamp}/registrations`, null, {
+      method: 'POST',
+      body: JSON.stringify({
+        firstName: '  María  Eugenia ',
+        lastName: 'Santiváñez ',
+        ci: ` B2N-${stamp} `,
+        email: `B2N-${stamp}@TEST.COM`,
+        type: 'ESTUDIANTE',
+        career: 'Derecho',
+        dataConsent: true,
+      }),
+    });
+    expect(res.status).toBe(201);
+    const prisma = getPrisma();
+    const stored = await prisma.participant.findFirst({ where: { ci: `B2N-${stamp}` } });
+    expect(stored?.firstName).toBe('María Eugenia');
+    expect(stored?.email).toBe(`b2n-${stamp}@test.com`);
+    const list = (await (
+      await api(`/api/v1/participants/event/${stored?.eventId}`, adminToken)
+    ).json()) as { data: Array<{ ci: string }> };
+    expect(list.data.some((p) => p.ci === `B2N-${stamp}`)).toBe(true);
+  });
 });

@@ -30,6 +30,7 @@ interface PublicEvent {
   speakers: Array<{ id: string; fullName: string; titleProfession: string | null; role: string }>;
   spotsLeft: number | null;
   registrationOpen: boolean;
+  issuesCertificate: boolean;
 }
 
 async function getEvent(slug: string): Promise<PublicEvent | null> {
@@ -96,6 +97,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       <h1 className="mt-6 font-serif text-3xl text-[#0A2A5E]">{event.title}</h1>
       <p className="mt-1 text-sm">{event.organizer}</p>
       <p className="mt-4">{event.location}</p>
+      {event.issuesCertificate ? (
+        <p className="mt-2 text-sm text-[#0A2A5E]">Este evento emite certificados de asistencia.</p>
+      ) : null}
       <ul className="mt-2">
         {event.sessions.map((s) => (
           <li key={s.id}>
@@ -120,7 +124,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       {event.registrationOpen ? (
         <Link
           href={`/e/${event.slug}/inscripcion`}
-          className="mt-6 inline-block rounded bg-[#0A2A5E] px-6 py-3 text-white"
+          className="mt-6 inline-block min-h-[44px] rounded bg-[#0A2A5E] px-6 py-3 text-lg text-white"
         >
           Inscribirme{event.spotsLeft !== null ? ` (${event.spotsLeft} cupos)` : ''}
         </Link>

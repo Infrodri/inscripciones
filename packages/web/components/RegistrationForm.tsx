@@ -39,12 +39,13 @@ export interface RequiredFields {
 
 export function RegistrationForm({ slug, required }: { slug: string; required: RequiredFields }) {
   const [success, setSuccess] = useState<Success | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ defaultValues: { type: 'PUBLICO' } });
+  } = useForm<FormValues>({ mode: 'onTouched', defaultValues: { type: 'PUBLICO' } });
 
   async function onSubmit(raw: FormValues): Promise<void> {
     const parsed = schema.safeParse(raw);
@@ -69,6 +70,7 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
     }
     if (Object.keys(extra).length > 0) return;
     const values = parsed.data;
+    setServerError(null);
     try {
       const res = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/public/events/${slug}/registrations`,
@@ -77,9 +79,12 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
       setSuccess(res.data as Success);
       toast.success('Inscripción registrada');
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        toast.error((error.response?.data?.error?.message as string) ?? 'No se pudo registrar');
-      }
+      const message =
+        (axios.isAxiosError(error) &&
+          (error.response?.data?.error?.message as string | undefined)) ||
+        'No se pudo registrar';
+      setServerError(message);
+      toast.error(message);
     }
   }
 
@@ -90,12 +95,12 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
         <p className="mt-2">
           {success.firstName} {success.lastName}: presente este QR al ingresar.
         </p>
-        <img src={success.qrPngUrl} alt="QR personal de ingreso" className="mt-4 w-64" />
+        <img src={success.qrPngUrl} alt="QR personal de ingreso" className="mt-4 w-full max-w-xs" />
         <div className="mt-4">
           <a
             href={success.qrPngUrl}
             download={`qr-${success.qrToken}.png`}
-            className="rounded bg-[#0A2A5E] px-4 py-2 text-white"
+            className="inline-block min-h-[44px] rounded bg-[#0A2A5E] px-4 py-2 text-white"
           >
             Descargar QR
           </a>
@@ -182,10 +187,15 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
         <label htmlFor="dataConsent"> Acepto el tratamiento de mis datos para este evento</label>
         {errors.dataConsent ? <p>{errors.dataConsent.message}</p> : null}
       </div>
+      {serverError ? (
+        <p role="alert" className="text-sm text-red-700">
+          {serverError}
+        </p>
+      ) : null}
       <button
         type="submit"
         disabled={isSubmitting}
-        className="rounded bg-[#0A2A5E] px-6 py-3 text-white"
+        className="min-h-[44px] rounded bg-[#0A2A5E] px-6 py-3 text-white"
       >
         {isSubmitting ? 'Registrando…' : 'Confirmar inscripción'}
       </button>
