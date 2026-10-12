@@ -170,7 +170,7 @@ model Participant {
   firstName       String          @map("first_name")
   lastName        String          @map("last_name")
   ci              String
-  email           String
+  email           String?
   phone           String?
   type            ParticipantType
   institution     String?

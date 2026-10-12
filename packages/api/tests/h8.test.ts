@@ -7,6 +7,7 @@ import { getPrisma } from '../src/infrastructure/prisma.js';
 import { hashPassword } from '../src/infrastructure/passwordHasher.js';
 
 const stamp = Date.now();
+const s9 = String(stamp).slice(-9);
 let baseUrl = '';
 let adminToken = '';
 let staffToken = '';
@@ -71,7 +72,7 @@ describe('H8 lista de asistencia', () => {
         eventId,
         firstName: 'Ana',
         lastName: 'Pérez',
-        ci: `H8-${stamp}`,
+        ci: `H8${s9}`,
         email: `h8-${stamp}@test.com`,
         type: 'PUBLICO',
         qrToken: `h8-qr-${stamp}`,

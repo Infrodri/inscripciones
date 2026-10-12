@@ -7,6 +7,7 @@ import { getPrisma } from '../src/infrastructure/prisma.js';
 import { hashPassword } from '../src/infrastructure/passwordHasher.js';
 
 const stamp = Date.now();
+const s9 = String(stamp).slice(-9);
 let baseUrl = '';
 let adminToken = '';
 let openEventId = '';
@@ -26,7 +27,7 @@ function registration(overrides: Record<string, unknown> = {}) {
   return {
     firstName: 'Ana',
     lastName: 'Pérez',
-    ci: `H2-${stamp}`,
+    ci: `H2${s9}`,
     email: `h2-${stamp}@test.com`,
     type: 'PUBLICO',
     dataConsent: true,
@@ -125,7 +126,7 @@ describe('H2 inscripción pública', () => {
     expect(byCi.status).toBe(409);
     const byEmail = await api(`/api/v1/public/events/${slug}/registrations`, null, {
       method: 'POST',
-      body: JSON.stringify(registration({ ci: `OTRO-${stamp}` })),
+      body: JSON.stringify(registration({ ci: `OTRO${s9}` })),
     });
     expect(byEmail.status).toBe(409);
   });
@@ -138,7 +139,7 @@ describe('H2 inscripción pública', () => {
         api(`/api/v1/public/events/${slug}/registrations`, null, {
           method: 'POST',
           body: JSON.stringify(
-            registration({ ci: `CUPO-${stamp}-${n}`, email: `cupo-${stamp}-${n}@test.com` })
+            registration({ ci: `CUPO${s9}${n}`, email: `cupo-${stamp}-${n}@test.com` })
           ),
         })
       )
@@ -160,13 +161,13 @@ describe('H2 inscripción pública', () => {
     const res = await api(`/api/v1/public/events/${slug}/registrations`, null, {
       method: 'POST',
       body: JSON.stringify({
-        ...registration({ ci: `HON-${stamp}`, email: `hon-${stamp}@test.com` }),
+        ...registration({ ci: `HON${s9}`, email: `hon-${stamp}@test.com` }),
         website: 'http://spam.com',
       }),
     });
     expect(res.status).toBe(201);
     const prisma = getPrisma();
-    expect(await prisma.participant.count({ where: { ci: `HON-${stamp}` } })).toBe(0);
+    expect(await prisma.participant.count({ where: { ci: `HON${s9}` } })).toBe(0);
   });
 
   it('qr.png con token inválido responde INVALID_QR', async () => {

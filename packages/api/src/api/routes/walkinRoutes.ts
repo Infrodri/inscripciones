@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
 import { validateBody } from '../middlewares/validateMiddleware.js';
+import { personSchema } from '../personSchema.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { buildParticipantRow } from '../../application/registrationService.js';
@@ -10,13 +11,8 @@ import { assertSessionWindow, attendancePercentage } from '../../application/att
 import { renderAttendanceList } from '@inscripciones/infrastructure/pdf.js';
 import { logger } from '../../shared/logger.js';
 
-const walkinSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  ci: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().nullable().optional(),
-  type: z.enum(['ESTUDIANTE', 'DOCENTE', 'PROFESIONAL', 'PUBLICO']),
+const walkinSchema = personSchema.extend({
+  type: z.enum(['ESTUDIANTE', 'DOCENTE', 'PROFESIONAL', 'PUBLICO']).default('ESTUDIANTE'),
   institution: z.string().nullable().optional(),
   career: z.string().nullable().optional(),
   semester: z.string().nullable().optional(),

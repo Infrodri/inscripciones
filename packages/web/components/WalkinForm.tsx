@@ -26,7 +26,7 @@ export function WalkinForm({
         firstName,
         lastName,
         ci,
-        email,
+        email: email.trim() !== '' ? email : undefined,
         type: 'PUBLICO',
         sessionId,
       });
@@ -73,10 +73,9 @@ export function WalkinForm({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           type="email"
-          placeholder="Correo"
-          required
+          placeholder="Correo (opcional)"
           className="rounded border p-2"
-          aria-label="Correo"
+          aria-label="Correo (opcional)"
         />
       </div>
       <button type="submit" disabled={busy} className="rounded bg-[#0A2A5E] px-4 py-2 text-white">

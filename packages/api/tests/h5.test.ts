@@ -7,6 +7,7 @@ import { getPrisma } from '../src/infrastructure/prisma.js';
 import { hashPassword } from '../src/infrastructure/passwordHasher.js';
 
 const stamp = Date.now();
+const s9 = String(stamp).slice(-9);
 let baseUrl = '';
 let adminToken = '';
 let server: Server | null = null;
@@ -145,7 +146,7 @@ describe('H5 plantillas y asistente', () => {
         eventId,
         firstName: 'María Eugenia',
         lastName: 'Santiváñez Rocha',
-        ci: `H5-${stamp}`,
+        ci: `H5${s9}`,
         email: `h5-${stamp}@test.com`,
         type: 'PUBLICO',
         qrToken: `h5-qr-${stamp}`,
@@ -161,7 +162,7 @@ describe('H5 plantillas y asistente', () => {
         eventId,
         firstName: 'María Eugenia Santiváñez Rocha de la Fuente del Valle Muy Larga',
         lastName: 'Peña Muñoz de los Santos',
-        ci: `H5L-${stamp}`,
+        ci: `H5L${s9}`,
         email: `h5l-${stamp}@test.com`,
         type: 'PUBLICO',
         qrToken: `h5l-qr-${stamp}`,

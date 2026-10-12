@@ -6,7 +6,7 @@ export interface RegistrationInput {
   firstName: string;
   lastName: string;
   ci: string;
-  email: string;
+  email?: string | null;
   phone?: string | null;
   type: 'ESTUDIANTE' | 'DOCENTE' | 'PROFESIONAL' | 'PUBLICO';
   institution?: string | null;
@@ -47,7 +47,7 @@ export function buildParticipantRow(
     lastName: normalized.lastName,
     ci: normalized.ci,
     email: normalized.email,
-    phone: input.phone?.trim() || null,
+    phone: normalized.phone,
     type: input.type,
     institution: input.institution?.trim() || null,
     career: input.career?.trim() || null,

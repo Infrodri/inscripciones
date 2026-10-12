@@ -24,7 +24,7 @@ describe('normalize', () => {
         ci: ' 1 2 3 ',
         email: 'A@T.COM',
       })
-    ).toEqual({ firstName: 'Ana', lastName: 'Pérez', ci: '123', email: 'a@t.com' });
+    ).toEqual({ firstName: 'Ana', lastName: 'Pérez', ci: '123', email: 'a@t.com', phone: null });
   });
 });
 

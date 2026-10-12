@@ -7,6 +7,7 @@ import { getPrisma } from '../src/infrastructure/prisma.js';
 import { hashPassword } from '../src/infrastructure/passwordHasher.js';
 
 const stamp = Date.now();
+const s9 = String(stamp).slice(-9);
 let baseUrl = '';
 let adminToken = '';
 let staffToken = '';
@@ -101,7 +102,7 @@ describe('H3 asistencia', () => {
         eventId,
         firstName: 'Ana',
         lastName: 'Pérez',
-        ci: `H3-${stamp}`,
+        ci: `H3${s9}`,
         email: `h3-${stamp}@test.com`,
         type: 'PUBLICO',
         qrToken: `h3-qr-${stamp}`,
@@ -166,7 +167,7 @@ describe('H3 asistencia', () => {
       body: JSON.stringify({
         firstName: 'Pedro',
         lastName: 'Soto',
-        ci: `H3W-${stamp}`,
+        ci: `H3W${s9}`,
         email: `h3w-${stamp}@test.com`,
         type: 'PUBLICO',
         sessionId: activeSessionId,
@@ -174,7 +175,7 @@ describe('H3 asistencia', () => {
     });
     expect(res.status).toBe(201);
     const prisma = getPrisma();
-    const created = await prisma.participant.findFirst({ where: { eventId, ci: `H3W-${stamp}` } });
+    const created = await prisma.participant.findFirst({ where: { eventId, ci: `H3W${s9}` } });
     expect(created?.source).toBe('WALK_IN');
   });
 

@@ -10,7 +10,7 @@ interface Participant {
   firstName: string;
   lastName: string;
   ci: string;
-  email: string;
+  email: string | null;
   type: string;
   source: string;
 }

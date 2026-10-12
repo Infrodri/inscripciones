@@ -7,6 +7,7 @@ import { getPrisma } from '../src/infrastructure/prisma.js';
 import { hashPassword } from '../src/infrastructure/passwordHasher.js';
 
 const stamp = Date.now();
+const s9 = String(stamp).slice(-9);
 let baseUrl = '';
 let adminToken = '';
 let staffToken = '';
@@ -169,7 +170,7 @@ describe('H1 rutas con roles', () => {
         eventId: source!.id,
         firstName: 'Ana',
         lastName: 'Pérez',
-        ci: `H1-${stamp}`,
+        ci: `H1${s9}`,
         email: `h1-${stamp}@test.com`,
         type: 'PUBLICO',
         qrToken: `h1-qr-${stamp}`,

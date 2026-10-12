@@ -7,6 +7,7 @@ import { getPrisma } from '../src/infrastructure/prisma.js';
 import { hashPassword } from '../src/infrastructure/passwordHasher.js';
 
 const stamp = Date.now();
+const s9 = String(stamp).slice(-9);
 let baseUrl = '';
 let adminToken = '';
 let server: Server | null = null;
@@ -81,12 +82,12 @@ describe('B2 campos configurables y QR del enlace', () => {
     };
     const missing = await api(`/api/v1/public/events/b2-${stamp}/registrations`, null, {
       method: 'POST',
-      body: JSON.stringify({ ...base, ci: `B2A-${stamp}` }),
+      body: JSON.stringify({ ...base, ci: `B2A${s9}` }),
     });
     expect(missing.status).toBe(400);
     const ok = await api(`/api/v1/public/events/b2-${stamp}/registrations`, null, {
       method: 'POST',
-      body: JSON.stringify({ ...base, ci: `B2B-${stamp}`, career: 'Derecho' }),
+      body: JSON.stringify({ ...base, ci: `B2B${s9}`, career: 'Derecho' }),
     });
     expect(ok.status).toBe(201);
   });
@@ -110,21 +111,21 @@ describe('B2 campos configurables y QR del enlace', () => {
       body: JSON.stringify({
         firstName: '  María  Eugenia ',
         lastName: 'Santiváñez ',
-        ci: ` B2N-${stamp} `,
+        ci: ` B2N${s9} `,
         email: `B2N-${stamp}@TEST.COM`,
-        type: 'ESTUDIANTE',
+        type: 'PUBLICO',
         career: 'Derecho',
         dataConsent: true,
       }),
     });
     expect(res.status).toBe(201);
     const prisma = getPrisma();
-    const stored = await prisma.participant.findFirst({ where: { ci: `B2N-${stamp}` } });
+    const stored = await prisma.participant.findFirst({ where: { ci: `B2N${s9}` } });
     expect(stored?.firstName).toBe('María Eugenia');
     expect(stored?.email).toBe(`b2n-${stamp}@test.com`);
     const list = (await (
       await api(`/api/v1/participants/event/${stored?.eventId}`, adminToken)
     ).json()) as { data: Array<{ ci: string }> };
-    expect(list.data.some((p) => p.ci === `B2N-${stamp}`)).toBe(true);
+    expect(list.data.some((p) => p.ci === `B2N${s9}`)).toBe(true);
   });
 });

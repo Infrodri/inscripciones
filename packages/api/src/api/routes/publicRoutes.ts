@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
 import { validateBody } from '../middlewares/validateMiddleware.js';
+import { personSchema } from '../personSchema.js';
 import { qrPngBuffer } from '@inscripciones/infrastructure/qr.js';
 import { createMailer } from '@inscripciones/infrastructure/mailer.js';
 import {
@@ -15,13 +16,8 @@ import { bannerPublicUrl, qrPngUrl, type PublicUrlEnv } from '../../shared/urls.
 import { logger } from '../../shared/logger.js';
 import type { AppEnv } from '../env.js';
 
-const registrationSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  ci: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().nullable().optional(),
-  type: z.enum(['ESTUDIANTE', 'DOCENTE', 'PROFESIONAL', 'PUBLICO']),
+const registrationSchema = personSchema.extend({
+  type: z.enum(['ESTUDIANTE', 'DOCENTE', 'PROFESIONAL', 'PUBLICO']).default('ESTUDIANTE'),
   institution: z.string().nullable().optional(),
   career: z.string().nullable().optional(),
   semester: z.string().nullable().optional(),
@@ -141,7 +137,7 @@ export function publicRoutes(env: AppEnv): Router {
           return tx.participant.create({ data: buildParticipantRow(event.id, req.body) });
         });
         let mailSent = false;
-        if (env.SMTP_HOST) {
+        if (env.SMTP_HOST && participant.email) {
           try {
             const fullEvent = await prisma.event.findUnique({
               where: { slug: req.params.slug },
@@ -185,9 +181,11 @@ export function publicRoutes(env: AppEnv): Router {
           qrToken: participant.qrToken,
           qrPngUrl: qrPngUrl(env, participant.qrToken),
           mailSent,
-          notice: mailSent
-            ? null
-            : 'No pudimos enviarle el correo; guarde su QR desde esta pantalla.',
+          notice: !participant.email
+            ? 'No indicaste correo: descarga o captura tu QR ahora.'
+            : mailSent
+              ? null
+              : 'No pudimos enviarle el correo; guarde su QR desde esta pantalla.',
         });
       } catch (err) {
         next(err);

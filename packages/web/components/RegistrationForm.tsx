@@ -8,10 +8,17 @@ import { toast } from 'sonner';
 import { apiUrl, configErrorMessage } from '@/lib/api';
 
 const schema = z.object({
-  firstName: z.string().min(1, 'El nombre es obligatorio'),
-  lastName: z.string().min(1, 'El apellido es obligatorio'),
-  ci: z.string().min(1, 'El CI es obligatorio'),
-  email: z.string().email('El correo no es válido'),
+  firstName: z.string().trim().min(1, 'El nombre es obligatorio'),
+  lastName: z.string().trim().min(1, 'El apellido es obligatorio'),
+  ci: z
+    .string()
+    .trim()
+    .min(1, 'El CI es obligatorio')
+    .regex(/^[A-Za-z0-9]{5,15}$/, 'El CI debe tener de 5 a 15 caracteres alfanuméricos'),
+  email: z.preprocess(
+    (value) => (typeof value !== 'string' || value.trim() === '' ? undefined : value),
+    z.string().trim().toLowerCase().pipe(z.string().email('El correo no es válido')).optional()
+  ),
   phone: z.string().optional(),
   type: z.enum(['ESTUDIANTE', 'DOCENTE', 'PROFESIONAL', 'PUBLICO']),
   institution: z.string().optional(),
@@ -46,7 +53,7 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ mode: 'onTouched', defaultValues: { type: 'PUBLICO' } });
+  } = useForm<FormValues>({ mode: 'onTouched', defaultValues: { type: 'ESTUDIANTE' } });
 
   async function onSubmit(raw: FormValues): Promise<void> {
     const parsed = schema.safeParse(raw);
@@ -139,7 +146,7 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
         {errors.ci ? <p>{errors.ci.message}</p> : null}
       </div>
       <div>
-        <label htmlFor="email">Correo</label>
+        <label htmlFor="email">Correo (opcional)</label>
         <input
           id="email"
           type="email"
@@ -163,7 +170,9 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
         </select>
       </div>
       <div>
-        <label htmlFor="institution">Institución{required.institution ? '' : ' (opcional)'}</label>
+        <label htmlFor="institution">
+          Carrera o institución{required.institution ? '' : ' (opcional)'}
+        </label>
         <input
           id="institution"
           {...register('institution')}
