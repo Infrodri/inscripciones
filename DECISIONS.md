@@ -41,3 +41,13 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 17. Sin `@hookform/resolvers`: validación zod manual (`safeParse` → `setError`)
     para no agregar dependencias.
 18. Arranque del API compilado: `node dist/src/api/app.js` (rootDir ".").
+
+## H3
+
+19. Puerta sin control de estado del evento (el staff decide); sí exige
+    ventana de sesión y genera duplicados por P2002.
+20. Porcentaje y aptos por consulta en `/stats`; nada se almacena.
+21. Anular conserva la fila + `audit_logs`; solo ADMIN con motivo.
+22. `html5-qrcode` con `next/dynamic` (`ssr: false`); el lector se detiene al
+    registrar y hay búsqueda manual de respaldo.
+23. `GET /sessions/:id` (ADMIN/STAFF) para datos de la pantalla de scan.

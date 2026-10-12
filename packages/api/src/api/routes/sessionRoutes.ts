@@ -17,6 +17,19 @@ const sessionUpdateSchema = sessionSchema.partial().omit({ eventId: true });
 
 export function sessionRoutes(): Router {
   const router = Router();
+  router.get('/:id', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const session = await prisma.session.findUnique({
+        where: { id: req.params.id },
+        include: { event: { select: { id: true, title: true, minAttendancePercent: true } } },
+      });
+      if (!session) throw new DomainError('NOT_FOUND', 'Sesión no encontrada');
+      res.json(session);
+    } catch (err) {
+      next(err);
+    }
+  });
   router.get('/event/:eventId', async (req, res, next) => {
     try {
       const prisma = getPrisma();

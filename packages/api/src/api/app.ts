@@ -4,6 +4,8 @@ import { authRoutes } from './routes/authRoutes.js';
 import { eventRoutes } from './routes/eventRoutes.js';
 import { publicRoutes } from './routes/publicRoutes.js';
 import { participantRoutes } from './routes/participantRoutes.js';
+import { attendanceRoutes } from './routes/attendanceRoutes.js';
+import { walkinRoutes } from './routes/walkinRoutes.js';
 import { exportRoutes } from './routes/exportRoutes.js';
 import { sessionRoutes } from './routes/sessionRoutes.js';
 import { speakerRoutes } from './routes/speakerRoutes.js';
@@ -67,6 +69,8 @@ export function buildApp(env: AppEnv): express.Express {
   app.use('/api/v1/public', publicRoutes(env));
   app.use('/api/v1/events', authMiddleware(env.JWT_SECRET), eventRoutes(storage.publicStorage));
   app.use('/api/v1/participants', authMiddleware(env.JWT_SECRET), participantRoutes());
+  app.use('/api/v1', authMiddleware(env.JWT_SECRET), attendanceRoutes());
+  app.use('/api/v1', authMiddleware(env.JWT_SECRET), walkinRoutes());
   app.use('/api/v1', authMiddleware(env.JWT_SECRET), exportRoutes());
   app.use('/api/v1/sessions', authMiddleware(env.JWT_SECRET), sessionRoutes());
   app.use('/api/v1/speakers', authMiddleware(env.JWT_SECRET), speakerRoutes());

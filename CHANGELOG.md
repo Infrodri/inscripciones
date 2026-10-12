@@ -1,6 +1,14 @@
 # CHANGELOG
 
-## [0.2.0] — feat(h2): inscripción pública
+## [0.3.0] — feat(h3): asistencia
+
+- Check-in con ventana de sesión, doble escaneo (`ALREADY_CHECKED_IN` sin
+  duplicar), QR inválido y fuera de ventana; búsqueda manual; puerta
+  (WALK_IN + asistencia en un paso); anulación ADMIN con motivo y auditoría;
+  `/stats` con porcentaje y aptos.
+- Web `/scan/[sessionId]` mobile-first (verde/ámbar/rojo) + puerta.
+- Tests: 39/39 (doble escaneo, QR inválido, ventana, porcentaje con
+  anuladas, void con roles).
 
 - API pública: `GET /public/events/:slug` (sin datos personales),
   `POST /public/events/:slug/registrations` (honeypot + rate limit, cupo
