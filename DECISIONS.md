@@ -51,3 +51,13 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 22. `html5-qrcode` con `next/dynamic` (`ssr: false`); el lector se detiene al
     registrar y hay búsqueda manual de respaldo.
 23. `GET /sessions/:id` (ADMIN/STAFF) para datos de la pantalla de scan.
+
+## H4
+
+24. `render.yaml` compila desde la RAÍZ (workspaces necesitan el lock raíz);
+    `migrate deploy` antes de iniciar; `NODE_VERSION=24` (LTS vigente).
+25. Smoke recibe la BASE del servicio (`/health` vive en raíz); no crea datos
+    en producción (el registro con borrado se verifica en staging).
+26. `scripts/smoke.ts` corre con node directo (type stripping, sin enums);
+    `process.exitCode` en vez de `process.exit` (evita un assert de libuv en
+    Windows).

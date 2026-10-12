@@ -1,6 +1,12 @@
 # CHANGELOG
 
-## [0.3.0] — feat(h3): asistencia
+## [0.4.0] — feat(h4): despliegue
+
+- `render.yaml` (build desde raíz, `migrate deploy`, `/health`,
+  `NODE_VERSION=24`); `.env.example` completos en raíz, api y web.
+- `DEPLOY.md` paso a paso (Supabase, migrate+seed, Render, Vercel,
+  Brevo, verificación, cold start, rollback).
+- `scripts/smoke.ts` (`npm run smoke -- <BASE_URL>`): 4/4 en local.
 
 - Check-in con ventana de sesión, doble escaneo (`ALREADY_CHECKED_IN` sin
   duplicar), QR inválido y fuera de ventana; búsqueda manual; puerta

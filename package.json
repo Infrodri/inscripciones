@@ -8,8 +8,9 @@
   "scripts": {
     "build": "npm run build -w packages/infrastructure && npm run build -w packages/api && npm run build -w packages/web",
     "dev": "concurrently -n api,web -c blue,green \"npm run dev -w packages/api\" \"npm run dev -w packages/web\"",
-    "lint": "eslint eslint.config.mjs packages/api packages/infrastructure packages/web && prettier --check package.json tsconfig.base.json .prettierrc README.md CHANGELOG.md DECISIONS.md packages/api packages/infrastructure packages/web",
-    "test": "npm run test -w packages/api && npm run test -w packages/infrastructure"
+    "lint": "eslint eslint.config.mjs packages/api packages/infrastructure packages/web scripts && prettier --check package.json tsconfig.base.json .prettierrc README.md CHANGELOG.md DECISIONS.md DEPLOY.md render.yaml packages/api packages/infrastructure packages/web scripts",
+    "test": "npm run test -w packages/api && npm run test -w packages/infrastructure",
+    "smoke": "node scripts/smoke.ts"
   },
   "devDependencies": {
     "concurrently": "9.1.0",
