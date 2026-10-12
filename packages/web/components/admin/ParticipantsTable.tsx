@@ -112,28 +112,30 @@ export function ParticipantsTable({ eventId, slug }: { eventId: string; slug: st
       {(data?.data.length ?? 0) === 0 ? (
         <p className="mt-4">Aún no hay inscritos.</p>
       ) : (
-        <table className="mt-4 w-full text-sm">
-          <thead>
-            <tr className="text-left">
-              <th>Apellidos y nombres</th>
-              <th>CI</th>
-              <th>Correo</th>
-              <th>Tipo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data?.data ?? []).map((p) => (
-              <tr key={p.id} className="border-t">
-                <td>
-                  {p.lastName}, {p.firstName}
-                </td>
-                <td>{p.ci}</td>
-                <td>{p.email}</td>
-                <td>{p.type}</td>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="text-left">
+                <th>Apellidos y nombres</th>
+                <th>CI</th>
+                <th>Correo</th>
+                <th>Tipo</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(data?.data ?? []).map((p) => (
+                <tr key={p.id} className="border-t">
+                  <td>
+                    {p.lastName}, {p.firstName}
+                  </td>
+                  <td>{p.ci}</td>
+                  <td>{p.email}</td>
+                  <td>{p.type}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

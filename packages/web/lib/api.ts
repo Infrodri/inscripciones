@@ -1,31 +1,15 @@
 import axios from 'axios';
+import { clearSession, getToken } from '@/lib/auth';
 
-const TOKEN_KEY = 'inscripciones:token';
-
-export function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return sessionStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function setToken(token: string): void {
-  try {
-    sessionStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    // Sin almacenamiento: la sesión solo vive en memoria de esta pestaña.
-  }
-}
-
-export function clearToken(): void {
-  try {
-    sessionStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // Nada que limpiar.
-  }
-}
+export {
+  clearSession,
+  clearToken,
+  getSessionUser,
+  getToken,
+  setSession,
+  setToken,
+} from '@/lib/auth';
+export type { SessionUser } from '@/lib/auth';
 
 export const api = axios.create({ baseURL: process.env.NEXT_PUBLIC_API_URL });
 
@@ -34,7 +18,7 @@ export function handleUnauthorized(
     window.location.href = url;
   }
 ): void {
-  clearToken();
+  clearSession();
   if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
     redirect('/admin/login');
   }

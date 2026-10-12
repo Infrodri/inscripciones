@@ -80,7 +80,7 @@ export default function UsuariosPage() {
           required
           aria-label="Contraseña"
         />
-        <button type="submit" className="rounded bg-[#0A2A5E] px-4 py-2 text-white">
+        <button type="submit" className="min-h-[44px] rounded bg-[#0A2A5E] px-4 py-2 text-white">
           Crear STAFF
         </button>
       </form>

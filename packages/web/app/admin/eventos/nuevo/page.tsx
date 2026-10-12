@@ -122,7 +122,11 @@ export default function NuevoEventoPage() {
             className="block w-full"
           />
         </div>
-        <button type="submit" disabled={busy} className="rounded bg-[#0A2A5E] px-6 py-2 text-white">
+        <button
+          type="submit"
+          disabled={busy}
+          className="min-h-[44px] rounded bg-[#0A2A5E] px-6 py-2 text-white"
+        >
           {busy ? 'Creando…' : 'Crear evento'}
         </button>
       </form>
