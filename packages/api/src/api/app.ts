@@ -5,6 +5,8 @@ import { eventRoutes } from './routes/eventRoutes.js';
 import { publicRoutes } from './routes/publicRoutes.js';
 import { participantRoutes } from './routes/participantRoutes.js';
 import { attendanceRoutes } from './routes/attendanceRoutes.js';
+import { certificateTemplateRoutes } from './routes/certificateTemplateRoutes.js';
+import { certificateExportRoutes } from './routes/certificateExportRoutes.js';
 import { walkinRoutes } from './routes/walkinRoutes.js';
 import { exportRoutes } from './routes/exportRoutes.js';
 import { sessionRoutes } from './routes/sessionRoutes.js';
@@ -70,6 +72,17 @@ export function buildApp(env: AppEnv): express.Express {
   app.use('/api/v1/events', authMiddleware(env.JWT_SECRET), eventRoutes(storage.publicStorage));
   app.use('/api/v1/participants', authMiddleware(env.JWT_SECRET), participantRoutes());
   app.use('/api/v1', authMiddleware(env.JWT_SECRET), attendanceRoutes());
+  // Certificados: solo ADMIN (el router lo exige; las plantillas son privadas).
+  app.use(
+    '/api/v1',
+    authMiddleware(env.JWT_SECRET),
+    certificateTemplateRoutes(storage.privateStorage)
+  );
+  app.use(
+    '/api/v1',
+    authMiddleware(env.JWT_SECRET),
+    certificateExportRoutes(storage.privateStorage)
+  );
   app.use('/api/v1', authMiddleware(env.JWT_SECRET), walkinRoutes());
   app.use('/api/v1', authMiddleware(env.JWT_SECRET), exportRoutes());
   app.use('/api/v1/sessions', authMiddleware(env.JWT_SECRET), sessionRoutes());

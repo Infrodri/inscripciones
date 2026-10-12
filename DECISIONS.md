@@ -61,3 +61,15 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 26. `scripts/smoke.ts` corre con node directo (type stripping, sin enums);
     `process.exitCode` en vez de `process.exit` (evita un assert de libuv en
     Windows).
+
+## H5
+
+27. `@types/pdfkit@0.17.6` (tipos del stack, sin runtime nuevo).
+28. Helpers puros de certificado en `infrastructure/certificates.ts`; la API
+    re-exporta (infrastructure nunca importa de api).
+29. `requireRole` siempre POR RUTA: ni `app.use` ni `router.use` sirven con
+    routers montados en la misma base, porque rechazan el STAFF de rutas
+    montadas después aunque no coincidan (fallo real en H3: walk-in/stats).
+30. Cabecera de reporte PDF por log (`logger.info certificates_exported`):
+    no se puede fijar header después del streaming.
+31. Duplicar plantilla comparte el archivo privado (igual que el evento).

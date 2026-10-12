@@ -23,6 +23,14 @@ export function errorMiddleware(
     });
     return;
   }
+  const code = (err as { code?: unknown }).code;
+  if (code === 'UNAUTHORIZED' || code === 'FORBIDDEN') {
+    const status = code === 'UNAUTHORIZED' ? 401 : 403;
+    const message =
+      code === 'UNAUTHORIZED' ? 'No autenticado' : 'No tiene permiso para esta acción';
+    res.status(status).json({ error: { code, message, details: [] } });
+    return;
+  }
   res.status(500).json({
     error: { code: 'VALIDATION_ERROR', message: 'Ocurrió un error inesperado', details: [] },
   });

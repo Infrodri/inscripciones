@@ -18,6 +18,13 @@ const config = tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
+  },
+  {
+    // Scripts CLI (smoke, create-admin): la consola es la salida.
+    files: ['scripts/**/*.ts', 'packages/api/scripts/**/*.ts', 'packages/api/prisma/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
   }
 );
 

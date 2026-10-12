@@ -66,6 +66,10 @@ function Detail({ params }: { params: Promise<{ id: string }> }) {
         Página pública:{' '}
         <a href={`/e/${data.slug}`} className="underline">
           /e/{data.slug}
+        </a>{' '}
+        —{' '}
+        <a href={`/admin/eventos/${id}/certificados`} className="underline">
+          Certificados
         </a>
       </p>
       <EventCollections eventId={id} />

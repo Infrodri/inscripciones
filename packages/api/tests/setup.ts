@@ -7,3 +7,4 @@ process.env.CORS_ORIGINS ??= 'http://localhost:3000';
 process.env.STORAGE_DRIVER ??= 'disk';
 process.env.UPLOADS_DIR ??= './uploads-test';
 process.env.NODE_ENV ??= 'test';
+process.env.FONTS_DIR ??= './assets/fonts';

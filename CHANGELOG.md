@@ -1,6 +1,17 @@
 # CHANGELOG
 
-## [0.4.0] — feat(h4): despliegue
+## [0.5.0] — feat(h5): certificados base
+
+- Plantillas: subida PNG/JPG 15 MB con detección de página A4/Carta,
+  `set-default` transaccional, duplicar variante, archivo y `preview.pdf`
+  servidos solo a ADMIN.
+- Exportación ASISTENTE en streaming (un certificado por página, orden por
+  apellido, `certificate_code` perezoso, reporte por log).
+- Web: pestañas de certificados, editor visual de la caja (arrastrar,
+  redimensionar, fuentes, vista previa, nombre más largo), asistentes
+  (aptos, exportar).
+- Tests: 49/49 (layout auto-shrink, página, upload, default, preview,
+  aptos, `NO_DEFAULT_TEMPLATE`).
 
 - `render.yaml` (build desde raíz, `migrate deploy`, `/health`,
   `NODE_VERSION=24`); `.env.example` completos en raíz, api y web.
