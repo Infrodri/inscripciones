@@ -31,6 +31,7 @@ async function main(): Promise<void> {
     },
   });
   await prisma.session.deleteMany({ where: { eventId: reference.id } });
+  await prisma.speaker.deleteMany({ where: { eventId: reference.id } });
   await prisma.session.create({
     data: {
       eventId: reference.id,
