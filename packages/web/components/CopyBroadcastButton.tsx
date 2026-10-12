@@ -21,7 +21,8 @@ export function CopyBroadcastButton({ slug }: { slug: string }) {
           timeStyle: 'short',
         })
       : '';
-    const url = `${window.location.origin}/e/${slug}`;
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+    const url = `${site}/e/${slug}`;
     const text = `${event.title}\n${when}\n${event.location}\nInscripción: ${url}`;
     await navigator.clipboard.writeText(text);
     setCopied(true);
