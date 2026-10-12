@@ -1,6 +1,11 @@
 # CHANGELOG
 
-## [0.7.0] — feat(h7): organizadores
+## [0.8.0] — feat(h8): lista de asistencia
+
+- `GET /events/:id/exports/attendance-list.pdf` (ADMIN/STAFF): A4 vertical,
+  una sesión por página (o general), columnas Nº/nombre/CI/firma.
+- Web: botón Lista PDF junto a XLSX/CSV.
+- Tests: 57/57.
 
 - Alta individual y pegado de lista (misma variante para todas las líneas);
   cargo como nota interna; exportación total o por variante de firma.

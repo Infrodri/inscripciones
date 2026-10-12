@@ -7,6 +7,8 @@ import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { buildParticipantRow } from '../../application/registrationService.js';
 import { assertSessionWindow, attendancePercentage } from '../../application/attendanceService.js';
+import { renderAttendanceList } from '@inscripciones/infrastructure/pdf.js';
+import { logger } from '../../shared/logger.js';
 
 const walkinSchema = z.object({
   firstName: z.string().min(1),
@@ -114,6 +116,59 @@ export function walkinRoutes(): Router {
       next(err);
     }
   });
+
+  // Lista de asistencia imprimible como respaldo sin internet (ADMIN o STAFF).
+  router.get(
+    '/events/:id/exports/attendance-list.pdf',
+    requireRole('ADMIN', 'STAFF'),
+    async (req, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const event = await prisma.event.findUnique({
+          where: { id: req.params.id },
+          include: { sessions: { orderBy: { startsAt: 'asc' } } },
+        });
+        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        const participants = await prisma.participant.findMany({
+          where: { eventId: event.id },
+          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+        });
+        const participantRows = participants.map((p) => ({
+          fullName: `${p.lastName}, ${p.firstName}`,
+          ci: p.ci,
+        }));
+        const sessionPages = event.sessions
+          .filter((s) => !req.query.sessionId || s.id === req.query.sessionId)
+          .map((session) => ({
+            label: session.label,
+            startsAt: session.startsAt,
+            location: session.location,
+            rows: participantRows,
+          }));
+        // Sin sesiones: una página general para el control manual.
+        const sessions =
+          sessionPages.length > 0
+            ? sessionPages
+            : [
+                {
+                  label: 'Lista general',
+                  startsAt: new Date(),
+                  location: null,
+                  rows: participantRows,
+                },
+              ];
+        res.header('Content-Type', 'application/pdf');
+        res.header(
+          'Content-Disposition',
+          `attachment; filename="lista-asistencia-${event.slug}.pdf"`
+        );
+        const report = await renderAttendanceList(event.title, sessions, res);
+        logger.info('attendance_list_exported', { eventId: event.id, ...report });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
 
   return router;
 }

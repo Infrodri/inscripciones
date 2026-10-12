@@ -86,3 +86,60 @@ export async function renderCertificates(
 }
 
 export { mmToPt };
+
+export interface AttendanceListSession {
+  label: string | null;
+  startsAt: Date;
+  location: string | null;
+  rows: Array<{ fullName: string; ci: string }>;
+}
+
+// Lista de asistencia imprimible (respaldo sin internet): A4 vertical, una
+// sesión por página, columnas Nº / nombre / CI / firma.
+export async function renderAttendanceList(
+  eventTitle: string,
+  sessions: AttendanceListSession[],
+  out: Writable
+): Promise<{ pages: number; rows: number }> {
+  const doc = new PDFDocument({ size: 'A4', margin: 40, autoFirstPage: false });
+  doc.pipe(out);
+  let rows = 0;
+  for (const session of sessions) {
+    doc.addPage();
+    doc.fontSize(14).text(eventTitle, { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(11).text(session.label ?? 'Sesión', { align: 'center' });
+    doc.fontSize(10).text(new Date(session.startsAt).toLocaleString('es-BO'), { align: 'center' });
+    if (session.location) doc.fontSize(10).text(session.location, { align: 'center' });
+    doc.moveDown(1);
+    const left = doc.page.margins.left;
+    const width = doc.page.width - left - doc.page.margins.right;
+    const cols = [30, width - 30 - 110 - 130, 110, 130];
+    doc.fontSize(9);
+    let y = doc.y;
+    const header = ['Nº', 'Apellidos y nombres', 'CI', 'Firma'];
+    header.forEach((text, i) => {
+      doc.text(text, left + cols.slice(0, i).reduce((a, b) => a + b, 0), y, { width: cols[i] });
+    });
+    y += 16;
+    session.rows.forEach((row, index) => {
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = doc.page.margins.top;
+      }
+      const cells = [String(index + 1), row.fullName, row.ci, ''];
+      cells.forEach((text, i) => {
+        doc.text(text, left + cols.slice(0, i).reduce((a, b) => a + b, 0), y, { width: cols[i] });
+      });
+      doc
+        .moveTo(left, y + 14)
+        .lineTo(left + width, y + 14)
+        .stroke();
+      y += 20;
+      rows += 1;
+    });
+  }
+  doc.end();
+  await new Promise<void>((resolve) => out.on('finish', () => resolve()));
+  return { pages: sessions.length, rows };
+}

@@ -40,6 +40,26 @@ async function download(
   URL.revokeObjectURL(url);
 }
 
+async function downloadPdf(eventId: string, slug: string): Promise<void> {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/events/${eventId}/exports/attendance-list.pdf`,
+    {
+      headers: { Authorization: `Bearer ${getToken() ?? ''}` },
+    }
+  );
+  if (!res.ok) {
+    toast.error('No se pudo exportar');
+    return;
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lista-asistencia-${slug}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ParticipantsTable({ eventId, slug }: { eventId: string; slug: string }) {
   const [q, setQ] = useState('');
   const { data, isLoading, isError, error } = useQuery({
@@ -72,6 +92,13 @@ export function ParticipantsTable({ eventId, slug }: { eventId: string; slug: st
             className="rounded border px-2 py-1"
           >
             CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => void downloadPdf(eventId, slug)}
+            className="rounded border px-2 py-1"
+          >
+            Lista PDF
           </button>
         </div>
       </div>

@@ -84,3 +84,10 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 
 33. Organizadores reutiliza el mismo formulario y `bulk` que expositores;
     cada variante de firma es una plantilla propia del rol ORGANIZADOR.
+
+## H8
+
+34. Los tests resuelven `@inscripciones/infrastructure` vía `exports` →
+    `dist`: hay que reconstruir infrastructure tras cambiarla
+    (`npm run build` lo hace en orden).
+35. Sin sesiones, la lista sale como página general única.
