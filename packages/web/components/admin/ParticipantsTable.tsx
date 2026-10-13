@@ -9,6 +9,8 @@ import { formatFechaHora } from '@/lib/format';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { EditarInscritoDialog } from '@/components/admin/EditarInscritoDialog';
+
 import { Input } from '@/components/ui/Input';
 import { EmptyState, Table } from '@/components/ui/Table';
 import { PdfPreviewDialog } from '@/components/admin/PdfPreviewDialog';
@@ -123,6 +125,8 @@ export function ParticipantsTable({
   const [confirmPrint, setConfirmPrint] = useState<'all' | 'eligible' | 'selected' | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Participant | null>(null);
+  const [deleting, setDeleting] = useState<Participant | null>(null);
   const user = getSessionUser();
   const isAdmin = user?.role === 'ADMIN';
 
@@ -244,6 +248,15 @@ export function ParticipantsTable({
       URL.revokeObjectURL(objectUrl);
     } catch {
       toast.error('No se pudo exportar');
+    }
+  }
+
+  async function resendQr(participant: Participant): Promise<void> {
+    try {
+      await api.post(`/participants/${participant.id}/resend-qr`);
+      toast.success('QR reenviado');
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
     }
   }
 
@@ -431,7 +444,7 @@ export function ParticipantsTable({
                       )}
                     </td>
                     <td>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => setPreviewId(p.id)}
@@ -446,6 +459,31 @@ export function ParticipantsTable({
                         >
                           Asistencia
                         </button>
+                        {isAdmin ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setEditing(p)}
+                              className="min-h-[44px] rounded-[8px] border border-[#D9DEE7] px-2 py-1"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void resendQr(p)}
+                              className="min-h-[44px] rounded-[8px] border border-[#D9DEE7] px-2 py-1"
+                            >
+                              Reenviar QR
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleting(p)}
+                              className="min-h-[44px] rounded-[8px] border border-[#B42318] px-2 py-1 text-[#B42318]"
+                            >
+                              Eliminar
+                            </button>
+                          </>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -505,6 +543,30 @@ export function ParticipantsTable({
           nombreArchivo="diploma.pdf"
           onCargar={() => loadOnePdf(previewId)}
           onCerrar={() => setPreviewId(null)}
+        />
+      ) : null}
+      {editing ? (
+        <EditarInscritoDialog
+          eventId={eventId}
+          participant={editing}
+          onCerrar={() => setEditing(null)}
+        />
+      ) : null}
+      {deleting ? (
+        <ConfirmDialog
+          titulo="Eliminar inscrito"
+          mensaje={`Eliminar a ${deleting.lastName}, ${deleting.firstName} (CI: ${deleting.ci})? Esta acción no se puede deshacer.`}
+          confirmar="Eliminar"
+          onConfirmar={async () => {
+            try {
+              await api.delete(`/participants/${deleting.id}`);
+              toast.success('Inscrito eliminado');
+              setDeleting(null);
+            } catch (error) {
+              toast.error(apiErrorMessage(error));
+            }
+          }}
+          onCerrar={() => setDeleting(null)}
         />
       ) : null}
     </section>
