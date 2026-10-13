@@ -145,3 +145,8 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 48. Causa raíz "Jornada �nica": el `í` llegó al API ya corrupto como U+FFFD
     (cliente latin1 contra parser UTF-8); la BD solo guardó el reemplazo.
     Fila corregida a "Jornada única"; test de ida y vuelta con tildes/ñ.
+
+## Cierre presentación
+
+49. `require_*` en el formulario = exigir (siempre visibles); valor por
+    defecto false mantiene el comportamiento anterior.
