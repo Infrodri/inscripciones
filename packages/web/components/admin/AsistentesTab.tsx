@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { EnvioCorreoCard } from '@/components/admin/EnvioCorreoCard';
 import { PdfPreviewDialog } from '@/components/admin/PdfPreviewDialog';
 
 interface Template {
@@ -243,6 +244,34 @@ export function AsistentesTab({
           onCerrar={() => setShowPreview(false)}
         />
       ) : null}
+      <div className="mt-4">
+        <EnvioCorreoCard
+          eventId={eventId}
+          roleKind="ASISTENTE"
+          contar={async () => {
+            const res = (
+              await api.get(`/participants/event/${eventId}`, {
+                params: { stats: '1', pageSize: 200 },
+              })
+            ).data as {
+              data: Array<{
+                id: string;
+                email: string | null;
+                eligible?: boolean;
+                certificateEmailedAt: string | null;
+              }>;
+            };
+            let items = res.data;
+            if (effectiveScope === 'eligible') items = items.filter((p) => p.eligible);
+            if (effectiveScope === 'selected') items = items.filter((p) => selected.includes(p.id));
+            return {
+              enviar: items.filter((p) => p.email && !p.certificateEmailedAt).length,
+              sinCorreo: items.filter((p) => !p.email).length,
+              yaEnviados: items.filter((p) => p.certificateEmailedAt).length,
+            };
+          }}
+        />
+      </div>
       <p className="mt-2 text-sm">
         Siempre genere primero la vista previa de 1 página. Una página por persona, en orden de
         apellido, lista para imprimir seguido.

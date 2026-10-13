@@ -26,6 +26,8 @@ interface Participant {
   attended?: number;
   pct?: number;
   eligible?: boolean;
+  certificateEmailedAt?: string | null;
+  certificateEmailError?: string | null;
 }
 
 interface SessionRow {
@@ -401,6 +403,15 @@ export function ParticipantsTable({
                     <td>{p.ci}</td>
                     <td>
                       {p.lastName}, {p.firstName}
+                      {p.certificateEmailedAt ? (
+                        <span className="block text-xs text-[#1E7B4F]">
+                          Enviado {formatFechaHora(p.certificateEmailedAt)}
+                        </span>
+                      ) : p.certificateEmailError ? (
+                        <span className="block text-xs text-[#B42318]">
+                          Falló: {p.certificateEmailError}
+                        </span>
+                      ) : null}
                     </td>
                     <td>{p.email ?? '—'}</td>
                     <td>{p.phone ?? '—'}</td>

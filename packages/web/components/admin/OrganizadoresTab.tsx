@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { EstadoEnvio } from '@/components/admin/EstadoEnvio';
 
 interface Template {
   id: string;
@@ -20,6 +21,9 @@ interface Recipient {
   templateId: string;
   note: string | null;
   certificateCode: string | null;
+  email: string | null;
+  certificateEmailedAt: string | null;
+  certificateEmailError: string | null;
 }
 
 async function downloadPdf(url: string, filename: string): Promise<void> {
@@ -43,6 +47,7 @@ async function downloadPdf(url: string, filename: string): Promise<void> {
 export function OrganizadoresTab({ eventId }: { eventId: string }) {
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [cargo, setCargo] = useState('');
   const [templateId, setTemplateId] = useState('');
   const [paste, setPaste] = useState('');
@@ -79,10 +84,12 @@ export function OrganizadoresTab({ eventId }: { eventId: string }) {
       await api.post(`/events/${eventId}/certificate-recipients`, {
         roleKind: 'ORGANIZADOR',
         fullName,
+        email: email.trim() !== '' ? email : undefined,
         templateId: effectiveTemplate,
         note: cargo !== '' ? cargo : null,
       });
       setFullName('');
+      setEmail('');
       setCargo('');
       await refresh();
       toast.success('Organizador agregado');
@@ -147,6 +154,14 @@ export function OrganizadoresTab({ eventId }: { eventId: string }) {
           value={cargo}
           onChange={(e) => setCargo(e.target.value)}
         />
+        <Input
+          id="org-correo"
+          etiqueta="Correo"
+          opcional=" (opcional, para envío)"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
         <div>
           <Button type="submit">Agregar organizador</Button>
         </div>
@@ -166,11 +181,20 @@ export function OrganizadoresTab({ eventId }: { eventId: string }) {
           </Button>
         </div>
       </div>
-      <ul className="mt-4 space-y-1">
+      <ul className="mt-4 space-y-2">
         {(recipients.data?.data ?? []).map((r) => (
           <li key={r.id} className="text-sm">
-            {r.fullName}
-            {r.note ? ` — ${r.note}` : ''} — {r.certificateCode ? 'exportado' : 'pendiente'}
+            <span>
+              {r.fullName}
+              {r.note ? ` — ${r.note}` : ''} — {r.certificateCode ? 'exportado' : 'pendiente'}
+            </span>{' '}
+            <EstadoEnvio
+              recipientId={r.id}
+              email={r.email}
+              emailedAt={r.certificateEmailedAt}
+              error={r.certificateEmailError}
+              queryKey={['recipients-organizador', eventId]}
+            />
           </li>
         ))}
       </ul>

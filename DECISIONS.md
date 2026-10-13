@@ -170,3 +170,10 @@ CUPO_LLENO|BORRADOR|FINALIZADO`) en vista pública y detalle; reabrir con
     y aviso en editor medido con canvas); exports XLSX/CSV aceptan `q` y
     `type` para igualar la vista; visor PDF en diálogo con Descargar/Imprimir;
     reporte matriz con filtros y totales.
+
+## Correo de certificados (bloque 4)
+
+53. Columnas `certificate_emailed_at/error` en participantes y receptores;
+    `email_certificates` + asunto/texto (`{nombre},{evento},{fecha}`) por
+    evento; lotes de 20 con pausa de 200 ms, `MAIL_DAILY_LIMIT` (300) contado
+    por evento y día; transporte inyectable para tests; sin correo se omite.

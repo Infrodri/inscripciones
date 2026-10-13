@@ -13,6 +13,10 @@ const MANUAL_ROLES = ['EXPOSITOR', 'ORGANIZADOR', 'OTRO'] as const;
 const recipientSchema = z.object({
   roleKind: z.enum(MANUAL_ROLES),
   fullName: z.string().min(1),
+  email: z.preprocess(
+    (value) => (typeof value !== 'string' || value.trim() === '' ? undefined : value),
+    z.string().trim().toLowerCase().pipe(z.string().email('El correo no es válido')).optional()
+  ),
   templateId: z.string().uuid(),
   speakerId: z.string().uuid().nullable().optional(),
   note: z.string().nullable().optional(),
@@ -88,6 +92,7 @@ export function certificateRecipientRoutes(): Router {
             eventId: req.params.eventId,
             roleKind: req.body.roleKind,
             fullName,
+            email: req.body.email ?? null,
             templateId: req.body.templateId,
             speakerId: req.body.speakerId ?? null,
             note: req.body.note?.trim() || null,

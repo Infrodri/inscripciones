@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { EstadoEnvio } from '@/components/admin/EstadoEnvio';
 
 interface Template {
   id: string;
@@ -21,6 +22,9 @@ interface Recipient {
   speakerId: string | null;
   note: string | null;
   certificateCode: string | null;
+  email: string | null;
+  certificateEmailedAt: string | null;
+  certificateEmailError: string | null;
 }
 
 interface Speaker {
@@ -50,6 +54,7 @@ async function downloadPdf(url: string, filename: string): Promise<void> {
 export function ExpositoresTab({ eventId }: { eventId: string }) {
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [templateId, setTemplateId] = useState('');
   const [speakerId, setSpeakerId] = useState('');
   const [note, setNote] = useState('');
@@ -87,11 +92,13 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
       await api.post(`/events/${eventId}/certificate-recipients`, {
         roleKind: 'EXPOSITOR',
         fullName,
+        email: email.trim() !== '' ? email : undefined,
         templateId: effectiveTemplate,
         speakerId: speakerId !== '' ? speakerId : null,
         note: note !== '' ? note : null,
       });
       setFullName('');
+      setEmail('');
       setNote('');
       setSpeakerId('');
       await queryClient.invalidateQueries({ queryKey: ['recipients-expositor', eventId] });
@@ -158,6 +165,14 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
           ))}
         </Input>
         <Input
+          id="exp-correo"
+          etiqueta="Correo"
+          opcional=" (opcional, para envío)"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <Input
           id="exp-nota"
           etiqueta="Nota interna (no se imprime)"
           value={note}
@@ -167,10 +182,19 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
           <Button type="submit">Agregar expositor</Button>
         </div>
       </form>
-      <ul className="mt-4 space-y-1">
+      <ul className="mt-4 space-y-2">
         {(recipients.data?.data ?? []).map((r) => (
           <li key={r.id} className="text-sm">
-            {r.fullName} — {r.certificateCode ? 'exportado' : 'pendiente'}
+            <span>
+              {r.fullName} — {r.certificateCode ? 'exportado' : 'pendiente'}
+            </span>{' '}
+            <EstadoEnvio
+              recipientId={r.id}
+              email={r.email}
+              emailedAt={r.certificateEmailedAt}
+              error={r.certificateEmailError}
+              queryKey={['recipients-expositor', eventId]}
+            />
           </li>
         ))}
       </ul>

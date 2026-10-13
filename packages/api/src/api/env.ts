@@ -31,6 +31,7 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default('no-reply@example.com'),
+  MAIL_DAILY_LIMIT: z.string().default('300'),
   PUBLIC_SITE_URL: z.string().default('http://localhost:3000'),
 });
 

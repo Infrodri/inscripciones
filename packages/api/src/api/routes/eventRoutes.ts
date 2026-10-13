@@ -42,6 +42,9 @@ const eventSchema = z.object({
   requireSemester: z.boolean().optional(),
   requireInstitution: z.boolean().optional(),
   requirePhone: z.boolean().optional(),
+  emailCertificates: z.boolean().optional(),
+  certificateEmailSubject: z.string().nullable().optional(),
+  certificateEmailBody: z.string().nullable().optional(),
 });
 
 async function validateBanner(
