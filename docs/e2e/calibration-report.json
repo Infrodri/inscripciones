@@ -1,0 +1,49 @@
+{
+  "eventSlug": "e2e-cert-9347e9e2",
+  "templateName": "Plantilla E2E A4",
+  "totalParticipants": 4,
+  "totalSessions": 3,
+  "minAttendancePercent": 80,
+  "participants": [
+    {
+      "name": "María José González Pérez",
+      "ci": "M-12345678",
+      "attended": 0,
+      "pct": 0,
+      "eligible": false
+    },
+    {
+      "name": "José Francisco Martínez López",
+      "ci": "F-87654321",
+      "attended": 0,
+      "pct": 0,
+      "eligible": false
+    },
+    {
+      "name": "Ana Delgado Rodríguez",
+      "ci": "A-55555555",
+      "attended": 0,
+      "pct": 0,
+      "eligible": false
+    },
+    {
+      "name": "Pedro Rodríguez Sánchez",
+      "ci": "P-11111111",
+      "attended": 0,
+      "pct": 0,
+      "eligible": false
+    }
+  ],
+  "nameLayoutTests": [
+    {
+      "name": "Maria Jose Gonzalez Perez",
+      "chars": 25,
+      "result": "OK"
+    },
+    {
+      "name": "Pedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez XPedro Jose Rodriguez X",
+      "chars": 50,
+      "result": "shrunk at 8pt floor"
+    }
+  ]
+}
