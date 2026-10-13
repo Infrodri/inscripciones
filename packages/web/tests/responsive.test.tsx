@@ -53,25 +53,30 @@ describe('responsive sin desborde', () => {
   });
 
   it('tabla de inscritos con desplazamiento interno', async () => {
-    (api.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-      data: {
-        data: [
-          {
-            id: '1',
-            firstName: 'Ana',
-            lastName: 'Pérez',
-            ci: '1',
-            email: 'a@t.com',
-            type: 'PUBLICO',
-          },
-        ],
-        pagination: { total: 1 },
-      },
+    (api.get as unknown as ReturnType<typeof vi.fn>).mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/sessions/event/')) {
+        return Promise.resolve({ data: { data: [] } });
+      }
+      return Promise.resolve({
+        data: {
+          data: [
+            {
+              id: '1',
+              firstName: 'Ana',
+              lastName: 'Pérez',
+              ci: '1',
+              email: 'a@t.com',
+              type: 'PUBLICO',
+            },
+          ],
+          pagination: { total: 1 },
+        },
+      });
     });
     const client = new QueryClient();
     const { container } = render(
       <QueryClientProvider client={client}>
-        <ParticipantsTable eventId="e1" slug="s" />
+        <ParticipantsTable eventId="e1" slug="s" onGoCertificados={() => undefined} />
       </QueryClientProvider>
     );
     expect(await screen.findByText(/Pérez/)).toBeDefined();

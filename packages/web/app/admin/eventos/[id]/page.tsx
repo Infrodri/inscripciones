@@ -134,7 +134,13 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
         {tab === 'resumen' ? <ResumenTab eventId={id} /> : null}
         {tab === 'inscripcion' ? <InscripcionTab eventId={id} /> : null}
         {tab === 'asistencia' ? <AsistenciaTab eventId={id} /> : null}
-        {tab === 'inscritos' ? <ParticipantsTable eventId={id} slug={data.slug} /> : null}
+        {tab === 'inscritos' ? (
+          <ParticipantsTable
+            eventId={id}
+            slug={data.slug}
+            onGoCertificados={() => goTab('certificados')}
+          />
+        ) : null}
         {tab === 'certificados' ? (
           <p className="text-sm">
             Los certificados se gestionan en su página:{' '}
