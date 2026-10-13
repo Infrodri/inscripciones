@@ -8,6 +8,7 @@ import { formatFechaHora } from '@/lib/format';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Table';
 import { Switch } from '@/components/ui/Switch';
+import { ReporteAsistencia } from '@/components/admin/ReporteAsistencia';
 import { SessionScanActions } from '@/components/admin/SessionScanActions';
 
 interface SessionRow {
@@ -138,6 +139,15 @@ export function AsistenciaTab({ eventId }: { eventId: string }) {
           total={stats.data?.participants ?? 0}
         />
       ))}
+    </div>
+  );
+}
+
+export function AsistenciaTabConReporte({ eventId, slug }: { eventId: string; slug: string }) {
+  return (
+    <div className="space-y-4">
+      <AsistenciaTab eventId={eventId} />
+      <ReporteAsistencia eventId={eventId} slug={slug} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import { EmptyState, Table } from '@/components/ui/Table';
+import { PdfPreviewDialog } from '@/components/admin/PdfPreviewDialog';
 
 interface Participant {
   id: string;
@@ -119,6 +120,7 @@ export function ParticipantsTable({
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirmPrint, setConfirmPrint] = useState<'all' | 'eligible' | 'selected' | null>(null);
   const [busy, setBusy] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const user = getSessionUser();
   const isAdmin = user?.role === 'ADMIN';
 
@@ -198,30 +200,28 @@ export function ParticipantsTable({
     }
   }
 
-  async function printOne(id: string): Promise<void> {
-    setBusy(true);
-    try {
-      await download(
-        `/events/${eventId}/exports/certificates.pdf?roleKind=ASISTENTE&scope=selected&ids=${id}`,
-        'diploma.pdf'
-      );
-      toast.success('PDF generado');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo exportar';
-      if (message.includes('predeterminada')) {
-        toast.error(message);
-        onGoCertificados();
-      } else {
-        toast.error(message);
-      }
-    } finally {
-      setBusy(false);
+  async function loadOnePdf(id: string): Promise<Blob> {
+    const res = await fetch(
+      apiUrl(
+        `/events/${eventId}/exports/certificates.pdf?roleKind=ASISTENTE&scope=selected&ids=${id}`
+      ),
+      { headers: { Authorization: `Bearer ${getToken() ?? ''}` } }
+    );
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+      const message = body?.error?.message ?? 'No se pudo generar';
+      if (message.includes('predeterminada')) onGoCertificados();
+      throw new Error(message);
     }
+    return res.blob();
   }
 
   async function exportFile(kind: string, format: string, filename: string): Promise<void> {
     try {
-      await download(`/events/${eventId}/exports/${kind}?format=${format}`, filename);
+      const params = new URLSearchParams({ format });
+      if (q.trim() !== '') params.set('q', q.trim());
+      if (type !== '') params.set('type', type);
+      await download(`/events/${eventId}/exports/${kind}?${params.toString()}`, filename);
     } catch {
       toast.error('No se pudo exportar');
     }
@@ -423,7 +423,7 @@ export function ParticipantsTable({
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          onClick={() => void printOne(p.id)}
+                          onClick={() => setPreviewId(p.id)}
                           className="min-h-[44px] rounded-[8px] border border-[#D9DEE7] px-2 py-1"
                         >
                           Diploma
@@ -485,6 +485,15 @@ export function ParticipantsTable({
           confirmar="Imprimir"
           onConfirmar={() => void printDiplomas(confirmPrint)}
           onCerrar={() => setConfirmPrint(null)}
+        />
+      ) : null}
+      {previewId ? (
+        <PdfPreviewDialog
+          titulo="Diploma"
+          totalPaginas={1}
+          nombreArchivo="diploma.pdf"
+          onCargar={() => loadOnePdf(previewId)}
+          onCerrar={() => setPreviewId(null)}
         />
       ) : null}
     </section>

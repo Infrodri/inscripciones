@@ -43,8 +43,9 @@ export interface NameLayout {
   overflow: boolean;
 }
 
-// auto_shrink: reduce hasta el mínimo; si no cabe, parte en dos líneas;
-// si aun así no cabe, lo informa (overflow) sin recortar en silencio.
+// Nombre SIEMPRE en una sola línea: reduce en pasos de 0,5 pt hasta el piso
+// de 8 pt. Si no cabe, se imprime al piso, se marca `overflow` en el reporte
+// y se avisa en la UI. Nunca se recorta ni se parte.
 export function layoutName(
   text: string,
   maxWidthPt: number,
@@ -55,23 +56,8 @@ export function layoutName(
   const clean = text.trim().replace(/\s+/g, ' ');
   let size = sizePt;
   while (size > minPt && measure(clean, size) > maxWidthPt) size -= 0.5;
-  if (measure(clean, size) <= maxWidthPt) {
-    return { sizePt: size, lines: [clean], shrunk: size < sizePt, overflow: false };
-  }
-  const words = clean.split(' ');
-  for (let i = 1; i < words.length; i += 1) {
-    const lines = [words.slice(0, i).join(' '), words.slice(i).join(' ')];
-    if (measure(lines[0], minPt) <= maxWidthPt && measure(lines[1], minPt) <= maxWidthPt) {
-      return { sizePt: minPt, lines, shrunk: true, overflow: false };
-    }
-  }
-  const mid = Math.ceil(words.length / 2);
-  return {
-    sizePt: minPt,
-    lines: [words.slice(0, mid).join(' '), words.slice(mid).join(' ')],
-    shrunk: true,
-    overflow: true,
-  };
+  const fits = measure(clean, size) <= maxWidthPt;
+  return { sizePt: size, lines: [clean], shrunk: size < sizePt, overflow: !fits };
 }
 
 export function mmToPt(mm: number): number {

@@ -37,9 +37,28 @@ export function exportRoutes(): Router {
       const format = req.query.format === 'csv' ? 'csv' : 'xlsx';
       const event = await prisma.event.findUnique({ where: { id: req.params.id } });
       if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      // Filtros de la vista previa (q, type) para que lo exportado coincida.
+      const query =
+        typeof req.query.q === 'string' && req.query.q.trim() !== '' ? req.query.q.trim() : null;
+      const typeFilter =
+        typeof req.query.type === 'string' && req.query.type !== '' ? req.query.type : null;
+      const participantWhere = {
+        eventId: event.id,
+        ...(typeFilter ? { type: typeFilter as never } : {}),
+        ...(query
+          ? {
+              OR: [
+                { firstName: { contains: query } },
+                { lastName: { contains: query } },
+                { ci: { contains: query } },
+                { email: { contains: query } },
+              ],
+            }
+          : {}),
+      };
       if (req.params.kind === 'participants') {
         const participants = await prisma.participant.findMany({
-          where: { eventId: event.id },
+          where: participantWhere,
           orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
         });
         const rows = participants.map((p) => ({
@@ -76,7 +95,7 @@ export function exportRoutes(): Router {
       }
       if (req.params.kind === 'attendance') {
         const attendances = await prisma.attendance.findMany({
-          where: { session: { eventId: event.id }, voidedAt: null },
+          where: { session: { eventId: event.id }, voidedAt: null, participant: participantWhere },
           include: { participant: true, session: true },
           orderBy: [{ session: { startsAt: 'asc' } }, { participant: { lastName: 'asc' } }],
         });

@@ -163,3 +163,10 @@ CUPO_LLENO|BORRADOR|FINALIZADO`) en vista pública y detalle; reabrir con
 51. Volver = `router.back` con referrer mismo-origen y fallback a la lista;
     pestañas en URL (`?tab=`, `?sub=`); Dialog con trampa de foco, Esc y foco
     devuelto; aviso de cambios sin guardar con `beforeunload`.
+
+## Vistas previas (bloque 3)
+
+52. Nombre en una sola línea también en PDF (piso 8 pt, `overflow` en reporte
+    y aviso en editor medido con canvas); exports XLSX/CSV aceptan `q` y
+    `type` para igualar la vista; visor PDF en diálogo con Descargar/Imprimir;
+    reporte matriz con filtros y totales.

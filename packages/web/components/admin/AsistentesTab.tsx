@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PdfPreviewDialog } from '@/components/admin/PdfPreviewDialog';
 
 interface Template {
   id: string;
@@ -26,7 +27,7 @@ interface Participant {
   lastName: string;
 }
 
-async function fetchBlobUrl(path: string): Promise<string> {
+async function fetchPdfBlob(path: string): Promise<Blob> {
   const res = await fetch(apiUrl(path), {
     headers: { Authorization: `Bearer ${getToken() ?? ''}` },
   });
@@ -34,7 +35,11 @@ async function fetchBlobUrl(path: string): Promise<string> {
     const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
     throw new Error(body?.error?.message ?? 'No se pudo exportar');
   }
-  return URL.createObjectURL(await res.blob());
+  return res.blob();
+}
+
+async function fetchBlobUrl(path: string): Promise<string> {
+  return URL.createObjectURL(await fetchPdfBlob(path));
 }
 
 type Scope = 'all' | 'eligible' | 'selected';
@@ -50,6 +55,7 @@ export function AsistentesTab({
   const [scope, setScope] = useState<Scope | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const stats = useQuery({
     queryKey: ['stats', eventId],
@@ -109,20 +115,25 @@ export function AsistentesTab({
     }
   }
 
+  function bulkUrl(): string {
+    let url = `/events/${eventId}/exports/certificates.pdf?roleKind=ASISTENTE&scope=${effectiveScope}`;
+    if (templateId) url += `&templateId=${templateId}`;
+    if (effectiveScope === 'selected') url += `&ids=${selected.join(',')}`;
+    return url;
+  }
+
+  function bulkTotal(): number {
+    if (effectiveScope === 'eligible') return eligible;
+    if (effectiveScope === 'selected') return selected.length;
+    return total;
+  }
+
   async function preview(): Promise<void> {
-    const tpl = templateId || defaultTemplate?.id;
-    if (!tpl) {
-      toast.error('No hay plantilla predeterminada para ASISTENTE');
+    if (effectiveScope === 'selected' && selected.length === 0) {
+      toast.error('Seleccione al menos un inscrito');
       return;
     }
-    try {
-      const objectUrl = await fetchBlobUrl(
-        `/certificate-templates/${tpl}/preview.pdf?sampleName=${encodeURIComponent('Nombre de muestra')}`
-      );
-      window.open(objectUrl, '_blank');
-    } catch {
-      toast.error('No se pudo generar la vista previa');
-    }
+    setShowPreview(true);
   }
 
   if (templates.isSuccess && !defaultTemplate && !templateId) {
@@ -223,6 +234,15 @@ export function AsistentesTab({
           Descargar PDF
         </Button>
       </div>
+      {showPreview ? (
+        <PdfPreviewDialog
+          titulo="Vista previa de certificados"
+          totalPaginas={bulkTotal()}
+          nombreArchivo="certificados-asistentes.pdf"
+          onCargar={() => fetchPdfBlob(bulkUrl())}
+          onCerrar={() => setShowPreview(false)}
+        />
+      ) : null}
       <p className="mt-2 text-sm">
         Siempre genere primero la vista previa de 1 página. Una página por persona, en orden de
         apellido, lista para imprimir seguido.

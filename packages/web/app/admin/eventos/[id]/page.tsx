@@ -13,7 +13,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { formatFecha } from '@/lib/format';
 import { ResumenTab } from '@/components/admin/event-tabs/ResumenTab';
 import { InscripcionTab } from '@/components/admin/event-tabs/InscripcionTab';
-import { AsistenciaTab } from '@/components/admin/event-tabs/AsistenciaTab';
+import { AsistenciaTabConReporte } from '@/components/admin/event-tabs/AsistenciaTab';
 import { DatosTab } from '@/components/admin/event-tabs/DatosTab';
 import { ParticipantsTable } from '@/components/admin/ParticipantsTable';
 
@@ -166,7 +166,7 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
       <div className="mt-4">
         {tab === 'resumen' ? <ResumenTab eventId={id} /> : null}
         {tab === 'inscripcion' ? <InscripcionTab eventId={id} /> : null}
-        {tab === 'asistencia' ? <AsistenciaTab eventId={id} /> : null}
+        {tab === 'asistencia' ? <AsistenciaTabConReporte eventId={id} slug={data.slug} /> : null}
         {tab === 'inscritos' ? (
           <ParticipantsTable
             eventId={id}

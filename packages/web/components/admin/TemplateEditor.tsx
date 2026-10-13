@@ -25,6 +25,31 @@ interface TemplateDetail {
   id: string;
   name: string;
   nameBox: NameBox;
+  widthPx: number;
+  heightPx: number;
+}
+
+const FONT_FAMILY: Record<NameBox['fontKey'], string> = {
+  sans: 'sans-serif',
+  serif: 'serif',
+  script: 'cursive',
+};
+
+// Mismo algoritmo que el PDF (una sola línea, pasos de 0,5 pt, piso 8 pt)
+// aproximado con medida de canvas.
+export function previewFit(
+  sample: string,
+  box: NameBox,
+  imgWidthPx: number,
+  measure: (text: string, px: number, family: string) => number
+): { sizePt: number; overflow: boolean } {
+  const clean = sample.trim().replace(/\s+/g, ' ');
+  const boxPx = (box.wPct / 100) * imgWidthPx;
+  const family = FONT_FAMILY[box.fontKey];
+  let size = box.sizePt;
+  while (size > 8 && measure(clean, (size * 96) / 72, family) > boxPx) size -= 0.5;
+  const fits = measure(clean, (size * 96) / 72, family) <= boxPx;
+  return { sizePt: size, overflow: !fits };
 }
 
 async function fetchBlobUrl(path: string): Promise<string> {
@@ -43,6 +68,7 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
   const [box, setBox] = useState<NameBox | null>(null);
   const [sample, setSample] = useState('María Eugenia Santiváñez Rocha');
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [imgWidth, setImgWidth] = useState(0);
   const [dirty, setDirty] = useState(false);
   const initialBox = useRef<NameBox | null>(null);
   useUnsavedChanges(dirty);
@@ -63,6 +89,7 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
         );
         if (found) {
           setBox(found.nameBox);
+          setImgWidth(found.widthPx);
           initialBox.current = found.nameBox;
           setDirty(false);
         }
@@ -269,6 +296,37 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
           Vista previa PDF
         </Button>
       </div>
+      <FitNotice sample={sample} box={box} imgWidthPx={imgWidth} />
     </div>
+  );
+}
+
+function FitNotice({
+  sample,
+  box,
+  imgWidthPx,
+}: {
+  sample: string;
+  box: NameBox;
+  imgWidthPx: number;
+}) {
+  if (imgWidthPx === 0) return null;
+  const canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+  const ctx = canvas?.getContext('2d');
+  if (!ctx) return null;
+  const fit = previewFit(sample, box, imgWidthPx, (text, px, family) => {
+    ctx.font = `${px}px ${family}`;
+    return ctx.measureText(text).width;
+  });
+  if (!fit.overflow && fit.sizePt >= box.sizePt) return null;
+  return (
+    <p
+      role="status"
+      className="mt-2 rounded-[8px] border border-[#C9A227] bg-[#FAF3E3] p-2 text-sm"
+    >
+      {fit.overflow
+        ? 'Aviso: el nombre no cabe ni al mínimo (8 pt); se imprimirá así y saldrá en el reporte.'
+        : `Aviso: el nombre se imprimirá reducido a ${fit.sizePt.toFixed(1)} pt.`}
+    </p>
   );
 }

@@ -129,6 +129,29 @@ describe('Pestañas del evento', () => {
     expect(((await reopened.json()) as { status: string }).status).toBe('ABIERTO');
   });
 
+  it('exportación respeta el filtro de tipo', async () => {
+    const prisma = getPrisma();
+    await prisma.participant.create({
+      data: {
+        eventId,
+        firstName: 'Pedro',
+        lastName: 'Soto',
+        ci: `TABSF${String(stamp).slice(-9)}`,
+        type: 'ESTUDIANTE',
+        qrToken: `tabsf-qr-${stamp}`,
+        dataConsentAt: new Date(),
+      },
+    });
+    const res = await api(
+      `/api/v1/events/${eventId}/exports/participants?format=csv&type=ESTUDIANTE`,
+      adminToken
+    );
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toMatch(/TABSF/);
+    expect(body).not.toMatch(/TABS[0-9]/);
+  });
+
   it('STAFF ve la lista de quienes marcaron', async () => {
     const prisma = getPrisma();
     const participant = await prisma.participant.create({
