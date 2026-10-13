@@ -226,6 +226,8 @@ model CertificateTemplate {
   pageHeightMm  Float    @map("page_height_mm")
   nameBox       Json     @map("name_box")
   isDefault     Boolean  @map("is_default") @default(false)
+  // Compartir entre eventos: solo ADMIN puede marcar/importar.
+  isShared      Boolean  @map("is_shared") @default(false)
   // Índice único parcial (una default por evento+rol):
   // CREATE UNIQUE INDEX ... WHERE is_default = true -> ver migration.sql manual
   createdAt     DateTime @map("created_at") @db.Timestamptz() @default(now())

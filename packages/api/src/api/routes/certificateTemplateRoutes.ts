@@ -34,6 +34,7 @@ const nameBoxSchema = z.object({
 const templateUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   nameBox: nameBoxSchema.optional(),
+  isShared: z.boolean().optional(),
 });
 
 async function validateTemplateImage(
@@ -221,6 +222,81 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
       const buffer = await privateStorage.read(template.filePath);
       res.header('Content-Type', 'image/jpeg');
       res.send(buffer);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Plantillas compartidas por otros eventos (solo ADMIN; STAFF no ve otros eventos).
+  router.get('/certificate-templates/shared', admin, async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const items = await prisma.certificateTemplate.findMany({
+        where: { isShared: true },
+        include: { event: { select: { id: true, title: true, slug: true } } },
+        orderBy: { createdAt: 'asc' },
+      });
+      res.json({ data: items });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Importar: crea una COPIA independiente en el evento actual (misma imagen
+  // y caja, sin heredar is_default). Solo plantillas marcadas como compartidas.
+  router.post(
+    '/events/:eventId/certificate-templates/import',
+    admin,
+    validateBody(z.object({ sourceTemplateId: z.string().uuid() })),
+    async (req, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const source = await prisma.certificateTemplate.findUnique({
+          where: { id: req.body.sourceTemplateId },
+        });
+        if (!source || !source.isShared || source.eventId === req.params.eventId) {
+          throw new DomainError('NOT_FOUND', 'Plantilla no encontrada o no compartida');
+        }
+        const event = await prisma.event.findUnique({ where: { id: req.params.eventId } });
+        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        const copy = await prisma.certificateTemplate.create({
+          data: {
+            eventId: event.id,
+            roleKind: source.roleKind,
+            name: source.name,
+            filePath: source.filePath,
+            widthPx: source.widthPx,
+            heightPx: source.heightPx,
+            pageWidthMm: source.pageWidthMm,
+            pageHeightMm: source.pageHeightMm,
+            nameBox: source.nameBox ?? {},
+            isDefault: false,
+            isShared: false,
+          },
+        });
+        res.status(201).json(copy);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // Eliminar: no borra el archivo si otra plantilla aún lo referencia.
+  router.delete('/certificate-templates/:id', admin, async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const template = await prisma.certificateTemplate.findUnique({
+        where: { id: req.params.id },
+      });
+      if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
+      await prisma.certificateTemplate.delete({ where: { id: template.id } });
+      const remaining = await prisma.certificateTemplate.count({
+        where: { filePath: template.filePath },
+      });
+      if (remaining === 0) {
+        await privateStorage.remove(template.filePath).catch(() => undefined);
+      }
+      res.status(204).send();
     } catch (err) {
       next(err);
     }

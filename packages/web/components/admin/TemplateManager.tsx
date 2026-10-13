@@ -1,20 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { api, apiErrorMessage } from '@/lib/api';
+import { api, apiErrorMessage, apiUrl, getSessionUser, getToken } from '@/lib/api';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { FileDropzone } from '@/components/ui/FileDropzone';
 import { Input } from '@/components/ui/Input';
+import { EmptyState } from '@/components/ui/Table';
+import { Switch } from '@/components/ui/Switch';
 import { TemplateEditor } from '@/components/admin/TemplateEditor';
+import { ImportTemplateDialog } from '@/components/admin/ImportTemplateDialog';
 
 export interface Template {
   id: string;
   roleKind: string;
   name: string;
   isDefault: boolean;
+  isShared: boolean;
+  filePath: string;
 }
 
 const DEFAULT_BOX = {
@@ -37,6 +45,9 @@ export function TemplateManager({ eventId }: { eventId: string }) {
   const [name, setName] = useState('');
   const [roleKind, setRoleKind] = useState('ASISTENTE');
   const [progress, setProgress] = useState<number | null>(null);
+  const [toDelete, setToDelete] = useState<Template | null>(null);
+  const [importing, setImporting] = useState(false);
+  const isAdmin = getSessionUser()?.role === 'ADMIN';
 
   const { data, isLoading } = useQuery({
     queryKey: ['templates', eventId],
@@ -86,7 +97,31 @@ export function TemplateManager({ eventId }: { eventId: string }) {
     await queryClient.invalidateQueries({ queryKey: ['templates', eventId] });
   }
 
+  async function toggleShared(template: Template, value: boolean): Promise<void> {
+    try {
+      await api.patch(`/certificate-templates/${template.id}`, { isShared: value });
+      await queryClient.invalidateQueries({ queryKey: ['templates', eventId] });
+      toast.success(value ? 'Disponible para otros eventos' : 'Ya no se comparte');
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
+    }
+  }
+
+  async function removeTemplate(template: Template): Promise<void> {
+    try {
+      await api.delete(`/certificate-templates/${template.id}`);
+      await queryClient.invalidateQueries({ queryKey: ['templates', eventId] });
+      if (selected === template.id) setSelected(null);
+      toast.success('Plantilla eliminada');
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
+    } finally {
+      setToDelete(null);
+    }
+  }
+
   if (isLoading) return <p>Cargando plantillas…</p>;
+  const items = data?.data ?? [];
   return (
     <div>
       <h2 className="font-serif text-lg">Subir plantilla (PNG/JPG, máx. 15 MB)</h2>
@@ -124,32 +159,92 @@ export function TemplateManager({ eventId }: { eventId: string }) {
           Subiendo… {progress}%
         </p>
       ) : null}
-      <ul className="mt-4 space-y-2">
-        {(data?.data ?? []).map((t) => (
-          <li key={t.id} className="flex items-center gap-3 rounded border p-2">
-            <span className="text-sm">
-              {t.name} ({t.roleKind}){t.isDefault ? ' — predeterminada' : ''}
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelected(t.id)}
-              className="rounded border px-2 py-1 text-sm"
-            >
-              Editar caja
-            </button>
-            {!t.isDefault ? (
-              <button
-                type="button"
-                onClick={() => void setDefault(t.id)}
-                className="rounded border px-2 py-1 text-sm"
-              >
-                Predeterminada
-              </button>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {isAdmin ? (
+          <Button variant="secundario" onClick={() => setImporting(true)}>
+            Importar de otro evento
+          </Button>
+        ) : null}
+      </div>
+      {items.length === 0 ? (
+        <div className="mt-4">
+          <EmptyState mensaje="Este evento aún no tiene plantillas. Cada evento tiene las suyas: súbalas aquí o importe copias de otro evento." />
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {items.map((t) => (
+            <Card key={t.id}>
+              <TemplateThumb templateId={t.id} name={t.name} />
+              <p className="mt-2 text-sm font-medium">
+                {t.name} ({t.roleKind})
+              </p>
+              <p className="mt-1 flex flex-wrap gap-2">
+                {t.isDefault ? <Badge tono="ok">Predeterminada</Badge> : null}
+                {t.isShared ? <Badge tono="aviso">Compartida</Badge> : null}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button variant="secundario" onClick={() => setSelected(t.id)}>
+                  Editar caja
+                </Button>
+                {!t.isDefault ? (
+                  <Button variant="secundario" onClick={() => void setDefault(t.id)}>
+                    Predeterminada
+                  </Button>
+                ) : null}
+                {isAdmin ? (
+                  <Button variant="secundario" onClick={() => setToDelete(t)}>
+                    Eliminar
+                  </Button>
+                ) : null}
+              </div>
+              {isAdmin ? (
+                <div className="mt-2">
+                  <Switch
+                    id={`shared-${t.id}`}
+                    etiqueta="Disponible para otros eventos"
+                    checked={t.isShared}
+                    onChange={(value) => void toggleShared(t, value)}
+                  />
+                </div>
+              ) : null}
+            </Card>
+          ))}
+        </div>
+      )}
       {selected ? <TemplateEditor templateId={selected} eventId={eventId} /> : null}
+      {toDelete ? (
+        <ConfirmDialog
+          titulo="Eliminar plantilla"
+          mensaje={`¿Eliminar "${toDelete.name}"? Si otra plantilla usa la misma imagen, el archivo se conserva.`}
+          confirmar="Eliminar"
+          onConfirmar={() => void removeTemplate(toDelete)}
+          onCerrar={() => setToDelete(null)}
+        />
+      ) : null}
+      {importing ? (
+        <ImportTemplateDialog eventId={eventId} onClose={() => setImporting(false)} />
+      ) : null}
     </div>
   );
+}
+
+function TemplateThumb({ templateId, name }: { templateId: string; name: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    fetch(apiUrl(`/certificate-templates/${templateId}/file`), {
+      headers: { Authorization: `Bearer ${getToken() ?? ''}` },
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error();
+        objectUrl = URL.createObjectURL(await res.blob());
+        setUrl(objectUrl);
+      })
+      .catch(() => undefined);
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [templateId]);
+  if (!url) return <p className="text-sm text-[#5B6677]">Cargando miniatura…</p>;
+  return <img src={url} alt={`Miniatura de ${name}`} className="max-h-32 rounded border" />;
 }

@@ -131,3 +131,17 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 45. Limitación conocida: alguien presente podría teclear el CI de otro
     inscrito; se acepta para el evento (mitiga: ventana de 45 s + registro
     abierto solo durante la sesión + auditoría open/close).
+
+## Presentación (sistema visual + compartir)
+
+46. Tokens en `globals.css` (`@theme` Tailwind v4): navy #0A2A5E primario,
+    #1F4E96 hover/enlaces, dorado #C9A227 solo acentos, fondo #F5F6F9,
+    borde #D9DEE7, texto #1B2433/#5B6677; semánticos con fondos suaves;
+    radio 8, sombra suave; Source Serif 4 + Inter vía next/font.
+47. Compartir plantillas: `is_shared` opt-in por tarjeta (solo ADMIN);
+    importar crea COPIA independiente (misma imagen, sin `is_default`);
+    borrar conserva el archivo si otra fila lo referencia; STAFF no ve la
+    función (ni lista otros eventos en el diálogo).
+48. Causa raíz "Jornada �nica": el `í` llegó al API ya corrupto como U+FFFD
+    (cliente latin1 contra parser UTF-8); la BD solo guardó el reemplazo.
+    Fila corregida a "Jornada única"; test de ida y vuelta con tildes/ñ.

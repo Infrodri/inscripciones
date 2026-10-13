@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Fragment, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api, apiErrorMessage, getSessionUser, getToken } from '@/lib/api';
+import { api, apiErrorMessage, apiUrl, getSessionUser, getToken } from '@/lib/api';
 import { formatFechaHora } from '@/lib/format';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -42,7 +42,7 @@ interface AttendanceRow {
 }
 
 async function download(url: string, filename: string): Promise<void> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
+  const res = await fetch(apiUrl(url), {
     headers: { Authorization: `Bearer ${getToken() ?? ''}` },
   });
   if (!res.ok) {
@@ -229,10 +229,9 @@ export function ParticipantsTable({
 
   async function exportAttendanceList(): Promise<void> {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/events/${eventId}/exports/attendance-list.pdf`,
-        { headers: { Authorization: `Bearer ${getToken() ?? ''}` } }
-      );
+      const res = await fetch(apiUrl(`/events/${eventId}/exports/attendance-list.pdf`), {
+        headers: { Authorization: `Bearer ${getToken() ?? ''}` },
+      });
       if (!res.ok) throw new Error('No se pudo exportar');
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
