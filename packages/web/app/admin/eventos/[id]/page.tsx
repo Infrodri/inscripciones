@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { api, apiErrorMessage } from '@/lib/api';
+import { api, apiErrorMessage, getSessionUser } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Tabs } from '@/components/ui/Tabs';
@@ -99,6 +99,22 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
+  async function finalize(): Promise<void> {
+    try {
+      if (
+        !window.confirm(
+          '¿Finalizar el evento? Se cierran inscripciones y registros de sala. Se conservan los datos para certificados.'
+        )
+      )
+        return;
+      await api.post(`/events/${id}/finalize`);
+      await queryClient.invalidateQueries({ queryKey: ['event', id] });
+      toast.success('Evento finalizado');
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
+  }
+
   if (isLoading) return <p>Cargando evento…</p>;
   if (isError || !data)
     return <p>No se pudo cargar el evento: {isError ? apiErrorMessage(error) : ''}</p>;
@@ -120,11 +136,25 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
         {data.status === 'BORRADOR' ? (
           <Button onClick={() => void publish()}>Publicar</Button>
         ) : data.status === 'ABIERTO' ? (
-          <Button variant="secundario" onClick={() => void close()}>
-            Cerrar inscripciones
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secundario" onClick={() => void close()}>
+              Cerrar inscripciones
+            </Button>
+            {getSessionUser()?.role === 'ADMIN' ? (
+              <Button variant="peligro" onClick={() => void finalize()}>
+                Finalizar evento
+              </Button>
+            ) : null}
+          </div>
         ) : data.status === 'CERRADO' ? (
-          <Button onClick={() => void reopen()}>Reabrir</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => void reopen()}>Reabrir</Button>
+            {getSessionUser()?.role === 'ADMIN' ? (
+              <Button variant="peligro" onClick={() => void finalize()}>
+                Finalizar evento
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
       <div className="mt-4">

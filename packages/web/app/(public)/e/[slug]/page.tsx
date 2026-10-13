@@ -33,6 +33,9 @@ interface PublicEvent {
   speakers: Array<{ id: string; fullName: string; titleProfession: string | null; role: string }>;
   spotsLeft: number | null;
   registrationOpen: boolean;
+  registrationReason: string;
+  registrationDeadline: string | null;
+  capacity: number | null;
   issuesCertificate: boolean;
 }
 
@@ -124,10 +127,21 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           Inscribirme{event.spotsLeft !== null ? ` (${event.spotsLeft} cupos)` : ''}
         </Link>
       ) : (
-        <p className="mt-6 rounded-[8px] border border-[#D9DEE7] bg-white p-4">
-          Las inscripciones están cerradas por el momento. Si ya te inscribiste, guarda tu código
-          QR: lo necesitarás en la puerta.
-        </p>
+        <div className="mt-6 rounded-[8px] border border-[#D9DEE7] bg-white p-4">
+          <p className="font-medium">
+            {event.registrationReason === 'CERRADA_FECHA' && event.registrationDeadline
+              ? `Las inscripciones cerraron el ${formatFechaHora(event.registrationDeadline)}.`
+              : event.registrationReason === 'CUPO_LLENO'
+                ? 'Se llenó el cupo del evento.'
+                : event.registrationReason === 'CERRADAS_MANUAL'
+                  ? 'Las inscripciones están cerradas por los organizadores.'
+                  : 'Las inscripciones están cerradas por el momento.'}
+          </p>
+          <p className="mt-1 text-sm">
+            El afiche y los datos del evento siguen aquí abajo. Si ya te inscribiste, guarda tu
+            código QR: lo necesitarás en la puerta.
+          </p>
+        </div>
       )}
       <div className="mt-6">
         <CopyBroadcastButton slug={event.slug} />

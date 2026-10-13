@@ -99,9 +99,16 @@ export default function AutoCheckinPage({ params }: { params: Promise<{ token: s
           <p className="font-medium">{info.title}</p>
           <p className="mt-1 text-sm">{formatLaPaz(info.startsAt)}</p>
           {!info.open ? (
-            <p role="alert" className="mt-3 rounded border border-[#C9A227] p-2 text-sm">
-              El registro por QR aún no está abierto. Espere la indicación del salón.
-            </p>
+            <div
+              role="alert"
+              className="mt-3 rounded-[8px] border border-[#C9A227] bg-[#FAF3E3] p-3"
+            >
+              <p className="font-medium">El registro por QR está cerrado por ahora.</p>
+              <p className="mt-1 text-sm">
+                Quédese en esta pantalla: el encargado lo abrirá en cualquier momento y podrá
+                registrarse sin recargar.
+              </p>
+            </div>
           ) : null}
           <form onSubmit={(e) => void submit(e)} className="mt-4 space-y-3">
             <div>

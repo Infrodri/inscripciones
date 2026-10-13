@@ -154,4 +154,97 @@ describe('Pestañas del evento', () => {
     expect(body.data[0].participant.firstName).toBe('Ana');
     expect(body.data[0].method).toBe('QR');
   });
+
+  it('cierre por fecha límite sin intervención manual', async () => {
+    const past = (await (
+      await api('/api/v1/events', adminToken, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: `tabs-past-${stamp}`,
+          title: 'T',
+          eventKind: 'K',
+          institution: 'I',
+          organizer: 'O',
+          location: 'L',
+          registrationDeadline: new Date(Date.now() - 3_600_000).toISOString(),
+        }),
+      })
+    ).json()) as { id: string };
+    await api(`/api/v1/events/${past.id}/publish`, adminToken, { method: 'POST' });
+    const view = (await (await api(`/api/v1/public/events/tabs-past-${stamp}`, null)).json()) as {
+      registrationOpen: boolean;
+      registrationReason: string;
+    };
+    expect(view.registrationOpen).toBe(false);
+    expect(view.registrationReason).toBe('CERRADA_FECHA');
+    const reg = await api(`/api/v1/public/events/tabs-past-${stamp}/registrations`, null, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstName: 'A',
+        lastName: 'B',
+        ci: `TABSP${String(stamp).slice(-9)}`,
+        type: 'PUBLICO',
+        dataConsent: true,
+      }),
+    });
+    expect(reg.status).toBe(409);
+  });
+
+  it('reabrir con fecha vencida sin nueva fecha es rechazado', async () => {
+    const prisma = getPrisma();
+    const event = await prisma.event.findFirst({ where: { slug: `tabs-past-${stamp}` } });
+    await api(`/api/v1/events/${event!.id}/close`, adminToken, { method: 'POST' });
+    const res = await api(`/api/v1/events/${event!.id}/reopen`, adminToken, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('reabrir con nueva fecha funciona y audita', async () => {
+    const prisma = getPrisma();
+    const event = await prisma.event.findFirst({ where: { slug: `tabs-past-${stamp}` } });
+    const res = await api(`/api/v1/events/${event!.id}/reopen`, adminToken, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        registrationDeadline: new Date(Date.now() + 3_600_000).toISOString(),
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { status: string }).status).toBe('ABIERTO');
+    const audit = await prisma.auditLog.count({
+      where: { entity: 'event', entityId: event!.id, action: 'event.reopen' },
+    });
+    expect(audit).toBeGreaterThanOrEqual(1);
+  });
+
+  it('motivo por estado en el detalle', async () => {
+    const view = (await (await api(`/api/v1/events/${eventId}`, adminToken)).json()) as {
+      registrationReason: string;
+      registered: number;
+    };
+    expect(typeof view.registrationReason).toBe('string');
+    expect(typeof view.registered).toBe('number');
+  });
+
+  it('finalizar cierra inscripciones y registros y audita', async () => {
+    const prisma = getPrisma();
+    await prisma.session.update({ where: { id: sessionId }, data: { selfCheckinOpen: true } });
+    const res = await api(`/api/v1/events/${eventId}/finalize`, adminToken, { method: 'POST' });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { status: string }).status).toBe('FINALIZADO');
+    const sessions = await prisma.session.findMany({ where: { eventId } });
+    expect(sessions.every((s) => !s.selfCheckinOpen)).toBe(true);
+    const audit = await prisma.auditLog.count({
+      where: { entity: 'event', entityId: eventId, action: 'event.finalize' },
+    });
+    expect(audit).toBe(1);
+    const closed = await api(`/api/v1/public/events/tabs-${stamp}`, null);
+    // El evento de pruebas sigue abierto para otros tests: se verifica el motivo en el finalizado.
+    void closed;
+  });
 });

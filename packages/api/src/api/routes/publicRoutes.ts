@@ -11,6 +11,7 @@ import {
   assertRegistrationOpen,
   buildParticipantRow,
 } from '../../application/registrationService.js';
+import { registrationReason } from '../../application/registrationState.js';
 import { buildConfirmationMail } from '../../application/confirmationMail.js';
 import { bannerPublicUrl, qrPngUrl, type PublicUrlEnv } from '../../shared/urls.js';
 import { logger } from '../../shared/logger.js';
@@ -62,6 +63,16 @@ function publicEventView(event: Record<string, unknown>, env: PublicUrlEnv, regi
       event['status'] === 'ABIERTO' &&
       (!event['registrationDeadline'] ||
         new Date() <= new Date(event['registrationDeadline'] as string)),
+    registrationReason: registrationReason(
+      {
+        status: event['status'] as string,
+        capacity,
+        registrationDeadline: event['registrationDeadline']
+          ? new Date(event['registrationDeadline'] as string)
+          : null,
+      },
+      registered
+    ),
   };
 }
 

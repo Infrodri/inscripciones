@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
 import { validateEventInput } from '../../application/eventService.js';
+import { registrationReason } from '../../application/registrationState.js';
 import { validateBody } from '../middlewares/validateMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
@@ -112,7 +113,19 @@ export function eventRoutes(publicStorage: FileStorage): Router {
       const prisma = getPrisma();
       const event = await prisma.event.findUnique({ where: { id: req.params.id } });
       if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-      res.json(event);
+      const registered = await prisma.participant.count({ where: { eventId: event.id } });
+      res.json({
+        ...event,
+        registered,
+        registrationReason: registrationReason(
+          {
+            status: event.status,
+            capacity: event.capacity,
+            registrationDeadline: event.registrationDeadline,
+          },
+          registered
+        ),
+      });
     } catch (err) {
       next(err);
     }
@@ -153,12 +166,23 @@ export function eventRoutes(publicStorage: FileStorage): Router {
     }
   );
 
-  router.post('/:id/publish', requireRole('ADMIN'), async (req, res, next) => {
+  router.post('/:id/publish', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
+      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
       const updated = await prisma.event.update({
-        where: { id: req.params.id },
+        where: { id: event.id },
         data: { status: 'ABIERTO' },
+      });
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user?.id,
+          action: 'event.publish',
+          entity: 'event',
+          entityId: event.id,
+          metadata: { from: event.status, to: 'ABIERTO' },
+        },
       });
       res.json(updated);
     } catch (err) {
@@ -168,7 +192,7 @@ export function eventRoutes(publicStorage: FileStorage): Router {
 
   // Cerrar inscripciones (solo desde ABIERTO) y reabrir (solo desde CERRADO).
   // No tocan BORRADOR ni FINALIZADO.
-  router.post('/:id/close', requireRole('ADMIN'), async (req, res, next) => {
+  router.post('/:id/close', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
       const event = await prisma.event.findUnique({ where: { id: req.params.id } });
@@ -180,23 +204,111 @@ export function eventRoutes(publicStorage: FileStorage): Router {
         where: { id: event.id },
         data: { status: 'CERRADO' },
       });
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user?.id,
+          action: 'event.close',
+          entity: 'event',
+          entityId: event.id,
+          metadata: { from: 'ABIERTO', to: 'CERRADO' },
+        },
+      });
       res.json(updated);
     } catch (err) {
       next(err);
     }
   });
 
-  router.post('/:id/reopen', requireRole('ADMIN'), async (req, res, next) => {
+  // Reabrir exige nueva fecha límite (o quitarla) si la actual ya venció.
+  router.post(
+    '/:id/reopen',
+    requireRole('ADMIN'),
+    validateBody(
+      z.object({
+        registrationDeadline: z.string().datetime({ offset: true }).nullable().optional(),
+        removeDeadline: z.boolean().optional(),
+      })
+    ),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        if (event.status !== 'CERRADO') {
+          throw new DomainError('VALIDATION_ERROR', 'Solo se puede reabrir un evento cerrado');
+        }
+        const expired = event.registrationDeadline && new Date() > event.registrationDeadline;
+        let deadline: Date | null | undefined;
+        if (expired) {
+          if (req.body.removeDeadline) {
+            deadline = null;
+          } else if (req.body.registrationDeadline) {
+            deadline = new Date(req.body.registrationDeadline);
+            if (deadline <= new Date()) {
+              throw new DomainError('VALIDATION_ERROR', 'La nueva fecha límite debe ser futura');
+            }
+          } else {
+            throw new DomainError(
+              'VALIDATION_ERROR',
+              'La fecha límite venció: fije una nueva o márquela sin fecha límite'
+            );
+          }
+        } else if (req.body.registrationDeadline !== undefined) {
+          deadline =
+            req.body.registrationDeadline === null ? null : new Date(req.body.registrationDeadline);
+        }
+        const updated = await prisma.event.update({
+          where: { id: event.id },
+          data: {
+            status: 'ABIERTO',
+            ...(deadline !== undefined ? { registrationDeadline: deadline } : {}),
+          },
+        });
+        await prisma.auditLog.create({
+          data: {
+            userId: req.user?.id,
+            action: 'event.reopen',
+            entity: 'event',
+            entityId: event.id,
+            metadata: { from: 'CERRADO', to: 'ABIERTO' },
+          },
+        });
+        res.json(updated);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // Finalizar (ADMIN): cierra inscripciones y todos los registros de sala.
+  // Conserva todo para certificados.
+  router.post('/:id/finalize', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
-      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+      const event = await prisma.event.findUnique({
+        where: { id: req.params.id },
+        include: { sessions: { select: { id: true } } },
+      });
       if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-      if (event.status !== 'CERRADO') {
-        throw new DomainError('VALIDATION_ERROR', 'Solo se puede reabrir un evento cerrado');
+      if (event.status === 'FINALIZADO') {
+        throw new DomainError('VALIDATION_ERROR', 'El evento ya está finalizado');
       }
       const updated = await prisma.event.update({
         where: { id: event.id },
-        data: { status: 'ABIERTO' },
+        data: { status: 'FINALIZADO' },
+      });
+      await prisma.session.updateMany({
+        where: { eventId: event.id },
+        data: { selfCheckinOpen: false },
+      });
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user?.id,
+          action: 'event.finalize',
+          entity: 'event',
+          entityId: event.id,
+          metadata: { from: event.status, to: 'FINALIZADO' },
+        },
       });
       res.json(updated);
     } catch (err) {

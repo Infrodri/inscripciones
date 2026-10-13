@@ -150,3 +150,10 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 
 49. `require_*` en el formulario = exigir (siempre visibles); valor por
     defecto false mantiene el comportamiento anterior.
+
+## Control manual (bloque 1)
+
+50. Motivo de inscripción calculado (`ABIERTAS|CERRADAS_MANUAL|CERRADA_FECHA|
+CUPO_LLENO|BORRADOR|FINALIZADO`) en vista pública y detalle; reabrir con
+    fecha vencida exige nueva fecha o quitarla (API + UI); publicar/cerrar/
+    reabrir/finalizar auditan anterior→nuevo; finalizar cierra registros QR.
