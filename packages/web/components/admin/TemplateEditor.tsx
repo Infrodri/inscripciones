@@ -6,6 +6,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
+import { useUnsavedChanges } from '@/components/ui/Dialog';
 
 interface NameBox {
   xPct: number;
@@ -42,6 +43,9 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
   const [box, setBox] = useState<NameBox | null>(null);
   const [sample, setSample] = useState('María Eugenia Santiváñez Rocha');
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const initialBox = useRef<NameBox | null>(null);
+  useUnsavedChanges(dirty);
 
   useEffect(() => {
     let url: string | null = null;
@@ -57,13 +61,22 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
         const found = ((res.data as { data: TemplateDetail[] }).data ?? []).find(
           (t) => t.id === templateId
         );
-        if (found) setBox(found.nameBox);
+        if (found) {
+          setBox(found.nameBox);
+          initialBox.current = found.nameBox;
+          setDirty(false);
+        }
       })
       .catch(() => undefined);
     return () => {
       if (url) URL.revokeObjectURL(url);
     };
   }, [templateId, eventId]);
+
+  useEffect(() => {
+    if (!box || !initialBox.current) return;
+    setDirty(JSON.stringify(box) !== JSON.stringify(initialBox.current));
+  }, [box]);
 
   function framePct(clientX: number, clientY: number): { x: number; y: number } {
     const rect = frameRef.current?.getBoundingClientRect();
@@ -79,6 +92,8 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
     try {
       await api.patch(`/certificate-templates/${templateId}`, { nameBox: box });
       await queryClient.invalidateQueries({ queryKey: ['templates', eventId] });
+      initialBox.current = box;
+      setDirty(false);
       toast.success('Caja guardada');
     } catch (error) {
       if (!axios.isAxiosError(error) || error.response?.status !== 401)

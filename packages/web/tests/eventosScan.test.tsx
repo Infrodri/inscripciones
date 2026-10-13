@@ -10,6 +10,12 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return { ...original, api: { get: vi.fn(), post: vi.fn() } };
 });
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn(), back: vi.fn(), push: vi.fn() }),
+  usePathname: () => '/admin/eventos',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 const mockedGet = () => api.get as unknown as ReturnType<typeof vi.fn>;
 
 function client(): QueryClient {

@@ -157,3 +157,9 @@ se decide con los defaults de la sección 3, se anota aquí y se sigue.
 CUPO_LLENO|BORRADOR|FINALIZADO`) en vista pública y detalle; reabrir con
     fecha vencida exige nueva fecha o quitarla (API + UI); publicar/cerrar/
     reabrir/finalizar auditan anterior→nuevo; finalizar cierra registros QR.
+
+## Navegación (bloque 2)
+
+51. Volver = `router.back` con referrer mismo-origen y fallback a la lista;
+    pestañas en URL (`?tab=`, `?sub=`); Dialog con trampa de foco, Esc y foco
+    devuelto; aviso de cambios sin guardar con `beforeunload`.

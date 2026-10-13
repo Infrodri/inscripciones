@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { api, apiErrorMessage, getSessionUser } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/ui/Table';
 import { Tabs } from '@/components/ui/Tabs';
 import { formatFecha } from '@/lib/format';
 import { ResumenTab } from '@/components/admin/event-tabs/ResumenTab';
@@ -125,38 +126,40 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="font-serif text-2xl text-[#0A2A5E]">{data.title}</h1>
-          <p className="mt-1 text-sm text-[#5B6677]">
-            <Badge tono={data.status}>{data.status}</Badge> {data.location}
-            {firstSession ? ` · desde ${formatFecha(firstSession.startsAt)}` : ''}
-          </p>
-        </div>
-        {data.status === 'BORRADOR' ? (
-          <Button onClick={() => void publish()}>Publicar</Button>
-        ) : data.status === 'ABIERTO' ? (
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secundario" onClick={() => void close()}>
-              Cerrar inscripciones
-            </Button>
-            {getSessionUser()?.role === 'ADMIN' ? (
-              <Button variant="peligro" onClick={() => void finalize()}>
-                Finalizar evento
+      <PageHeader
+        titulo={data.title}
+        migas={[{ etiqueta: 'Eventos', href: '/admin/eventos' }, { etiqueta: data.title }]}
+        volverA="/admin/eventos"
+        accion={
+          data.status === 'BORRADOR' ? (
+            <Button onClick={() => void publish()}>Publicar</Button>
+          ) : data.status === 'ABIERTO' ? (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secundario" onClick={() => void close()}>
+                Cerrar inscripciones
               </Button>
-            ) : null}
-          </div>
-        ) : data.status === 'CERRADO' ? (
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => void reopen()}>Reabrir</Button>
-            {getSessionUser()?.role === 'ADMIN' ? (
-              <Button variant="peligro" onClick={() => void finalize()}>
-                Finalizar evento
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+              {getSessionUser()?.role === 'ADMIN' ? (
+                <Button variant="peligro" onClick={() => void finalize()}>
+                  Finalizar evento
+                </Button>
+              ) : null}
+            </div>
+          ) : data.status === 'CERRADO' ? (
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => void reopen()}>Reabrir</Button>
+              {getSessionUser()?.role === 'ADMIN' ? (
+                <Button variant="peligro" onClick={() => void finalize()}>
+                  Finalizar evento
+                </Button>
+              ) : null}
+            </div>
+          ) : undefined
+        }
+      />
+      <p className="mt-1 text-sm text-[#5B6677]">
+        <Badge tono={data.status}>{data.status}</Badge> {data.location}
+        {firstSession ? ` · desde ${formatFecha(firstSession.startsAt)}` : ''}
+      </p>
       <div className="mt-4">
         <Tabs tabs={TABS} activa={tab} onChange={goTab} />
       </div>

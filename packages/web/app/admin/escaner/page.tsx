@@ -54,7 +54,7 @@ export default function EscanerPage() {
   if (!data || data.length === 0)
     return (
       <div>
-        <PageHeader titulo="Escáner" />
+        <PageHeader titulo="Escáner" migas={[{ etiqueta: 'Escáner' }]} />
         <div className="mt-4">
           <EmptyState mensaje="Aún no hay eventos." />
         </div>
@@ -63,7 +63,7 @@ export default function EscanerPage() {
 
   return (
     <div>
-      <PageHeader titulo="Escáner" />
+      <PageHeader titulo="Escáner" migas={[{ etiqueta: 'Escáner' }]} />
       <div className="mt-4 space-y-4">
         {data.map((event) => (
           <Card key={event.id}>

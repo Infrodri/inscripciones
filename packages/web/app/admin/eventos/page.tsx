@@ -89,7 +89,7 @@ export default function EventosPage() {
   if (!data || data.data.length === 0) {
     return (
       <div>
-        <PageHeader titulo="Eventos" />
+        <PageHeader titulo="Eventos" migas={[{ etiqueta: 'Eventos' }]} />
         <div className="mt-4">
           <EmptyState
             mensaje="Aún no hay eventos. Cree el primero."

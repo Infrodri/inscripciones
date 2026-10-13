@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, getToken } from '@/lib/api';
+import { PageHeader } from '@/components/ui/Table';
 
 // Pantalla para proyectar: QR enorme que se regenera cada 45 s sin recargar.
 export default function ProyectarPage({ params }: { params: Promise<{ sessionId: string }> }) {
@@ -71,7 +72,7 @@ export default function ProyectarPage({ params }: { params: Promise<{ sessionId:
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center p-6 text-center">
-      <h1 className="font-serif text-2xl text-[#0A2A5E]">Registro por QR</h1>
+      <PageHeader titulo="Registro por QR" volverA={`/scan/${sessionId}`} />
       {qrUrl ? (
         <img src={qrUrl} alt="QR de registro" className="mt-4 w-full max-w-md" />
       ) : (

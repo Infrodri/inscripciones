@@ -45,7 +45,7 @@ export default function UsuariosPage() {
 
   return (
     <div className="max-w-xl">
-      <PageHeader titulo="Usuarios" />
+      <PageHeader titulo="Usuarios" migas={[{ etiqueta: 'Usuarios' }]} />
       {isLoading ? <p>Cargando…</p> : null}
       {isError ? <p>No se pudieron cargar los usuarios.</p> : null}
       <ul className="mt-4 space-y-1">

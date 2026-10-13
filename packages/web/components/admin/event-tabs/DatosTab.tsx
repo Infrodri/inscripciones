@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { api, apiErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useUnsavedChanges } from '@/components/ui/Dialog';
 import { EventBanner } from '@/components/admin/EventBanner';
 import { EventCollections } from '@/components/admin/EventCollections';
 
@@ -70,9 +71,12 @@ function EditForm({ event }: { event: EventFull }) {
     requirePhone: event.requirePhone,
   });
   const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  useUnsavedChanges(dirty);
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]): void {
     setForm((previous) => ({ ...previous, [key]: value }));
+    setDirty(true);
   }
 
   async function submit(e: React.FormEvent): Promise<void> {
@@ -93,6 +97,7 @@ function EditForm({ event }: { event: EventFull }) {
         deadline: undefined,
       });
       await queryClient.invalidateQueries({ queryKey: ['event', event.id] });
+      setDirty(false);
       toast.success('Evento actualizado');
     } catch (error) {
       if (!axios.isAxiosError(error) || error.response?.status !== 401)

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { use, useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, getToken } from '@/lib/api';
+import { PageHeader } from '@/components/ui/Table';
 import { toScanResult, type ScanResult } from '@/lib/scan';
 import { Button } from '@/components/ui/Button';
 import { WalkinForm } from '@/components/WalkinForm';
@@ -78,7 +79,7 @@ export default function ScanPage({ params }: { params: Promise<{ sessionId: stri
 
   return (
     <main className="mx-auto max-w-md p-4">
-      <h1 className="font-serif text-xl text-[#0A2A5E]">Registro de asistencia</h1>
+      <PageHeader titulo="Registro de asistencia" volverA="/admin/escaner" />
       {result.kind === 'idle' ? (
         <div className="mt-4">
           {scanning ? (

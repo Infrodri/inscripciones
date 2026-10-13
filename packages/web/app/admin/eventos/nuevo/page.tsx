@@ -102,7 +102,11 @@ export default function NuevoEventoPage() {
 
   return (
     <div className="max-w-2xl">
-      <PageHeader titulo="Nuevo evento" />
+      <PageHeader
+        titulo="Nuevo evento"
+        migas={[{ etiqueta: 'Eventos', href: '/admin/eventos' }, { etiqueta: 'Nuevo' }]}
+        volverA="/admin/eventos"
+      />
       <form onSubmit={(e) => void submit(e)} className="mt-4 space-y-4">
         <Card>
           <Input
