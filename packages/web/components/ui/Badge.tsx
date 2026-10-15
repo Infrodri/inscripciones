@@ -1,12 +1,12 @@
 const tones: Record<string, string> = {
-  BORRADOR: 'bg-gray-100 text-[#5B6677]',
-  ABIERTO: 'bg-[#E6F4EC] text-[#1E7B4F]',
-  CERRADO: 'bg-[#FAF3E3] text-[#B7791F]',
-  FINALIZADO: 'bg-blue-50 text-[#1F4E96]',
-  ok: 'bg-[#E6F4EC] text-[#1E7B4F]',
-  aviso: 'bg-[#FAF3E3] text-[#B7791F]',
-  error: 'bg-[#FDECEA] text-[#B42318]',
-  neutro: 'bg-gray-100 text-[#5B6677]',
+  BORRADOR: 'bg-canvas text-muted',
+  ABIERTO: 'bg-ok-bg text-ok',
+  CERRADO: 'bg-warn-bg text-warn',
+  FINALIZADO: 'bg-blue-bg text-blue',
+  ok: 'bg-ok-bg text-ok',
+  aviso: 'bg-warn-bg text-warn',
+  error: 'bg-danger-bg text-danger',
+  neutro: 'bg-canvas text-muted',
 };
 
 export function Badge({ tono, children }: { tono: string; children: React.ReactNode }) {
