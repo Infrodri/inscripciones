@@ -437,10 +437,10 @@ export function eventRoutes(publicStorage: FileStorage): Router {
     }
   });
 
-  // Eliminar evento (solo SUPERADMIN)
+  // Eliminar evento (solo ADMIN)
   router.delete(
     '/:id',
-    requireRole('SUPERADMIN'),
+    requireRole('ADMIN'),
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();

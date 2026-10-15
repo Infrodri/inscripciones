@@ -99,7 +99,7 @@ function EventCard({ event, onDelete }: EventCardProps) {
 
 export default function EventosPage() {
   const sessionUser = getSessionUser();
-  const isSuperAdmin = sessionUser?.role === 'SUPERADMIN';
+  const isAdmin = sessionUser?.role === 'ADMIN';
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['events'],
@@ -137,7 +137,7 @@ export default function EventosPage() {
       />
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {data.data.map((e) => (
-          <EventCard key={e.id} event={e} onDelete={isSuperAdmin ? true : undefined} />
+          <EventCard key={e.id} event={e} onDelete={isAdmin ? true : undefined} />
         ))}
       </div>
     </div>
