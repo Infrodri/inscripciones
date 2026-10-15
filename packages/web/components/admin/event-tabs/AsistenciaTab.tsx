@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/Table';
 import { Switch } from '@/components/ui/Switch';
 import { ReporteAsistencia } from '@/components/admin/ReporteAsistencia';
 import { SessionScanActions } from '@/components/admin/SessionScanActions';
+import { QrProjection } from '@/components/admin/QrProjection';
 
 interface SessionRow {
   id: string;
@@ -84,6 +85,11 @@ function SessionCard({
           onChange={(value) => void toggleSelf(value)}
         />
       </div>
+      {session.selfCheckinOpen ? (
+        <QrProjection sessionId={session.id} />
+      ) : (
+        <p className="mt-2 text-sm text-muted">El registro por QR está cerrado.</p>
+      )}
       <div className="mt-2">
         <SessionScanActions sessionId={session.id} />
       </div>
