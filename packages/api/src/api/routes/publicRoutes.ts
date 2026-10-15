@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import multer from 'multer';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
@@ -6,6 +8,8 @@ import { validateBody } from '../middlewares/validateMiddleware.js';
 import { personSchema } from '../personSchema.js';
 import { qrPngBuffer } from '@inscripciones/infrastructure/qr.js';
 import { createMailer } from '@inscripciones/infrastructure/mailer.js';
+import type { FileStorage } from '@inscripciones/infrastructure/fileStorage.js';
+import { createStorage } from '../../infrastructure/storage.js';
 import {
   assertCapacity,
   assertRegistrationOpen,
@@ -13,7 +17,7 @@ import {
 } from '../../application/registrationService.js';
 import { registrationReason } from '../../application/registrationState.js';
 import { buildConfirmationMail } from '../../application/confirmationMail.js';
-import { bannerPublicUrl, qrPngUrl, type PublicUrlEnv } from '../../shared/urls.js';
+import { bannerPublicUrl, filePublicUrl, qrPngUrl, type PublicUrlEnv } from '../../shared/urls.js';
 import { logger } from '../../shared/logger.js';
 import type { AppEnv } from '../env.js';
 
@@ -22,6 +26,7 @@ const registrationSchema = personSchema.extend({
   institution: z.string().nullable().optional(),
   career: z.string().nullable().optional(),
   semester: z.string().nullable().optional(),
+  paymentProofUrl: z.string().nullable().optional(),
   dataConsent: z.literal(true),
   // Honeypot anti-bots: los humanos lo dejan vacío.
   website: z.string().optional(),
@@ -105,8 +110,60 @@ function assertRequiredFields(
   }
 }
 
-export function publicRoutes(env: AppEnv): Router {
+export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
   const router = Router();
+  const publicStorage = storage ?? createStorage(env).publicStorage;
+
+  const proofUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+  });
+
+  router.post(
+    '/events/:slug/payment-proof',
+    proofUpload.any(),
+    async (req, res, next) => {
+      try {
+        const file = req.file || (Array.isArray(req.files) ? req.files[0] : undefined);
+        if (!file) throw new DomainError('VALIDATION_ERROR', 'Debe adjuntar el comprobante');
+
+        const allowedMimes = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
+        if (!allowedMimes.includes(file.mimetype)) {
+          throw new DomainError(
+            'UNSUPPORTED_FILE',
+            'El comprobante debe ser imagen (PNG, JPG, WebP) o PDF'
+          );
+        }
+
+        const prisma = getPrisma();
+        const event = await prisma.event.findUnique({ where: { slug: req.params.slug } });
+        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        if (event.isFree) {
+          throw new DomainError('VALIDATION_ERROR', 'El evento no requiere comprobante de pago');
+        }
+
+        const extMap: Record<string, string> = {
+          'image/png': 'png',
+          'image/jpeg': 'jpg',
+          'image/webp': 'webp',
+          'application/pdf': 'pdf',
+        };
+        const ext = extMap[file.mimetype] ?? 'bin';
+        const key = `payment-proofs/${event.id}/${randomUUID()}.${ext}`;
+        const stored = await publicStorage.save(file.buffer, key, file.mimetype);
+        const url = stored.url ?? filePublicUrl(env, key);
+
+        res.json({ url });
+      } catch (err) {
+        const fileErr = err as { code?: string };
+        if (fileErr?.code === 'LIMIT_FILE_SIZE') {
+          next(new DomainError('FILE_TOO_LARGE', 'El comprobante supera los 5 MB'));
+          return;
+        }
+        next(err);
+      }
+    }
+  );
 
   router.get('/events/:slug', async (req, res, next) => {
     try {
@@ -145,9 +202,23 @@ export function publicRoutes(env: AppEnv): Router {
           await tx.$queryRaw`SELECT id FROM events WHERE id = ${event.id} FOR UPDATE`;
           assertRegistrationOpen(event, new Date());
           assertRequiredFields(event, req.body);
+          if (!event.isFree) {
+            if (!req.body.paymentProofUrl || String(req.body.paymentProofUrl).trim() === '') {
+              throw new DomainError(
+                'VALIDATION_ERROR',
+                'Para un evento de pago el comprobante es obligatorio'
+              );
+            }
+          }
           const registered = await tx.participant.count({ where: { eventId: event.id } });
           assertCapacity(registered, event.capacity);
-          return tx.participant.create({ data: buildParticipantRow(event.id, req.body) });
+          const paymentProofUrl = !event.isFree ? req.body.paymentProofUrl?.trim() || null : null;
+          return tx.participant.create({
+            data: {
+              ...buildParticipantRow(event.id, req.body),
+              paymentProofUrl,
+            },
+          });
         });
         let mailSent = false;
         if (env.SMTP_HOST && participant.email) {

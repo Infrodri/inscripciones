@@ -12,6 +12,8 @@ export function bannerPublicUrl(env: PublicUrlEnv, key: string): string {
   return `${env.API_PUBLIC_URL}/uploads/${key}`;
 }
 
+export const filePublicUrl = bannerPublicUrl;
+
 export function qrPngUrl(env: PublicUrlEnv, qrToken: string): string {
   return `${env.API_PUBLIC_URL}/api/v1/public/registrations/${qrToken}/qr.png`;
 }

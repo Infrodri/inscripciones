@@ -12,6 +12,7 @@ import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { parsePagination, paginatedResponse } from '../../shared/pagination.js';
 import type { FileStorage } from '@inscripciones/infrastructure/fileStorage.js';
+import { filePublicUrl, type PublicUrlEnv } from '../../shared/urls.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -67,7 +68,7 @@ async function validateBanner(
   }
 }
 
-export function eventRoutes(publicStorage: FileStorage): Router {
+export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Router {
   const router = Router();
 
   router.get('/', async (req, res, next) => {
@@ -175,6 +176,52 @@ export function eventRoutes(publicStorage: FileStorage): Router {
         const fileErr = err as { code?: string };
         if (fileErr?.code === 'LIMIT_FILE_SIZE') {
           next(new DomainError('FILE_TOO_LARGE', 'El afiche supera los 10 MB'));
+          return;
+        }
+        next(err);
+      }
+    }
+  );
+
+  const qrUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024 },
+  });
+
+  router.post(
+    '/:id/institution-qr',
+    requireRole('ADMIN'),
+    qrUpload.any(),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const file = req.file || (Array.isArray(req.files) ? req.files[0] : undefined);
+        if (!file) throw new DomainError('VALIDATION_ERROR', 'Debe adjuntar el archivo');
+        if (!['image/png', 'image/svg+xml'].includes(file.mimetype)) {
+          throw new DomainError('UNSUPPORTED_FILE', 'El QR institucional debe ser PNG o SVG');
+        }
+        const prisma = getPrisma();
+        const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+
+        const ext = file.mimetype === 'image/svg+xml' ? 'svg' : 'png';
+        const key = `institution-qr/${req.params.id}/${randomUUID()}.${ext}`;
+        const stored = await publicStorage.save(file.buffer, key, file.mimetype);
+        const url =
+          stored.url ??
+          (env
+            ? filePublicUrl(env, key)
+            : `${process.env.API_PUBLIC_URL || 'http://localhost:3001'}/uploads/${key}`);
+
+        await prisma.event.update({
+          where: { id: req.params.id },
+          data: { institutionQr: url },
+        });
+
+        res.json({ url });
+      } catch (err) {
+        const fileErr = err as { code?: string };
+        if (fileErr?.code === 'LIMIT_FILE_SIZE') {
+          next(new DomainError('FILE_TOO_LARGE', 'El QR institucional supera los 2 MB'));
           return;
         }
         next(err);
