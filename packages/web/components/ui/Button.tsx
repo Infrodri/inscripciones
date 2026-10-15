@@ -3,13 +3,14 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-type Variant = 'primario' | 'secundario' | 'peligro';
+type Variant = 'primario' | 'secundario' | 'peligro' | 'fantasma';
 type Size = 'sm' | 'md' | 'lg';
 
 const styles: Record<Variant, string> = {
   primario: 'bg-navy text-white hover:bg-navy-hover',
   secundario: 'border border-line bg-surface text-ink hover:border-navy',
   peligro: 'bg-danger text-white hover:opacity-90',
+  fantasma: 'text-ink hover:bg-line',
 };
 
 const sizes: Record<Size, string> = {

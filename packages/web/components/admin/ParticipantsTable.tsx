@@ -93,13 +93,9 @@ function RowAttendances({ participantId, isAdmin }: { participantId: string; isA
             {a.session.label ?? 'Sesión'} — {formatFechaHora(a.scannedAt)} ({a.method})
           </span>
           {isAdmin ? (
-            <button
-              type="button"
-              onClick={() => void annul(a.id)}
-              className="min-h-[44px] rounded-[8px] border border-[#D9DEE7] px-2 py-1"
-            >
+            <Button variant="secundario" size="sm" onClick={() => void annul(a.id)}>
               Anular
-            </button>
+            </Button>
           ) : null}
         </li>
       ))}
@@ -270,12 +266,9 @@ export function ParticipantsTable({
   return (
     <section aria-label="Inscritos">
       <div className="flex flex-wrap gap-2">
-        <Link
-          href="/admin/escaner"
-          className="inline-flex min-h-[44px] items-center rounded-[8px] bg-[#0A2A5E] px-4 py-2 text-white"
-        >
-          Inscribir en puerta
-        </Link>
+        <Button asChild variant="primario" size="md">
+          <Link href="/admin/escaner">Inscribir en puerta</Link>
+        </Button>
         <Button
           variant="secundario"
           disabled={busy}
@@ -342,9 +335,9 @@ export function ParticipantsTable({
           <>
             {' '}
             · Seleccionados: <strong>{selected.length}</strong>{' '}
-            <button type="button" onClick={() => setConfirmPrint('selected')} className="underline">
+            <Button variant="fantasma" size="sm" onClick={() => setConfirmPrint('selected')}>
               Imprimir seleccionados
-            </button>
+            </Button>
           </>
         ) : null}
       </p>
@@ -445,43 +438,38 @@ export function ParticipantsTable({
                     </td>
                     <td>
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPreviewId(p.id)}
-                          className="min-h-[44px] rounded-[8px] border border-[#D9DEE7] px-2 py-1"
-                        >
+                        <Button variant="secundario" size="sm" onClick={() => setPreviewId(p.id)}>
                           Diploma
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setExpanded(expanded === p.id ? null : p.id)}
-                          className="min-h-[44px] rounded-[8px] border border-[#D9DEE7] px-2 py-1"
-                        >
+                        </Button>
+                        <Button variant="secundario" size="sm" onClick={() => setExpanded(expanded === p.id ? null : p.id)}>
                           Asistencia
-                        </button>
+                        </Button>
                         {isAdmin ? (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => setEditing(p)}
-                              className="min-h-[44px] rounded-[8px] border border-[#D9DEE7] px-2 py-1"
-                            >
+                            <Button variant="secundario" size="sm" onClick={() => setEditing(p)}>
                               Editar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void resendQr(p)}
-                              className="min-h-[44px] rounded-[8px] border border-[#D9DEE7] px-2 py-1"
-                            >
+                            </Button>
+                            <Button variant="secundario" size="sm" onClick={() => void resendQr(p)}>
                               Reenviar QR
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setDeleting(p)}
-                              className="min-h-[44px] rounded-[8px] border border-[#B42318] px-2 py-1 text-[#B42318]"
+                            </Button>
+                            <ConfirmDialog
+                              titulo="Eliminar inscrito"
+                              mensaje={`Eliminar a ${p.lastName}, ${p.firstName} (CI: ${p.ci})? Esta acción no se puede deshacer.`}
+                              confirmar="Eliminar"
+                              onConfirmar={async () => {
+                                try {
+                                  await api.delete(`/participants/${p.id}`);
+                                  toast.success('Inscrito eliminado');
+                                } catch (error) {
+                                  toast.error(apiErrorMessage(error));
+                                }
+                              }}
+                              onCerrar={() => {}}
                             >
-                              Eliminar
-                            </button>
+                              <Button variant="peligro" size="sm">
+                                Eliminar
+                              </Button>
+                            </ConfirmDialog>
                           </>
                         ) : null}
                       </div>
