@@ -45,6 +45,8 @@ function publicEventView(event: Record<string, unknown>, env: PublicUrlEnv, regi
     registrationDeadline: event['registrationDeadline'],
     status: event['status'],
     isFree: event['isFree'],
+    cost: event['cost'] !== null && event['cost'] !== undefined ? Number(event['cost']) : null,
+    institutionQr: (event['institutionQr'] as string | null) ?? null,
     contactWhatsapp: event['contactWhatsapp'],
     issuesCertificate: event['issuesCertificate'],
     requireCareer: event['requireCareer'] ?? false,

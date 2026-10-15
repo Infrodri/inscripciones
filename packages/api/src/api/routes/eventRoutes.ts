@@ -34,6 +34,7 @@ const eventSchema = z.object({
   registrationDeadline: z.string().datetime({ offset: true }).nullable().optional(),
   status: z.enum(['BORRADOR', 'ABIERTO', 'CERRADO', 'FINALIZADO']).optional(),
   isFree: z.boolean().optional(),
+  cost: z.number().positive().nullable().optional(),
   contactWhatsapp: z.string().nullable().optional(),
   issuesCertificate: z.boolean().optional(),
   minAttendancePercent: z.number().int().min(0).max(100).optional(),
@@ -94,10 +95,22 @@ export function eventRoutes(publicStorage: FileStorage): Router {
     async (req: AuthRequest, res, next) => {
       try {
         validateEventInput(req.body);
+        const isFree = req.body.isFree ?? true;
+        if (!isFree) {
+          if (req.body.cost === undefined || req.body.cost === null || req.body.cost <= 0) {
+            throw new DomainError(
+              'VALIDATION_ERROR',
+              'Para un evento de pago el costo es obligatorio y debe ser mayor a 0'
+            );
+          }
+        }
+        const cost = isFree ? null : req.body.cost;
         const prisma = getPrisma();
         const created = await prisma.event.create({
           data: {
             ...req.body,
+            isFree,
+            cost,
             registrationDeadline: req.body.registrationDeadline
               ? new Date(req.body.registrationDeadline)
               : undefined,
@@ -342,10 +355,34 @@ export function eventRoutes(publicStorage: FileStorage): Router {
           );
         }
         const prisma = getPrisma();
+        let costToUpdate: number | null | undefined = undefined;
+
+        if (req.body.isFree !== undefined || req.body.cost !== undefined) {
+          const existing = await prisma.event.findUnique({ where: { id: req.params.id } });
+          if (!existing) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+
+          const effectiveIsFree = req.body.isFree !== undefined ? req.body.isFree : existing.isFree;
+          const currentSavedCost = existing.cost !== null ? Number(existing.cost) : null;
+          const effectiveCost = req.body.cost !== undefined ? req.body.cost : currentSavedCost;
+
+          if (!effectiveIsFree) {
+            if (effectiveCost === undefined || effectiveCost === null || effectiveCost <= 0) {
+              throw new DomainError(
+                'VALIDATION_ERROR',
+                'Para un evento de pago el costo es obligatorio y debe ser mayor a 0'
+              );
+            }
+            costToUpdate = effectiveCost;
+          } else {
+            costToUpdate = null;
+          }
+        }
+
         const updated = await prisma.event.update({
           where: { id: req.params.id },
           data: {
             ...req.body,
+            ...(costToUpdate !== undefined ? { cost: costToUpdate } : {}),
             registrationDeadline: req.body.registrationDeadline
               ? new Date(req.body.registrationDeadline)
               : undefined,
