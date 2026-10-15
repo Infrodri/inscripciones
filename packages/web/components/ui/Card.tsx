@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, HTMLAttributes } from 'react';
+import { cn } from '@/lib/cn';
 
-export function Card({ children }: { children: ReactNode }) {
+export function Card({ children, className, ...rest }: { children: ReactNode } & HTMLAttributes<HTMLElement>) {
   return (
-    <section className="rounded-[8px] border border-[#D9DEE7] bg-white p-4 shadow-[0_1px_3px_rgb(16_34_68/0.12)]">
+    <section className={cn('rounded-[var(--radius-md)] border border-line bg-surface shadow-soft p-4', className)} {...rest}>
       {children}
     </section>
   );

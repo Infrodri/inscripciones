@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { api, apiErrorMessage } from '@/lib/api';
+import { api, apiErrorMessage, getSessionUser } from '@/lib/api';
 import { formatFecha } from '@/lib/format';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -18,7 +18,12 @@ interface EventRow {
   status: string;
 }
 
-function EventCard({ event }: { event: EventRow }) {
+interface EventCardProps {
+  event: EventRow;
+  onDelete?: boolean;
+}
+
+function EventCard({ event, onDelete }: EventCardProps) {
   const queryClient = useQueryClient();
   const stats = useQuery({
     queryKey: ['stats', event.id],
@@ -50,56 +55,70 @@ function EventCard({ event }: { event: EventRow }) {
     }
   }
 
+  async function handleDelete(): Promise<void> {
+    if (!onDelete) return;
+    const confirmed = window.confirm(`Eliminar "${event.title}"? Esta acción no se puede deshacer.`);
+    if (!confirmed) return;
+    try {
+      await api.delete(`/events/${event.id}`);
+      toast.success('Evento eliminado');
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
+    }
+  }
+
   return (
-    <Card>
-      <p className="font-medium">
-        <Link href={`/admin/eventos/${event.id}`} className="hover:underline">
+    <Card className="bg-surface border-line shadow-soft rounded-[var(--radius-md)]">
+      <p className="font-medium text-ink">
+        <Link href={`/admin/eventos/${event.id}`} className="hover:underline text-navy-hover">
           {event.title}
         </Link>
       </p>
-      <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[#5B6677]">
+      <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
         <Badge tono={event.status}>{event.status}</Badge>
         {first ? <span>desde {formatFecha(first)}</span> : <span>sin fecha</span>}
         {last && last !== first ? <span>hasta {formatFecha(last)}</span> : null}
         <span>Inscritos: {stats.data?.participants ?? '…'}</span>
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
-        <Link
-          href={`/admin/eventos/${event.id}`}
-          className="inline-flex min-h-[44px] items-center rounded-[8px] bg-[#0A2A5E] px-3 py-1 text-sm text-white"
-        >
-          Abrir
-        </Link>
-        <Button variant="secundario" onClick={() => void duplicate()}>
+        <Button asChild variant="primario" size="sm">
+          <Link href={`/admin/eventos/${event.id}`}>Abrir</Link>
+        </Button>
+        <Button variant="secundario" size="sm" onClick={() => void duplicate()}>
           Duplicar
         </Button>
+        {onDelete && (
+          <Button variant="peligro" size="sm" onClick={() => void handleDelete()}>
+            Eliminar
+          </Button>
+        )}
       </div>
     </Card>
   );
 }
 
 export default function EventosPage() {
+  const sessionUser = getSessionUser();
+  const isSuperAdmin = sessionUser?.role === 'SUPERADMIN';
+
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['events'],
     queryFn: async (): Promise<{ data: EventRow[] }> => (await api.get('/events')).data,
   });
 
-  if (isLoading) return <p>Cargando eventos…</p>;
-  if (isError) return <p>No se pudieron cargar los eventos: {apiErrorMessage(error)}</p>;
+  if (isLoading) return <p className="text-muted">Cargando eventos…</p>;
+  if (isError) return <p className="text-danger">No se pudieron cargar los eventos: {apiErrorMessage(error)}</p>;
   if (!data || data.data.length === 0) {
     return (
-      <div>
+      <div className="bg-surface rounded-[var(--radius-md)] border border-line p-6">
         <PageHeader titulo="Eventos" migas={[{ etiqueta: 'Eventos' }]} />
         <div className="mt-4">
           <EmptyState
             mensaje="Aún no hay eventos. Cree el primero."
             accion={
-              <Link
-                href="/admin/eventos/nuevo"
-                className="inline-block min-h-[44px] rounded-[8px] bg-[#0A2A5E] px-4 py-2 text-white"
-              >
-                Nuevo evento
-              </Link>
+              <Button asChild>
+                <Link href="/admin/eventos/nuevo">Nuevo evento</Link>
+              </Button>
             }
           />
         </div>
@@ -107,21 +126,18 @@ export default function EventosPage() {
     );
   }
   return (
-    <div>
+    <div className="bg-surface rounded-[var(--radius-md)] border border-line p-6">
       <PageHeader
         titulo="Eventos"
         accion={
-          <Link
-            href="/admin/eventos/nuevo"
-            className="inline-block min-h-[44px] rounded-[8px] bg-[#0A2A5E] px-4 py-2 text-white"
-          >
-            Nuevo evento
-          </Link>
+          <Button asChild>
+            <Link href="/admin/eventos/nuevo">Nuevo evento</Link>
+          </Button>
         }
       />
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {data.data.map((e) => (
-          <EventCard key={e.id} event={e} />
+          <EventCard key={e.id} event={e} onDelete={isSuperAdmin ? true : undefined} />
         ))}
       </div>
     </div>

@@ -1,30 +1,42 @@
 'use client';
 
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { cn } from '@/lib/cn';
 
 type Variant = 'primario' | 'secundario' | 'peligro';
+type Size = 'sm' | 'md' | 'lg';
 
 const styles: Record<Variant, string> = {
-  primario: 'bg-[#0A2A5E] text-white hover:bg-[#1F4E96]',
-  secundario: 'border border-[#D9DEE7] bg-white text-[#1B2433] hover:border-[#0A2A5E]',
-  peligro: 'bg-[#B42318] text-white hover:opacity-90',
+  primario: 'bg-navy text-white hover:bg-navy-hover',
+  secundario: 'border border-line bg-surface text-ink hover:border-navy',
+  peligro: 'bg-danger text-white hover:opacity-90',
 };
+
+const sizes: Record<Size, string> = {
+  sm: 'min-h-[36px] px-3 py-1 text-sm',
+  md: 'min-h-[44px] px-4 py-2',
+  lg: 'min-h-[52px] px-6 py-3 text-lg',
+};
+
+const base = 'rounded-[var(--radius-md)] shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:opacity-50';
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
+  size?: Size;
   cargando?: boolean;
   children: ReactNode;
+  asChild?: boolean;
 }
 
-export function Button({ variant = 'primario', cargando = false, children, ...rest }: Props) {
+export function Button({ variant = 'primario', size = 'md', cargando = false, children, asChild = false, ...rest }: Props) {
+  const Comp = asChild ? 'span' : 'button';
   return (
-    <button
-      type={rest.type ?? 'button'}
-      disabled={rest.disabled ?? cargando}
+    <Comp
+      {...(asChild ? {} : { type: rest.type ?? 'button', disabled: rest.disabled ?? cargando })}
       {...rest}
-      className={`min-h-[44px] rounded-[8px] px-4 py-2 text-white shadow-[0_1px_3px_rgb(16_34_68/0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A227] disabled:opacity-50 ${styles[variant]} ${rest.className ?? ''}`}
+      className={cn(base, styles[variant], sizes[size], rest.className)}
     >
       {cargando ? 'Cargando…' : children}
-    </button>
+    </Comp>
   );
 }

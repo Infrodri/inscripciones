@@ -437,5 +437,22 @@ export function eventRoutes(publicStorage: FileStorage): Router {
     }
   });
 
+  // Eliminar evento (solo SUPERADMIN)
+  router.delete(
+    '/:id',
+    requireRole('SUPERADMIN'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        await prisma.event.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   return router;
 }
