@@ -539,5 +539,100 @@ export function eventRoutes(publicStorage: FileStorage): Router {
     }
   );
 
+  // Eliminación masiva (solo ADMIN) — cascada en transacción, audit_log por evento
+  router.post(
+    '/bulk-delete',
+    requireRole('ADMIN'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const ids = z.array(z.string().uuid()).min(1).parse(req.body.ids);
+
+        const events = await prisma.event.findMany({
+          where: { id: { in: ids } },
+          include: {
+            _count: {
+              select: {
+                sessions: true,
+                speakers: true,
+                sponsors: true,
+                participants: true,
+                certificateTemplates: true,
+              },
+            },
+            certificateTemplates: { select: { filePath: true } },
+          },
+        });
+
+        if (events.length !== ids.length) {
+          throw new DomainError('NOT_FOUND', 'Algunos eventos no existen');
+        }
+
+        // Cascada en transacción por cada evento
+        for (const event of events) {
+          await prisma.$transaction(async (tx) => {
+            await tx.attendance.deleteMany({ where: { session: { eventId: event.id } } });
+            await tx.session.deleteMany({ where: { eventId: event.id } });
+            await tx.speaker.deleteMany({ where: { eventId: event.id } });
+            await tx.sponsor.deleteMany({ where: { eventId: event.id } });
+            await tx.certificateRecipient.deleteMany({ where: { eventId: event.id } });
+            await tx.certificateTemplate.deleteMany({ where: { eventId: event.id } });
+            await tx.participant.deleteMany({ where: { eventId: event.id } });
+            await tx.event.delete({ where: { id: event.id } });
+          });
+
+          // Audit log por evento
+          await prisma.auditLog.create({
+            data: {
+              userId: req.user?.id,
+              action: 'event.bulk-delete',
+              entity: 'event',
+              entityId: event.id,
+              metadata: {
+                title: event.title,
+                slug: event.slug,
+                counts: {
+                  sessions: event._count.sessions,
+                  speakers: event._count.speakers,
+                  sponsors: event._count.sponsors,
+                  participants: event._count.participants,
+                  certificateTemplates: event._count.certificateTemplates,
+                },
+              },
+            },
+          });
+
+          // Limpieza storage
+          const pathsToCheck = [
+            event.bannerPath,
+            event.shareImagePath,
+            ...event.certificateTemplates.map((t) => t.filePath),
+          ].filter(Boolean);
+
+          for (const path of pathsToCheck) {
+            if (!path) continue;
+            const stillUsed = await prisma.event.findFirst({
+              where: {
+                OR: [
+                  { bannerPath: path },
+                  { shareImagePath: path },
+                  { certificateTemplates: { some: { filePath: path } } },
+                ],
+              },
+              select: { id: true },
+            });
+            if (!stillUsed) {
+              await publicStorage.remove(path).catch(() => {});
+            }
+          }
+        }
+
+        res.json({ success: true, deletedCount: events.length });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   return router;
 }

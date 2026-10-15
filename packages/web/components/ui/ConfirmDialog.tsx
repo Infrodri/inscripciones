@@ -8,12 +8,14 @@ export function ConfirmDialog({
   confirmar = 'Confirmar',
   onConfirmar,
   onCerrar,
+  children,
 }: {
   titulo: string;
-  mensaje: string;
+  mensaje: React.ReactNode;
   confirmar?: string;
   onConfirmar: () => void;
   onCerrar: () => void;
+  children?: React.ReactNode;
 }) {
   return (
     <div
@@ -28,14 +30,18 @@ export function ConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-serif text-xl text-[#0A2A5E]">{titulo}</h2>
-        <p className="mt-2 text-[#1B2433]">{mensaje}</p>
+        <div className="mt-2 text-[#1B2433]">{mensaje}</div>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="secundario" onClick={onCerrar}>
             Cancelar
           </Button>
-          <Button variant="peligro" onClick={onConfirmar}>
-            {confirmar}
-          </Button>
+          {children ? (
+            children
+          ) : (
+            <Button variant="peligro" onClick={onConfirmar}>
+              {confirmar}
+            </Button>
+          )}
         </div>
       </div>
     </div>
