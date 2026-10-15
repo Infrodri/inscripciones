@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { verifyAccessToken } from '../../infrastructure/jwtService.js';
 
 export interface AuthRequest extends Request {
-  user?: { id: string; role: 'SUPERADMIN' | 'ADMIN' | 'STAFF' };
+  user?: { id: string; role: 'ADMIN' | 'STAFF' };
 }
 
 export function authMiddleware(secret: string) {

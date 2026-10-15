@@ -9,7 +9,6 @@ datasource db {
 }
 
 enum Role {
-  SUPERADMIN
   ADMIN
   STAFF
 }

@@ -9,14 +9,13 @@ const createUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   name: z.string().min(1),
-  role: z.enum(['SUPERADMIN', 'ADMIN', 'STAFF']),
+  role: z.enum(['ADMIN', 'STAFF']),
 });
 
-// Alta de usuarios (solo SUPERADMIN puede crear SUPERADMIN; ADMIN crea ADMIN o STAFF).
-// La pantalla /admin/usuarios soporta ambos roles.
+// Alta de usuarios (ADMIN crea ADMIN o STAFF). La pantalla /admin/usuarios va en H2.
 export function userRoutes(): Router {
   const router = Router();
-  router.get('/', requireRole('SUPERADMIN'), async (_req, res, next) => {
+  router.get('/', requireRole('ADMIN'), async (_req, res, next) => {
     try {
       const prisma = getPrisma();
       const users = await prisma.user.findMany({
@@ -28,7 +27,7 @@ export function userRoutes(): Router {
       next(err);
     }
   });
-  router.post('/', requireRole('SUPERADMIN'), validateBody(createUserSchema), async (req, res, next) => {
+  router.post('/', requireRole('ADMIN'), validateBody(createUserSchema), async (req, res, next) => {
     try {
       const prisma = getPrisma();
       const created = await prisma.user.create({
@@ -41,33 +40,6 @@ export function userRoutes(): Router {
         select: { id: true, email: true, name: true, role: true, active: true },
       });
       res.status(201).json(created);
-    } catch (err) {
-      next(err);
-    }
-  });
-  // SUPERADMIN puede promocionar a ADMIN/STAFF y ver audit logs
-  router.patch('/:id/role', validateBody(z.object({ role: z.enum(['ADMIN', 'STAFF', 'SUPERADMIN']) })), requireRole('SUPERADMIN'), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const updated = await prisma.user.update({
-        where: { id: req.params.id },
-        data: { role: req.body.role },
-        select: { id: true, email: true, name: true, role: true, active: true },
-      });
-      res.json(updated);
-    } catch (err) {
-      next(err);
-    }
-  });
-  router.get('/:id/audit-logs', requireRole('SUPERADMIN'), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const logs = await prisma.auditLog.findMany({
-        where: { userId: req.params.id },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-      });
-      res.json({ data: logs });
     } catch (err) {
       next(err);
     }
