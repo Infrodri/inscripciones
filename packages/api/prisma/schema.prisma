@@ -89,6 +89,8 @@ model Event {
   registrationDeadline  DateTime?       @map("registration_deadline") @db.Timestamptz()
   status                EventStatus     @default(BORRADOR)
   isFree                Boolean         @map("is_free") @default(true)
+  cost                  Decimal?        @db.Decimal(10, 2) @map("cost")
+  institutionQr         String?         @map("institution_qr")
   contactWhatsapp       String?         @map("contact_whatsapp")
   issuesCertificate     Boolean         @map("issues_certificate") @default(true)
   minAttendancePercent  Int             @map("min_attendance_percent") @default(80)
@@ -181,6 +183,7 @@ model Participant {
   institution     String?
   career          String?
   semester        String?
+  paymentProofUrl String?         @map("payment_proof_url")
   qrToken         String          @unique @map("qr_token")
   certificateCode String?         @unique @map("certificate_code")
   certificateEmailedAt DateTime? @map("certificate_emailed_at") @db.Timestamptz()
