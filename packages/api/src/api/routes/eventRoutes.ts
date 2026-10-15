@@ -438,6 +438,7 @@ export function eventRoutes(publicStorage: FileStorage): Router {
   });
 
   // Eliminar evento (solo ADMIN) — cascada en transacción, audit_log, limpieza storage
+  // Si tiene inscritos: exige título exacto en body { title: string }
   router.delete(
     '/:id',
     requireRole('ADMIN'),
@@ -445,6 +446,7 @@ export function eventRoutes(publicStorage: FileStorage): Router {
       try {
         const prisma = getPrisma();
         const eventId = req.params.id;
+        const providedTitle = req.body?.title?.trim();
 
         // 1. Cargar evento y conteos para audit_log
         const event = await prisma.event.findUnique({
@@ -466,6 +468,16 @@ export function eventRoutes(publicStorage: FileStorage): Router {
 
         const registeredCount = event._count.participants;
         const hasInscritos = registeredCount > 0;
+
+        // Si tiene inscritos, exigir título exacto
+        if (hasInscritos) {
+          if (!providedTitle) {
+            throw new DomainError('VALIDATION_ERROR', 'Este evento tiene inscritos. Debe escribir el título exacto para confirmar la eliminación.');
+          }
+          if (providedTitle !== event.title) {
+            throw new DomainError('VALIDATION_ERROR', 'El título no coincide. Escriba el título exacto del evento para confirmar.');
+          }
+        }
 
         // 2. Ejecutar cascada en transacción
         await prisma.$transaction(async (tx) => {
@@ -500,7 +512,7 @@ export function eventRoutes(publicStorage: FileStorage): Router {
               counts: {
                 sessions: event._count.sessions,
                 speakers: event._count.speakers,
-                sponsors: event._count.sponsors,
+                sponsors: event._count.speakers,
                 participants: event._count.participants,
                 certificateTemplates: event._count.certificateTemplates,
               },
@@ -539,7 +551,9 @@ export function eventRoutes(publicStorage: FileStorage): Router {
     }
   );
 
-  // Eliminación masiva (solo ADMIN) — cascada en transacción, audit_log por evento
+  // Eliminación masiva (solo ADMIN) — cascada en transacción, audit_log, limpieza storage
+  // Body: { ids: string[], titles?: Record<string, string> }
+  // Si algún evento tiene inscritos, titles es obligatorio y debe coincidir exactamente
   router.post(
     '/bulk-delete',
     requireRole('ADMIN'),
@@ -547,6 +561,7 @@ export function eventRoutes(publicStorage: FileStorage): Router {
       try {
         const prisma = getPrisma();
         const ids = z.array(z.string().uuid()).min(1).parse(req.body.ids);
+        const providedTitles = (req.body.titles ?? {}) as Record<string, string>;
 
         const events = await prisma.event.findMany({
           where: { id: { in: ids } },
@@ -566,6 +581,26 @@ export function eventRoutes(publicStorage: FileStorage): Router {
 
         if (events.length !== ids.length) {
           throw new DomainError('NOT_FOUND', 'Algunos eventos no existen');
+        }
+
+        // Validar títulos para eventos con inscritos
+        for (const event of events) {
+          const hasInscritos = event._count.participants > 0;
+          if (hasInscritos) {
+            const providedTitle = providedTitles[event.id]?.trim();
+            if (!providedTitle) {
+              throw new DomainError(
+                'VALIDATION_ERROR',
+                `El evento "${event.title}" tiene inscritos. Debe proporcionar el título exacto en el campo titles["${event.id}"].`
+              );
+            }
+            if (providedTitle !== event.title) {
+              throw new DomainError(
+                'VALIDATION_ERROR',
+                `El título para "${event.title}" no coincide. Escriba el título exacto.`
+              );
+            }
+          }
         }
 
         // Cascada en transacción por cada evento
