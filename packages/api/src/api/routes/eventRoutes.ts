@@ -437,17 +437,102 @@ export function eventRoutes(publicStorage: FileStorage): Router {
     }
   });
 
-  // Eliminar evento (solo ADMIN)
+  // Eliminar evento (solo ADMIN) — cascada en transacción, audit_log, limpieza storage
   router.delete(
     '/:id',
     requireRole('ADMIN'),
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+        const eventId = req.params.id;
+
+        // 1. Cargar evento y conteos para audit_log
+        const event = await prisma.event.findUnique({
+          where: { id: eventId },
+          include: {
+            _count: {
+              select: {
+                sessions: true,
+                speakers: true,
+                sponsors: true,
+                participants: true,
+                certificateTemplates: true,
+              },
+            },
+            certificateTemplates: { select: { filePath: true } },
+          },
+        });
         if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        await prisma.event.delete({ where: { id: req.params.id } });
-        res.json({ success: true });
+
+        const registeredCount = event._count.participants;
+        const hasInscritos = registeredCount > 0;
+
+        // 2. Ejecutar cascada en transacción
+        await prisma.$transaction(async (tx) => {
+          // Asistencias (FK en sessions/participants)
+          await tx.attendance.deleteMany({ where: { session: { eventId } } });
+          // Sesiones
+          await tx.session.deleteMany({ where: { eventId } });
+          // Expositores
+          await tx.speaker.deleteMany({ where: { eventId } });
+          // Auspiciantes
+          await tx.sponsor.deleteMany({ where: { eventId } });
+          // Receptores de certificados
+          await tx.certificateRecipient.deleteMany({ where: { eventId } });
+          // Plantillas de certificado
+          await tx.certificateTemplate.deleteMany({ where: { eventId } });
+          // Inscritos
+          await tx.participant.deleteMany({ where: { eventId } });
+          // Evento
+          await tx.event.delete({ where: { id: eventId } });
+        });
+
+        // 3. Audit log
+        await prisma.auditLog.create({
+          data: {
+            userId: req.user?.id,
+            action: 'event.delete',
+            entity: 'event',
+            entityId: eventId,
+            metadata: {
+              title: event.title,
+              slug: event.slug,
+              counts: {
+                sessions: event._count.sessions,
+                speakers: event._count.speakers,
+                sponsors: event._count.sponsors,
+                participants: event._count.participants,
+                certificateTemplates: event._count.certificateTemplates,
+              },
+            },
+          },
+        });
+
+        // 4. Limpieza de storage (afiche y plantillas) — solo si no hay otro evento que los referencie
+        const pathsToCheck = [
+          event.bannerPath,
+          event.shareImagePath,
+          ...event.certificateTemplates.map((t) => t.filePath),
+        ].filter(Boolean);
+
+        for (const path of pathsToCheck) {
+          if (!path) continue;
+          const stillUsed = await prisma.event.findFirst({
+            where: {
+              OR: [
+                { bannerPath: path },
+                { shareImagePath: path },
+                { certificateTemplates: { some: { filePath: path } } },
+              ],
+            },
+            select: { id: true },
+          });
+          if (!stillUsed) {
+            await publicStorage.remove(path).catch(() => {}); // best effort
+          }
+        }
+
+        res.json({ success: true, deletedTitle: event.title });
       } catch (err) {
         next(err);
       }
