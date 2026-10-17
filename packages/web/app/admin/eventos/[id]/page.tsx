@@ -40,6 +40,7 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const rawTab = searchParams.get('tab');
   const sessionUser = getSessionUser();
   const isAdmin = sessionUser?.role === 'ADMIN';
