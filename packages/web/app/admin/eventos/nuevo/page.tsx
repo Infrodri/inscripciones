@@ -12,11 +12,36 @@ import { Input } from '@/components/ui/Input';
 import { PageHeader } from '@/components/ui/Table';
 import { PaymentFields, type PaymentValue } from '@/components/admin/PaymentFields';
 
+const DEFAULT_EVENT_KINDS = [
+  'Congreso',
+  'Conferencia',
+  'Seminario',
+  'Curso',
+  'Charla',
+  'Conversatorio',
+  'Taller',
+  'Simposio',
+  'Jornada',
+];
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/[^a-z0-9 -]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 export default function NuevoEventoPage() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
-  const [eventKind, setEventKind] = useState('Conversatorio');
+  const [slugEdited, setSlugEdited] = useState(false);
+  const [selectedKind, setSelectedKind] = useState('Congreso');
+  const [customKind, setCustomKind] = useState('');
   const [institution, setInstitution] = useState('');
   const [commemoration, setCommemoration] = useState('');
   const [organizer, setOrganizer] = useState('');
@@ -28,6 +53,8 @@ export default function NuevoEventoPage() {
   const [whatsapp, setWhatsapp] = useState('');
   const [sessionAt, setSessionAt] = useState('');
   const [sessionEndsAt, setSessionEndsAt] = useState('');
+  const [sessionLocation, setSessionLocation] = useState('');
+  const [sessionLabel, setSessionLabel] = useState('');
   const [requireCareer, setRequireCareer] = useState(false);
   const [requireSemester, setRequireSemester] = useState(false);
   const [requireInstitution, setRequireInstitution] = useState(false);
@@ -44,9 +71,16 @@ export default function NuevoEventoPage() {
 
   const { data: events } = useQuery({
     queryKey: ['events'],
-    queryFn: async (): Promise<{ data: Array<{ id: string; title: string }> }> =>
+    queryFn: async (): Promise<{ data: Array<{ id: string; title: string; eventKind?: string }> }> =>
       (await api.get('/events')).data,
   });
+
+  const availableKinds = Array.from(
+    new Set([
+      ...DEFAULT_EVENT_KINDS,
+      ...((events?.data ?? []).map((e) => e.eventKind).filter(Boolean) as string[]),
+    ])
+  );
 
   async function submit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -59,7 +93,13 @@ export default function NuevoEventoPage() {
       toast.error('Para un evento de pago el costo debe ser mayor a 0');
       return;
     }
+    if (selectedKind === 'OTRO' && !customKind.trim()) {
+      toast.error('Por favor especifique el tipo de evento');
+      return;
+    }
     setBusy(true);
+    const resolvedEventKind =
+      selectedKind === 'OTRO' ? customKind.trim() : selectedKind || 'Evento';
     try {
       let id: string;
       if (duplicateFrom) {
@@ -73,7 +113,7 @@ export default function NuevoEventoPage() {
         const res = await api.post('/events', {
           slug,
           title,
-          eventKind,
+          eventKind: resolvedEventKind,
           institution,
           commemoration: commemoration !== '' ? commemoration : null,
           organizer,
@@ -95,6 +135,8 @@ export default function NuevoEventoPage() {
           eventId: id,
           startsAt: new Date(sessionAt).toISOString(),
           endsAt: sessionEndsAt !== '' ? new Date(sessionEndsAt).toISOString() : null,
+          location: sessionLocation.trim() !== '' ? sessionLocation.trim() : null,
+          label: sessionLabel.trim() !== '' ? sessionLabel.trim() : null,
         });
       }
       if (banner) {
@@ -161,7 +203,13 @@ export default function NuevoEventoPage() {
                 id="title"
                 etiqueta="Título del evento"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTitle(val);
+                  if (!slugEdited) {
+                    setSlug(slugify(val));
+                  }
+                }}
                 required
               />
             </div>
@@ -169,16 +217,42 @@ export default function NuevoEventoPage() {
               id="slug"
               etiqueta="Slug (identificador en URL)"
               value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              onChange={(e) => {
+                setSlug(e.target.value);
+                setSlugEdited(e.target.value.trim().length > 0);
+              }}
               required
             />
-            <Input
-              id="eventKind"
-              etiqueta="Tipo de evento"
-              value={eventKind}
-              onChange={(e) => setEventKind(e.target.value)}
-              required
-            />
+            <div className="space-y-2">
+              <Input
+                id="selectedKind"
+                etiqueta="Tipo de evento"
+                desplegable
+                value={selectedKind}
+                onChange={(e) => {
+                  setSelectedKind(e.target.value);
+                  if (e.target.value !== 'OTRO') setCustomKind('');
+                }}
+                required
+              >
+                {availableKinds.map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+                <option value="OTRO">Otro (escribir nuevo)…</option>
+              </Input>
+              {selectedKind === 'OTRO' ? (
+                <Input
+                  id="customKind"
+                  etiqueta="Especifique el tipo de evento"
+                  placeholder="Ej. Mesa Redonda, Coloquio, Foro..."
+                  value={customKind}
+                  onChange={(e) => setCustomKind(e.target.value)}
+                  required
+                />
+              ) : null}
+            </div>
             <div className="md:col-span-2">
               <Input
                 id="institution"
@@ -288,6 +362,22 @@ export default function NuevoEventoPage() {
                 type="datetime-local"
                 value={sessionEndsAt}
                 onChange={(e) => setSessionEndsAt(e.target.value)}
+              />
+              <Input
+                id="sessionLocation"
+                etiqueta="Salón / Sala de la sesión"
+                placeholder="Ej. Salón de Honor, Aula Magna"
+                opcional=" (opcional)"
+                value={sessionLocation}
+                onChange={(e) => setSessionLocation(e.target.value)}
+              />
+              <Input
+                id="sessionLabel"
+                etiqueta="Mesa / Grupo / Track"
+                placeholder="Ej. Mesa 1: Derecho Penal, Grupo A"
+                opcional=" (opcional)"
+                value={sessionLabel}
+                onChange={(e) => setSessionLabel(e.target.value)}
               />
             </div>
           </Card>

@@ -15,13 +15,22 @@ export function EventCollections({ eventId }: { eventId: string }) {
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<'session' | 'speaker' | 'sponsor' | null>(null);
   const [sessionAt, setSessionAt] = useState('');
+  const [sessionEndsAt, setSessionEndsAt] = useState('');
+  const [sessionLocation, setSessionLocation] = useState('');
+  const [sessionLabel, setSessionLabel] = useState('');
   const [speakerName, setSpeakerName] = useState('');
   const [sponsorName, setSponsorName] = useState('');
 
   const sessions = useQuery({
     queryKey: ['sessions', eventId],
     queryFn: async (): Promise<{
-      data: Array<{ id: string; startsAt: string; label: string | null }>;
+      data: Array<{
+        id: string;
+        startsAt: string;
+        endsAt?: string | null;
+        location?: string | null;
+        label?: string | null;
+      }>;
     }> => (await api.get(`/sessions/event/${eventId}`)).data,
   });
   const speakers = useQuery({
@@ -50,12 +59,18 @@ export function EventCollections({ eventId }: { eventId: string }) {
   return (
     <div className="mt-8 grid gap-6 md:grid-cols-3">
       <section>
-        <h2 className="font-serif text-lg text-[#0A2A5E]">Sesiones</h2>
+        <h2 className="font-serif text-lg text-[#0A2A5E]">Sesiones / Salas / Mesas</h2>
         <ul className="mt-2 space-y-2">
           {(sessions.data?.data ?? []).map((s) => (
-            <li key={s.id} className="text-sm">
-              <span>{formatFechaHora(s.startsAt)}</span>
-              <div className="mt-1">
+            <li key={s.id} className="text-sm rounded-[var(--radius-md)] border border-line bg-canvas p-2.5">
+              <div className="font-semibold text-navy">
+                {s.label ? s.label : 'Sesión'}
+              </div>
+              <div className="text-xs text-muted mt-0.5">
+                {formatFechaHora(s.startsAt)}
+                {s.location ? ` · Salón/Mesa: ${s.location}` : ''}
+              </div>
+              <div className="mt-2">
                 <SessionScanActions sessionId={s.id} />
               </div>
             </li>
@@ -64,7 +79,7 @@ export function EventCollections({ eventId }: { eventId: string }) {
         {sessions.isLoading ? <p>Cargando…</p> : null}
         <div className="mt-2">
           <Button variant="secundario" onClick={() => setDialog('session')}>
-            Agregar sesión
+            Agregar sesión / sala
           </Button>
         </div>
       </section>
@@ -100,28 +115,68 @@ export function EventCollections({ eventId }: { eventId: string }) {
       </section>
       {dialog === 'session' ? (
         <Dialog
-          titulo="Agregar sesión"
-          onCerrar={() => setDialog(null)}
+          titulo="Agregar sesión o sala/mesa"
+          onCerrar={() => {
+            setDialog(null);
+            setSessionAt('');
+            setSessionEndsAt('');
+            setSessionLocation('');
+            setSessionLabel('');
+          }}
           accion={
             <Button
               onClick={() =>
-                void add('/sessions', { eventId, startsAt: new Date(sessionAt).toISOString() }, [
-                  'sessions',
-                  eventId,
-                ])
+                void add(
+                  '/sessions',
+                  {
+                    eventId,
+                    startsAt: new Date(sessionAt).toISOString(),
+                    endsAt: sessionEndsAt ? new Date(sessionEndsAt).toISOString() : null,
+                    location: sessionLocation.trim() || null,
+                    label: sessionLabel.trim() || null,
+                  },
+                  ['sessions', eventId]
+                )
               }
             >
               Guardar
             </Button>
           }
         >
-          <Input
-            id="nueva-sesion"
-            etiqueta="Fecha y hora"
-            type="datetime-local"
-            value={sessionAt}
-            onChange={(e) => setSessionAt(e.target.value)}
-          />
+          <div className="space-y-3">
+            <Input
+              id="nueva-sesion-inicio"
+              etiqueta="Fecha y hora de inicio"
+              type="datetime-local"
+              value={sessionAt}
+              onChange={(e) => setSessionAt(e.target.value)}
+              required
+            />
+            <Input
+              id="nueva-sesion-fin"
+              etiqueta="Fecha y hora de fin"
+              opcional=" (opcional)"
+              type="datetime-local"
+              value={sessionEndsAt}
+              onChange={(e) => setSessionEndsAt(e.target.value)}
+            />
+            <Input
+              id="nueva-sesion-sala"
+              etiqueta="Salón / Sala de la sesión"
+              placeholder="Ej. Salón de Honor, Aula Magna"
+              opcional=" (opcional)"
+              value={sessionLocation}
+              onChange={(e) => setSessionLocation(e.target.value)}
+            />
+            <Input
+              id="nueva-sesion-mesa"
+              etiqueta="Mesa / Track / Grupo de trabajo"
+              placeholder="Ej. Mesa 1: Derecho Penal, Grupo B"
+              opcional=" (opcional)"
+              value={sessionLabel}
+              onChange={(e) => setSessionLabel(e.target.value)}
+            />
+          </div>
         </Dialog>
       ) : null}
       {dialog === 'speaker' ? (
