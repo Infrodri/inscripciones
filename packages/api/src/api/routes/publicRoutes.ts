@@ -7,6 +7,7 @@ import { DomainError } from '../../domain/errors.js';
 import { validateBody } from '../middlewares/validateMiddleware.js';
 import { personSchema } from '../personSchema.js';
 import { qrPngBuffer } from '@inscripciones/infrastructure/qr.js';
+import { renderSingleBadge, type BadgeParticipant } from '@inscripciones/infrastructure/badges.js';
 import { createMailer } from '@inscripciones/infrastructure/mailer.js';
 import type { FileStorage } from '@inscripciones/infrastructure/fileStorage.js';
 import { createStorage } from '../../infrastructure/storage.js';
@@ -165,6 +166,34 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
     }
   );
 
+  router.get('/events', async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const events = await prisma.event.findMany({
+        where: {
+          status: { in: ['ABIERTO', 'CERRADO', 'FINALIZADO'] },
+        },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          sessions: { orderBy: { startsAt: 'asc' } },
+          speakers: { orderBy: { position: 'asc' } },
+          sponsors: { orderBy: { position: 'asc' } },
+          _count: { select: { participants: true } },
+        },
+      });
+      const items = events.map((event) =>
+        publicEventView(
+          event as unknown as Record<string, unknown>,
+          env,
+          event._count.participants
+        )
+      );
+      res.json({ data: items });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.get('/events/:slug', async (req, res, next) => {
     try {
       const prisma = getPrisma();
@@ -288,6 +317,35 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
       const png = await qrPngBuffer(req.params.qrToken);
       res.header('Content-Type', 'image/png');
       res.send(png);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get('/registrations/:qrToken/badge.pdf', async (req, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const participant = await prisma.participant.findUnique({
+        where: { qrToken: req.params.qrToken },
+        include: { event: true },
+      });
+      if (!participant) throw new DomainError('INVALID_QR', 'El código QR no es válido');
+      const badgeData: BadgeParticipant = {
+        fullName: `${participant.firstName} ${participant.lastName}`.trim(),
+        ci: participant.ci,
+        type: participant.type,
+        institution: participant.institution,
+        career: participant.career,
+        eventTitle: participant.event.title,
+        eventInstitution: participant.event.institution,
+        qrPngBuffer: await qrPngBuffer(participant.qrToken),
+      };
+      res.header('Content-Type', 'application/pdf');
+      res.header(
+        'Content-Disposition',
+        `attachment; filename="credencial-${participant.ci}.pdf"`
+      );
+      await renderSingleBadge(badgeData, res);
     } catch (err) {
       next(err);
     }

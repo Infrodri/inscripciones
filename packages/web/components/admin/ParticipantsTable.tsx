@@ -247,6 +247,24 @@ export function ParticipantsTable({
     }
   }
 
+  async function exportBadges(): Promise<void> {
+    try {
+      const res = await fetch(apiUrl(`/events/${eventId}/exports/badges.pdf`), {
+        headers: { Authorization: `Bearer ${getToken() ?? ''}` },
+      });
+      if (!res.ok) throw new Error('No se pudo exportar');
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `credenciales-${slug}.pdf`;
+      a.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error('No se pudo exportar credenciales');
+    }
+  }
+
   async function resendQr(participant: Participant): Promise<void> {
     try {
       await api.post(`/participants/${participant.id}/resend-qr`);
@@ -285,6 +303,9 @@ export function ParticipantsTable({
         </Button>
         <Button variant="secundario" disabled={busy} onClick={() => void exportAttendanceList()}>
           Lista PDF
+        </Button>
+        <Button variant="secundario" disabled={busy} onClick={() => void exportBadges()}>
+          Credenciales PDF
         </Button>
       </div>
       <div className="mt-3 grid gap-2 md:grid-cols-3">
@@ -347,6 +368,17 @@ export function ParticipantsTable({
         </Button>
         <Button variant="secundario" onClick={() => setConfirmPrint('eligible')}>
           Imprimir solo aptos
+        </Button>
+        <Button
+          variant="secundario"
+          onClick={() => {
+            toast.loading('Generando credenciales en PDF…', { id: 'badges' });
+            download(`/events/${eventId}/exports/badges.pdf`, `credenciales-${slug}.pdf`)
+              .then(() => toast.success('Credenciales descargadas', { id: 'badges' }))
+              .catch((err) => toast.error(err instanceof Error ? err.message : 'Error al generar credenciales', { id: 'badges' }));
+          }}
+        >
+          Exportar credenciales (PDF)
         </Button>
       </div>
       {rows.length === 0 ? (

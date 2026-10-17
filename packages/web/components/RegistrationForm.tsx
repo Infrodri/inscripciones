@@ -70,9 +70,13 @@ export function RegistrationForm({
   const {
     register,
     handleSubmit,
+    watch,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ mode: 'onTouched', defaultValues: { type: 'ESTUDIANTE' } });
+
+  const attendeeType = watch('type');
+  const isStudent = attendeeType === 'ESTUDIANTE';
 
   async function onSubmit(raw: FormValues): Promise<void> {
     const parsed = schema.safeParse(raw);
@@ -167,13 +171,22 @@ export function RegistrationForm({
             className="w-full max-w-[220px] aspect-square object-contain"
           />
         </div>
-        <div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
             href={success.qrPngUrl}
             download={`qr-${success.qrToken}.png`}
             className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-navy px-6 py-2.5 font-medium !text-white shadow-soft hover:bg-navy-hover transition-colors"
           >
             Descargar QR
+          </a>
+          <a
+            href={apiUrl(`/public/registrations/${success.qrToken}/badge.pdf`)}
+            download={`credencial-${success.qrToken}.pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-line bg-surface px-6 py-2.5 font-medium text-ink shadow-soft hover:bg-canvas transition-colors"
+          >
+            Descargar Credencial (PDF)
           </a>
         </div>
         {success.notice ? (
@@ -250,7 +263,7 @@ export function RegistrationForm({
           <p className="text-xs font-semibold uppercase tracking-wider text-muted">
             Información Institucional
           </p>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Input
               id="institution"
               etiqueta="Institución"
@@ -261,20 +274,22 @@ export function RegistrationForm({
             />
             <Input
               id="career"
-              etiqueta="Carrera"
+              etiqueta={isStudent ? 'Carrera' : 'Carrera / Especialidad'}
               obligatorio={required.career}
               opcional={required.career ? undefined : '(opcional)'}
               {...register('career')}
               error={errors.career?.message}
             />
-            <Input
-              id="semester"
-              etiqueta="Semestre"
-              obligatorio={required.semester}
-              opcional={required.semester ? undefined : '(opcional)'}
-              {...register('semester')}
-              error={errors.semester?.message}
-            />
+            {isStudent || required.semester ? (
+              <Input
+                id="semester"
+                etiqueta="Semestre"
+                obligatorio={required.semester}
+                opcional={required.semester ? undefined : '(opcional)'}
+                {...register('semester')}
+                error={errors.semester?.message}
+              />
+            ) : null}
           </div>
         </div>
 

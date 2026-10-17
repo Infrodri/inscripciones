@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import ExcelJS from 'exceljs';
+import { renderBadgeSheet } from '@inscripciones/infrastructure/badges.js';
+import { qrPngBuffer } from '@inscripciones/infrastructure/qr.js';
 import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
@@ -129,6 +131,31 @@ export function exportRoutes(): Router {
         );
         res.header('Content-Disposition', `attachment; filename="asistencia-${event.slug}.xlsx"`);
         res.send(Buffer.from(buffer));
+        return;
+      }
+      if (req.params.kind === 'badges.pdf') {
+        const participants = await prisma.participant.findMany({
+          where: participantWhere,
+          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+        });
+        const badgeList = await Promise.all(
+          participants.map(async (p) => ({
+            fullName: `${p.firstName} ${p.lastName}`.trim(),
+            ci: p.ci,
+            type: p.type,
+            institution: p.institution,
+            career: p.career,
+            eventTitle: event.title,
+            eventInstitution: event.institution,
+            qrPngBuffer: await qrPngBuffer(p.qrToken),
+          }))
+        );
+        res.header('Content-Type', 'application/pdf');
+        res.header(
+          'Content-Disposition',
+          `attachment; filename="credenciales-${event.slug}.pdf"`
+        );
+        await renderBadgeSheet(badgeList, res);
         return;
       }
       throw new DomainError('NOT_FOUND', 'Exportación no encontrada');

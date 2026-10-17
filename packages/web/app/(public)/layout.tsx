@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { Providers } from '@/components/Providers';
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-canvas text-ink">
+    <Providers>
+      <div className="min-h-screen flex flex-col bg-canvas text-ink">
       <header className="bg-navy border-b-2 border-gold text-white shadow-soft">
         <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-center sm:text-left">
           <div className="flex items-center justify-center sm:justify-start gap-3">
@@ -71,6 +73,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         </div>
       </footer>
     </div>
+    </Providers>
   );
 }
 

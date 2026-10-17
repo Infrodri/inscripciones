@@ -36,7 +36,7 @@
     "create-admin": "node dist/scripts/create-admin.js",
     "cleanup:test-events": "node dist/scripts/cleanup-test-events.js",
     "start": "node dist/src/api/app.js",
-    "test": "vitest run"
+    "test": "vitest run --fileParallelism=false"
   },
   "version": "0.1.0"
 }
