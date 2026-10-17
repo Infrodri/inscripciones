@@ -42,7 +42,7 @@ export function EnrollmentLinkCard({ slug }: { slug: string }) {
               {copied ? 'Copiado' : 'Copiar'}
             </Button>
             <Button asChild variant="secundario" size="sm">
-              <a href={url} target="_blank" rel="noreferrer">
+              <a href={url}>
                 Abrir
               </a>
             </Button>

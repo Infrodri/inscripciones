@@ -40,7 +40,7 @@ export function AdminChrome({ children }: { children: ReactNode }) {
         />
       ) : null}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-navy p-4 text-white transition-transform md:static md:z-auto md:w-56 md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-navy p-4 text-white transition-transform md:sticky md:top-0 md:h-screen md:w-56 md:translate-x-0 md:overflow-y-auto ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

@@ -40,6 +40,7 @@ export default function NuevoEventoPage() {
   });
   const [duplicateFrom, setDuplicateFrom] = useState('');
   const [busy, setBusy] = useState(false);
+  const [sessionAtError, setSessionAtError] = useState<string | null>(null);
 
   const { data: events } = useQuery({
     queryKey: ['events'],
@@ -50,6 +51,7 @@ export default function NuevoEventoPage() {
   async function submit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!duplicateFrom && sessionAt === '') {
+      setSessionAtError('Debe ingresar la fecha y hora de inicio de la sesión');
       toast.error('Agregue al menos una sesión con fecha y hora');
       return;
     }
@@ -272,7 +274,11 @@ export default function NuevoEventoPage() {
                 etiqueta="Fecha y hora de inicio"
                 type="datetime-local"
                 value={sessionAt}
-                onChange={(e) => setSessionAt(e.target.value)}
+                onChange={(e) => {
+                  setSessionAt(e.target.value);
+                  setSessionAtError(null);
+                }}
+                error={sessionAtError ?? undefined}
                 required
               />
               <Input

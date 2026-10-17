@@ -65,6 +65,7 @@ export function PaymentFields({
             value={value.cost}
             onChange={(e) => onChange({ ...value, cost: e.target.value })}
             placeholder="0.00"
+            required
           />
 
           <Input

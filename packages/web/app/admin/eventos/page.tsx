@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import axios from 'axios';
 import { useState } from 'react';
@@ -33,6 +34,7 @@ interface EventCardProps {
 }
 
 function EventCard({ event, onDelete, participants, onSelect, selected }: EventCardProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const stats = useQuery({
     queryKey: ['stats', event.id],
@@ -59,7 +61,7 @@ function EventCard({ event, onDelete, participants, onSelect, selected }: EventC
       const res = await api.post(`/events/${event.id}/duplicate`, { title, slug, daysShift: 1 });
       await queryClient.invalidateQueries({ queryKey: ['events'] });
       toast.success('Evento duplicado');
-      window.location.href = `/admin/eventos/${(res.data as { id: string }).id}`;
+      router.push(`/admin/eventos/${(res.data as { id: string }).id}`);
     } catch (error) {
       if (!axios.isAxiosError(error) || error.response?.status !== 401)
         toast.error(apiErrorMessage(error));

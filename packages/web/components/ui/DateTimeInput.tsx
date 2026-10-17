@@ -9,6 +9,7 @@ export interface DateTimeInputProps {
   etiqueta?: string;
   error?: string;
   opcional?: string;
+  obligatorio?: boolean;
   value?: any;
   onChange?: (e: any) => void;
   required?: boolean;
@@ -29,9 +30,11 @@ export function DateTimeInput({
   etiqueta,
   error,
   opcional,
+  obligatorio,
   value,
   onChange,
   disabled,
+  required,
 }: DateTimeInputProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -162,14 +165,45 @@ export function DateTimeInput({
     }
   }
 
+  const isRequired = Boolean(required || obligatorio);
+
   return (
     <div ref={containerRef} className="space-y-1">
       {etiqueta && (
-        <label htmlFor={id} className="block text-sm font-medium text-ink">
-          {etiqueta}
-          {opcional && <span className="font-normal text-muted">{opcional}</span>}
-        </label>
+        <div className="flex items-center gap-0.5">
+          <label htmlFor={id} className="block text-sm font-medium text-ink">
+            {etiqueta}
+            {opcional && <span className="font-normal text-muted text-xs ml-1.5">{opcional}</span>}
+          </label>
+          {isRequired ? (
+            <span
+              className="text-danger font-bold text-sm leading-none select-none"
+              aria-hidden="true"
+              title="Campo obligatorio"
+            >
+              *
+            </span>
+          ) : null}
+        </div>
       )}
+
+      {error ? (
+        <p role="alert" className="text-xs font-semibold text-danger flex items-center gap-1.5 animate-fadeIn">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="w-3.5 h-3.5 flex-shrink-0"
+          >
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <span>{error}</span>
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
         {/* Campo de Fecha boliviana DD/MM/AAAA */}
@@ -181,7 +215,11 @@ export function DateTimeInput({
             value={datePart}
             onChange={(e) => handleDateInput(e.target.value)}
             disabled={disabled}
-            className="w-full min-h-[44px] rounded-[var(--radius-md)] border border-line bg-surface p-2.5 pl-3 pr-10 text-ink shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:opacity-50 transition-colors"
+            className={`w-full min-h-[44px] rounded-[var(--radius-md)] border ${
+              error
+                ? 'border-danger focus-visible:outline-danger ring-1 ring-danger/20'
+                : 'border-line focus-visible:outline-gold'
+            } bg-surface p-2.5 pl-3 pr-10 text-ink shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 transition-colors`}
           />
           <button
             type="button"
@@ -215,7 +253,11 @@ export function DateTimeInput({
             value={timePart}
             onChange={(e) => handleTimeInput(e.target.value)}
             disabled={disabled}
-            className="w-full min-h-[44px] rounded-[var(--radius-md)] border border-line bg-surface p-2.5 text-center text-ink shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:opacity-50 transition-colors"
+            className={`w-full min-h-[44px] rounded-[var(--radius-md)] border ${
+              error
+                ? 'border-danger focus-visible:outline-danger ring-1 ring-danger/20'
+                : 'border-line focus-visible:outline-gold'
+            } bg-surface p-2.5 text-center text-ink shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 transition-colors`}
           />
         </div>
 
@@ -326,12 +368,6 @@ export function DateTimeInput({
       {parsedIso && (
         <p className="text-xs text-muted flex items-center gap-1.5 pt-0.5">
           <span className="text-success font-bold">✓</span> {formatFechaHora(parsedIso)}
-        </p>
-      )}
-
-      {error && (
-        <p role="alert" className="mt-1 text-sm text-danger">
-          {error}
         </p>
       )}
     </div>

@@ -202,23 +202,26 @@ export function RegistrationForm({
             <Input
               id="firstName"
               etiqueta="Nombres"
+              obligatorio
               {...register('firstName')}
               error={errors.firstName?.message}
             />
             <Input
               id="lastName"
               etiqueta="Apellidos"
+              obligatorio
               {...register('lastName')}
               error={errors.lastName?.message}
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input id="ci" etiqueta="CI" {...register('ci')} error={errors.ci?.message} />
+            <Input id="ci" etiqueta="CI" obligatorio {...register('ci')} error={errors.ci?.message} />
             <Input
               id="phone"
               etiqueta="Celular"
-              opcional={required.phone ? undefined : ' (opcional)'}
+              obligatorio={required.phone}
+              opcional={required.phone ? undefined : '(opcional)'}
               {...register('phone')}
               error={errors.phone?.message}
             />
@@ -228,12 +231,12 @@ export function RegistrationForm({
             <Input
               id="email"
               etiqueta="Correo"
-              opcional=" (opcional)"
+              opcional="(opcional)"
               type="email"
               {...register('email')}
               error={errors.email?.message}
             />
-            <Input id="type" etiqueta="Tipo" desplegable {...register('type')}>
+            <Input id="type" etiqueta="Tipo" obligatorio desplegable {...register('type')}>
               <option value="ESTUDIANTE">Estudiante</option>
               <option value="DOCENTE">Docente</option>
               <option value="PROFESIONAL">Profesional</option>
@@ -251,21 +254,24 @@ export function RegistrationForm({
             <Input
               id="institution"
               etiqueta="Institución"
-              opcional={required.institution ? undefined : ' (opcional)'}
+              obligatorio={required.institution}
+              opcional={required.institution ? undefined : '(opcional)'}
               {...register('institution')}
               error={errors.institution?.message}
             />
             <Input
               id="career"
               etiqueta="Carrera"
-              opcional={required.career ? undefined : ' (opcional)'}
+              obligatorio={required.career}
+              opcional={required.career ? undefined : '(opcional)'}
               {...register('career')}
               error={errors.career?.message}
             />
             <Input
               id="semester"
               etiqueta="Semestre"
-              opcional={required.semester ? undefined : ' (opcional)'}
+              obligatorio={required.semester}
+              opcional={required.semester ? undefined : '(opcional)'}
               {...register('semester')}
               error={errors.semester?.message}
             />

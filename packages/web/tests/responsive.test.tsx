@@ -47,7 +47,7 @@ describe('responsive sin desborde', () => {
     expect(screen.getByLabelText('Abrir menú')).toBeDefined();
     const aside = container.querySelector('aside');
     expect(aside?.className).toMatch(/-translate-x-full/);
-    expect(aside?.className).toMatch(/md:static/);
+    expect(aside?.className).toMatch(/md:(sticky|static)/);
     expect(aside?.className).toMatch(/md:w-56/);
     expect(aside?.className).not.toMatch(/(^|\s)w-56(\s|$)/);
   });

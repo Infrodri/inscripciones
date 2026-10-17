@@ -323,12 +323,8 @@ function ProyectarModalInner({
             Descargar imagen QR
           </Button>
           <Button variant="secundario" size="sm" asChild>
-            <a
-              href={`/scan/${session.id}/proyectar`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Pantalla completa para proyector ↗
+            <a href={`/scan/${session.id}/proyectar`}>
+              Pantalla completa para proyector
             </a>
           </Button>
           <Button variant="fantasma" size="sm" onClick={onCerrar}>
