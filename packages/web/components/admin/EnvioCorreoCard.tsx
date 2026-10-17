@@ -237,6 +237,7 @@ export function EnvioCorreoCard({
       ) : null}
       {confirming ? (
         <ConfirmDialog
+          open={Boolean(confirming)}
           titulo="Enviar certificados"
           mensaje={
             conteo

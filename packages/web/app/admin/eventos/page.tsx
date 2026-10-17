@@ -19,22 +19,26 @@ interface EventRow {
   title: string;
   status: string;
   participants?: number;
+  participantsCount?: number;
+  speakersCount?: number;
+  sessionsCount?: number;
 }
 
 interface EventCardProps {
   event: EventRow;
-  onDelete?: boolean;
+  onDelete?: (event: EventRow) => void;
   participants?: number;
   onSelect?: (id: string, selected: boolean) => void;
   selected?: boolean;
 }
 
-function EventCard({ event, onDelete, participants = 0, onSelect, selected }: EventCardProps) {
+function EventCard({ event, onDelete, participants, onSelect, selected }: EventCardProps) {
   const queryClient = useQueryClient();
   const stats = useQuery({
     queryKey: ['stats', event.id],
     queryFn: async (): Promise<{ participants: number }> =>
       (await api.get(`/events/${event.id}/stats`)).data,
+    enabled: participants === undefined && event.participants === undefined,
   });
   const sessions = useQuery({
     queryKey: ['sessions', event.id],
@@ -44,6 +48,7 @@ function EventCard({ event, onDelete, participants = 0, onSelect, selected }: Ev
   const dates = (sessions.data?.data ?? []).map((s) => s.startsAt).sort();
   const first = dates[0];
   const last = dates[dates.length - 1];
+  const inscritosCount = participants ?? event.participants ?? stats.data?.participants ?? 0;
 
   async function duplicate(): Promise<void> {
     const title = window.prompt('Título del nuevo evento:', `${event.title} (copia)`);
@@ -81,7 +86,13 @@ function EventCard({ event, onDelete, participants = 0, onSelect, selected }: Ev
             <Badge tono={event.status}>{event.status}</Badge>
             {first ? <span>desde {formatFecha(first)}</span> : <span>sin fecha</span>}
             {last && last !== first ? <span>hasta {formatFecha(last)}</span> : null}
-            <span>Inscritos: {participants ?? stats.data?.participants ?? '…'}</span>
+            <span className="font-medium text-ink">Inscritos: {inscritosCount}</span>
+            {event.speakersCount !== undefined && event.speakersCount > 0 ? (
+              <span>• Expositores: {event.speakersCount}</span>
+            ) : null}
+            {event.sessionsCount !== undefined && event.sessionsCount > 0 ? (
+              <span>• Sesiones: {event.sessionsCount}</span>
+            ) : null}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button asChild variant="primario" size="sm">
@@ -91,22 +102,9 @@ function EventCard({ event, onDelete, participants = 0, onSelect, selected }: Ev
               Duplicar
             </Button>
             {onDelete && (
-              <ConfirmDialog
-                titulo="Eliminar evento"
-                mensaje={`Eliminar "${event.title}"? Esta acción no se puede deshacer.`}
-                confirmar="Eliminar"
-                onConfirmar={async () => {
-                  try {
-                    await api.delete(`/events/${event.id}`);
-                    toast.success('Evento eliminado');
-                  } catch (error) {
-                    toast.error(apiErrorMessage(error));
-                  }
-                }}
-                onCerrar={() => {}}
-              >
-                <Button variant="peligro" size="sm">Eliminar</Button>
-              </ConfirmDialog>
+              <Button variant="peligro" size="sm" onClick={() => onDelete(event)}>
+                Eliminar
+              </Button>
             )}
           </div>
         </div>
@@ -116,6 +114,7 @@ function EventCard({ event, onDelete, participants = 0, onSelect, selected }: Ev
 }
 
 export default function EventosPage() {
+  const queryClient = useQueryClient();
   const sessionUser = getSessionUser();
   const isAdmin = sessionUser?.role === 'ADMIN';
 
@@ -123,6 +122,7 @@ export default function EventosPage() {
   const [showTestFilter, setShowTestFilter] = useState(false);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [bulkDeleteText, setBulkDeleteText] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<EventRow | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['events'],
@@ -130,7 +130,8 @@ export default function EventosPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (ids: string[]) => api.post('/events/bulk-delete', { ids }),
+    mutationFn: ({ ids, titles }: { ids: string[]; titles?: Record<string, string> }) =>
+      api.post('/events/bulk-delete', { ids, titles }),
     onSuccess: () => {
       toast.success('Eventos eliminados');
       setSelectedIds([]);
@@ -166,7 +167,12 @@ export default function EventosPage() {
       toast.error('Debe escribir "ELIMINAR" para confirmar');
       return;
     }
-    await deleteMutation.mutateAsync(selectedIds);
+    const titles = Object.fromEntries(selectedEvents.map((e) => [e.id, e.title]));
+    try {
+      await deleteMutation.mutateAsync({ ids: selectedIds, titles });
+    } catch {
+      // Manejado en onError
+    }
   };
 
   if (isLoading) return <p className="text-muted">Cargando eventos…</p>;
@@ -237,7 +243,7 @@ export default function EventosPage() {
           <EventCard
             key={e.id}
             event={e}
-            onDelete={isAdmin}
+            onDelete={isAdmin ? (event) => setDeleteTarget(event) : undefined}
             participants={e.participants}
             onSelect={toggleSelect}
             selected={selectedIds.includes(e.id)}
@@ -302,6 +308,29 @@ export default function EventosPage() {
             setBulkDeleteConfirm(false);
             setBulkDeleteText('');
           }}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          open={true}
+          titulo="Eliminar evento"
+          mensaje={`¿Eliminar "${deleteTarget.title}"? Esta acción no se puede deshacer.`}
+          confirmar="Eliminar"
+          onConfirmar={async () => {
+            try {
+              await api.delete(`/events/${deleteTarget.id}`, {
+                data: { title: deleteTarget.title },
+              });
+              await queryClient.invalidateQueries({ queryKey: ['events'] });
+              toast.success('Evento eliminado');
+            } catch (error) {
+              toast.error(apiErrorMessage(error));
+            } finally {
+              setDeleteTarget(null);
+            }
+          }}
+          onCerrar={() => setDeleteTarget(null)}
         />
       )}
     </div>

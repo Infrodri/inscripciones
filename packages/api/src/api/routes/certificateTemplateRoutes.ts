@@ -62,7 +62,7 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
   // router.use sirven aquí: rechazarían el STAFF de rutas montadas después.
   const admin = requireRole('ADMIN');
 
-  router.get('/events/:eventId/certificate-templates', admin, async (req, res, next) => {
+  router.get('/events/:eventId/certificate-templates', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
     try {
       const prisma = getPrisma();
       const roleKind = typeof req.query.roleKind === 'string' ? req.query.roleKind : undefined;
@@ -211,8 +211,8 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
     }
   );
 
-  // Archivo privado: solo ADMIN autenticado.
-  router.get('/certificate-templates/:id/file', admin, async (req, res, next) => {
+  // Archivo de plantilla (ADMIN y STAFF para previsualización).
+  router.get('/certificate-templates/:id/file', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
     try {
       const prisma = getPrisma();
       const template = await prisma.certificateTemplate.findUnique({
@@ -302,8 +302,8 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
     }
   });
 
-  // Vista previa de 1 página antes del lote.
-  router.get('/certificate-templates/:id/preview.pdf', admin, async (req, res, next) => {
+  // Vista previa de 1 página antes del lote (ADMIN y STAFF).
+  router.get('/certificate-templates/:id/preview.pdf', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
     try {
       const prisma = getPrisma();
       const template = await prisma.certificateTemplate.findUnique({

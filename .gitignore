@@ -1,9 +1,46 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
 dist/
 .next/
+out/
+build/
+*.tsbuildinfo
 packages/web/next-env.d.ts
+
+# Environment variables & secrets (CRITICAL FOR PUBLIC REPOS)
 .env
-.env.local
+.env*.local
+.env.development
+.env.test
+.env.production
+.env.staging
+*.env
+!*.env.example
+!.env.example
+
+# Local uploads & test storage
 uploads/
 uploads-test/
-*.tsbuildinfo
+packages/api/uploads/
+packages/api/uploads-test/
+*.pem
+*.key
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Testing & coverage
+coverage/
+
+# IDE / OS metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

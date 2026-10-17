@@ -9,11 +9,13 @@ export function Dialog({
   onCerrar,
   children,
   accion,
+  maxWidth = 'max-w-lg',
 }: {
   titulo: string;
   onCerrar: () => void;
   children: ReactNode;
   accion?: ReactNode;
+  maxWidth?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<Element | null>(null);
@@ -60,26 +62,26 @@ export function Dialog({
       role="dialog"
       aria-modal="true"
       aria-label={titulo}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-navy/70 backdrop-blur-xs p-4"
       onClick={onCerrar}
     >
       <div
         ref={panelRef}
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-[8px] bg-white p-6"
+        className={`max-h-[85vh] w-full ${maxWidth} overflow-y-auto rounded-[var(--radius-md)] bg-surface border border-line p-6 shadow-soft`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="font-serif text-xl text-[#0A2A5E]">{titulo}</h2>
+        <div className="flex items-start justify-between gap-2 border-b border-line pb-3">
+          <h2 className="font-serif text-xl font-bold text-navy">{titulo}</h2>
           <button
             type="button"
             onClick={onCerrar}
             aria-label="Cerrar diálogo"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[8px] border border-[#D9DEE7]"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[var(--radius-md)] border border-line text-muted hover:text-ink hover:bg-canvas transition-colors"
           >
             ✕
           </button>
         </div>
-        <div className="mt-3">{children}</div>
+        <div className="mt-3 text-ink">{children}</div>
         {accion ? <div className="mt-4 flex justify-end gap-2">{accion}</div> : null}
       </div>
     </div>

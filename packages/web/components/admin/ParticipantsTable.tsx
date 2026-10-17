@@ -452,24 +452,9 @@ export function ParticipantsTable({
                             <Button variant="secundario" size="sm" onClick={() => void resendQr(p)}>
                               Reenviar QR
                             </Button>
-                            <ConfirmDialog
-                              titulo="Eliminar inscrito"
-                              mensaje={`Eliminar a ${p.lastName}, ${p.firstName} (CI: ${p.ci})? Esta acción no se puede deshacer.`}
-                              confirmar="Eliminar"
-                              onConfirmar={async () => {
-                                try {
-                                  await api.delete(`/participants/${p.id}`);
-                                  toast.success('Inscrito eliminado');
-                                } catch (error) {
-                                  toast.error(apiErrorMessage(error));
-                                }
-                              }}
-                              onCerrar={() => {}}
-                            >
-                              <Button variant="peligro" size="sm">
-                                Eliminar
-                              </Button>
-                            </ConfirmDialog>
+                            <Button variant="peligro" size="sm" onClick={() => setDeleting(p)}>
+                              Eliminar
+                            </Button>
                           </>
                         ) : null}
                       </div>
@@ -511,6 +496,7 @@ export function ParticipantsTable({
       )}
       {confirmPrint ? (
         <ConfirmDialog
+          open={Boolean(confirmPrint)}
           titulo="Imprimir diplomas"
           mensaje={
             confirmPrint === 'all'
@@ -542,6 +528,7 @@ export function ParticipantsTable({
       ) : null}
       {deleting ? (
         <ConfirmDialog
+          open={Boolean(deleting)}
           titulo="Eliminar inscrito"
           mensaje={`Eliminar a ${deleting.lastName}, ${deleting.firstName} (CI: ${deleting.ci})? Esta acción no se puede deshacer.`}
           confirmar="Eliminar"

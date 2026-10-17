@@ -13,11 +13,14 @@ export default async function InscripcionPage({ params }: { params: Promise<{ sl
         requireSemester?: boolean;
         requireInstitution?: boolean;
         requirePhone?: boolean;
+        isFree?: boolean;
+        cost?: number | null;
+        institutionQr?: string | null;
       })
     : null;
+
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="font-serif text-2xl text-[#0A2A5E]">Formulario de inscripción</h1>
+    <main className="mx-auto max-w-3xl my-8 px-4 space-y-6">
       <RegistrationForm
         slug={slug}
         required={{
@@ -26,6 +29,15 @@ export default async function InscripcionPage({ params }: { params: Promise<{ sl
           institution: event?.requireInstitution ?? false,
           phone: event?.requirePhone ?? false,
         }}
+        event={
+          event
+            ? {
+                isFree: event.isFree,
+                cost: event.cost,
+                institutionQr: event.institutionQr,
+              }
+            : undefined
+        }
       />
     </main>
   );

@@ -39,10 +39,10 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-[80vh] w-full max-w-sm flex-col justify-center p-4">
       <Card>
-        <p className="text-center text-sm text-[#0A2A5E]">
+        <p className="text-center text-sm text-navy">
           Universidad Mayor, Real y Pontificia de San Francisco Xavier de Chuquisaca
         </p>
-        <h1 className="mt-2 text-center font-serif text-2xl text-[#0A2A5E]">
+        <h1 className="mt-2 text-center font-serif text-2xl font-bold text-navy">
           Ingreso administrador
         </h1>
         <form onSubmit={(e) => void submit(e)} className="mt-6 space-y-4">
@@ -65,7 +65,7 @@ export default function LoginPage() {
             autoComplete="current-password"
           />
           {error ? (
-            <p role="alert" className="text-sm text-[#B42318]">
+            <p role="alert" className="text-sm text-danger font-medium">
               {error}
             </p>
           ) : null}

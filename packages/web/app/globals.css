@@ -38,6 +38,13 @@ a {
   color: var(--color-navy-hover);
 }
 
+a.text-white,
+a.\!text-white,
+[class*='text-white'] a,
+[class*='!text-white'] a {
+  color: #ffffff !important;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-navy);
   outline-offset: 2px;

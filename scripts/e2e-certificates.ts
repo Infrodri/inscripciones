@@ -8,7 +8,9 @@ import { Prisma } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 
 // Usar la URL de BD local desde .env
-const DATABASE_URL = 'postgresql://inscripciones:inscripciones@localhost:5434/inscripciones';
+const DATABASE_URL =
+  process.env.DATABASE_URL ??
+  'postgresql://inscripciones:inscripciones@localhost:5434/inscripciones';
 
 async function main() {
   console.log('🚀 Iniciando E2E de certificados...\n');

@@ -40,8 +40,10 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const rawTab = searchParams.get('tab');
+  const sessionUser = getSessionUser();
+  const isAdmin = sessionUser?.role === 'ADMIN';
+  const visibleTabs = TABS.filter((t) => t.id !== 'certificados' || isAdmin);
   const tab = rawTab && VALID_TABS.has(rawTab) ? rawTab : 'resumen';
 
   const { data, isLoading, isError, error } = useQuery({
@@ -55,6 +57,10 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
   });
 
   function goTab(next: string): void {
+    if (next === 'certificados') {
+      router.push(`/admin/eventos/${id}/certificados`);
+      return;
+    }
     router.replace(`/admin/eventos/${id}?tab=${next}`);
   }
 
@@ -156,12 +162,12 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
           ) : undefined
         }
       />
-      <p className="mt-1 text-sm text-[#5B6677]">
+      <p className="mt-1 text-sm text-muted">
         <Badge tono={data.status}>{data.status}</Badge> {data.location}
         {firstSession ? ` · desde ${formatFecha(firstSession.startsAt)}` : ''}
       </p>
       <div className="mt-4">
-        <Tabs tabs={TABS} activa={tab} onChange={goTab} />
+        <Tabs tabs={visibleTabs} activa={tab} onChange={goTab} />
       </div>
       <div className="mt-4">
         {tab === 'resumen' ? <ResumenTab eventId={id} /> : null}
@@ -175,12 +181,19 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
           />
         ) : null}
         {tab === 'certificados' ? (
-          <p className="text-sm">
-            Los certificados se gestionan en su página:{' '}
-            <a href={`/admin/eventos/${id}/certificados`} className="underline">
-              Ir a Certificados
-            </a>
-          </p>
+          <div className="rounded-xl border border-line bg-surface p-6 shadow-sm">
+            <div className="max-w-2xl">
+              <h3 className="text-base font-semibold text-ink">Emisión y Plantillas de Certificados</h3>
+              <p className="mt-1 text-sm text-muted">
+                Administre el diseño gráfico de las acreditaciones, configure las coordenadas de impresión para asistentes y genere certificados individuales o en lote.
+              </p>
+              <div className="mt-4">
+                <Button onClick={() => router.push(`/admin/eventos/${id}/certificados`)}>
+                  Abrir panel de certificados
+                </Button>
+              </div>
+            </div>
+          </div>
         ) : null}
         {tab === 'datos' ? <DatosTab eventId={id} /> : null}
       </div>

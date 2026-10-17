@@ -7,6 +7,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { apiUrl, configErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 
 const schema = z.object({
@@ -47,9 +48,25 @@ export interface RequiredFields {
   phone: boolean;
 }
 
-export function RegistrationForm({ slug, required }: { slug: string; required: RequiredFields }) {
+export interface EventPaymentInfo {
+  isFree?: boolean;
+  cost?: number | null;
+  institutionQr?: string | null;
+}
+
+export function RegistrationForm({
+  slug,
+  required,
+  event,
+}: {
+  slug: string;
+  required: RequiredFields;
+  event?: EventPaymentInfo;
+}) {
   const [success, setSuccess] = useState<Success | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofError, setProofError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -79,13 +96,39 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
       setError(field as keyof FormValues, { message });
     }
     if (Object.keys(extra).length > 0) return;
+
+    let paymentProofUrl: string | undefined;
+    if (event && event.isFree === false) {
+      if (!proofFile) {
+        setProofError('El comprobante de pago es obligatorio para eventos de pago');
+        return;
+      }
+      try {
+        const formData = new FormData();
+        formData.append('proof', proofFile);
+        const uploadRes = await axios.post(apiUrl('/public/proof'), formData);
+        paymentProofUrl = (uploadRes.data as { url: string }).url;
+      } catch (uploadErr) {
+        const message =
+          (axios.isAxiosError(uploadErr) &&
+            (uploadErr.response?.data?.error?.message as string | undefined)) ||
+          'Error al subir comprobante';
+        setProofError(message);
+        return;
+      }
+    }
+
     const values = parsed.data;
     setServerError(null);
     try {
-      const res = await axios.post(apiUrl(`/public/events/${slug}/registrations`), {
+      const payload: Record<string, unknown> = {
         ...values,
         website: '',
-      });
+      };
+      if (paymentProofUrl) {
+        payload.paymentProofUrl = paymentProofUrl;
+      }
+      const res = await axios.post(apiUrl(`/public/events/${slug}/registrations`), payload);
       setSuccess(res.data as Success);
       toast.success('Inscripción registrada');
     } catch (error) {
@@ -102,96 +145,230 @@ export function RegistrationForm({ slug, required }: { slug: string; required: R
 
   if (success) {
     return (
-      <div>
-        <h2 className="font-serif text-2xl text-[#0A2A5E]">Inscripción confirmada</h2>
-        <p className="mt-2">
-          {success.firstName} {success.lastName}: presente este QR al ingresar.
-        </p>
-        <img src={success.qrPngUrl} alt="QR personal de ingreso" className="mt-4 w-full max-w-xs" />
-        <div className="mt-4">
+      <Card className="rounded-xl border border-line bg-surface p-6 sm:p-8 shadow-soft text-center space-y-5">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-ok-bg text-ok">
+          <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div className="space-y-1">
+          <h2 className="font-serif text-2xl font-bold text-navy">¡Inscripción confirmada!</h2>
+          <p className="text-ink text-sm sm:text-base">
+            <strong>{success.firstName} {success.lastName}</strong>: presente este código QR al ingresar al evento.
+          </p>
+          <p className="text-xs text-muted">
+            Guarde o descargue el código QR en su dispositivo móvil para el control de asistencia.
+          </p>
+        </div>
+        <div className="flex justify-center p-4 bg-canvas rounded-xl border border-line max-w-xs mx-auto">
+          <img
+            src={success.qrPngUrl}
+            alt="QR personal de ingreso"
+            className="w-full max-w-[220px] aspect-square object-contain"
+          />
+        </div>
+        <div>
           <a
             href={success.qrPngUrl}
             download={`qr-${success.qrToken}.png`}
-            className="inline-block min-h-[44px] rounded bg-[#0A2A5E] px-4 py-2 text-white"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-navy px-6 py-2.5 font-medium !text-white shadow-soft hover:bg-navy-hover transition-colors"
           >
             Descargar QR
           </a>
         </div>
-        {success.notice ? <p className="mt-4">{success.notice}</p> : null}
-      </div>
+        {success.notice ? (
+          <p className="text-xs text-muted max-w-md mx-auto pt-2 border-t border-line">
+            {success.notice}
+          </p>
+        ) : null}
+      </Card>
     );
   }
 
   return (
-    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="mt-6 space-y-4">
-      <Input
-        id="firstName"
-        etiqueta="Nombres"
-        {...register('firstName')}
-        error={errors.firstName?.message}
-      />
-      <Input
-        id="lastName"
-        etiqueta="Apellidos"
-        {...register('lastName')}
-        error={errors.lastName?.message}
-      />
-      <Input id="ci" etiqueta="CI" {...register('ci')} error={errors.ci?.message} />
-      <Input
-        id="email"
-        etiqueta="Correo"
-        opcional=" (opcional)"
-        type="email"
-        {...register('email')}
-        error={errors.email?.message}
-      />
-      <Input
-        id="phone"
-        etiqueta="Celular"
-        opcional={required.phone ? undefined : ' (opcional)'}
-        {...register('phone')}
-        error={errors.phone?.message}
-      />
-      <Input id="type" etiqueta="Tipo" desplegable {...register('type')}>
-        <option value="ESTUDIANTE">Estudiante</option>
-        <option value="DOCENTE">Docente</option>
-        <option value="PROFESIONAL">Profesional</option>
-        <option value="PUBLICO">Público</option>
-      </Input>
-      <Input
-        id="institution"
-        etiqueta="Carrera o institución"
-        opcional={required.institution ? undefined : ' (opcional)'}
-        {...register('institution')}
-        error={errors.institution?.message}
-      />
-      <Input
-        id="career"
-        etiqueta="Carrera"
-        opcional={required.career ? undefined : ' (opcional)'}
-        {...register('career')}
-        error={errors.career?.message}
-      />
-      <Input
-        id="semester"
-        etiqueta="Semestre"
-        opcional={required.semester ? undefined : ' (opcional)'}
-        {...register('semester')}
-        error={errors.semester?.message}
-      />
-      <div>
-        <input id="dataConsent" type="checkbox" {...register('dataConsent')} />
-        <label htmlFor="dataConsent"> Acepto el tratamiento de mis datos para este evento</label>
-        {errors.dataConsent ? <p>{errors.dataConsent.message}</p> : null}
-      </div>
-      {serverError ? (
-        <p role="alert" className="text-sm text-red-700">
-          {serverError}
-        </p>
-      ) : null}
-      <Button type="submit" cargando={isSubmitting} className="w-full">
-        Confirmar inscripción
-      </Button>
-    </form>
+    <Card className="border border-line bg-surface p-6 sm:p-8 rounded-xl shadow-soft">
+      <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-6">
+        <div className="border-b border-line pb-4">
+          <h2 className="font-serif text-xl sm:text-2xl font-bold text-navy">Formulario de inscripción</h2>
+          <p className="text-sm text-muted mt-0.5">Complete sus datos para registrarse al evento académico.</p>
+        </div>
+
+        {/* Personal Details */}
+        <div className="space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+            Datos Personales
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              id="firstName"
+              etiqueta="Nombres"
+              {...register('firstName')}
+              error={errors.firstName?.message}
+            />
+            <Input
+              id="lastName"
+              etiqueta="Apellidos"
+              {...register('lastName')}
+              error={errors.lastName?.message}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input id="ci" etiqueta="CI" {...register('ci')} error={errors.ci?.message} />
+            <Input
+              id="phone"
+              etiqueta="Celular"
+              opcional={required.phone ? undefined : ' (opcional)'}
+              {...register('phone')}
+              error={errors.phone?.message}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              id="email"
+              etiqueta="Correo"
+              opcional=" (opcional)"
+              type="email"
+              {...register('email')}
+              error={errors.email?.message}
+            />
+            <Input id="type" etiqueta="Tipo" desplegable {...register('type')}>
+              <option value="ESTUDIANTE">Estudiante</option>
+              <option value="DOCENTE">Docente</option>
+              <option value="PROFESIONAL">Profesional</option>
+              <option value="PUBLICO">Público</option>
+            </Input>
+          </div>
+        </div>
+
+        {/* Academic / Institutional Data */}
+        <div className="space-y-4 border-t border-line pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+            Información Institucional
+          </p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Input
+              id="institution"
+              etiqueta="Institución"
+              opcional={required.institution ? undefined : ' (opcional)'}
+              {...register('institution')}
+              error={errors.institution?.message}
+            />
+            <Input
+              id="career"
+              etiqueta="Carrera"
+              opcional={required.career ? undefined : ' (opcional)'}
+              {...register('career')}
+              error={errors.career?.message}
+            />
+            <Input
+              id="semester"
+              etiqueta="Semestre"
+              opcional={required.semester ? undefined : ' (opcional)'}
+              {...register('semester')}
+              error={errors.semester?.message}
+            />
+          </div>
+        </div>
+
+        {/* Paid Event Information & Proof Upload */}
+        {event && event.isFree === false ? (
+          <div className="rounded-xl border border-line bg-canvas p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-line pb-3">
+              <div>
+                <h3 className="font-serif text-lg font-bold text-navy">Información de pago</h3>
+                <p className="text-xs text-muted">
+                  Este evento requiere confirmación de pago para la inscripción.
+                </p>
+              </div>
+              <div className="sm:text-right">
+                <span className="text-xs text-muted block">Monto a transferir</span>
+                <span className="text-xl font-bold text-navy">
+                  {event.cost != null ? `${event.cost} Bs` : 'Monto definido'}
+                </span>
+              </div>
+            </div>
+
+            {event.institutionQr ? (
+              <div className="rounded-lg border border-line bg-surface p-4 flex flex-col sm:flex-row items-center gap-4">
+                <div className="shrink-0 bg-canvas p-2 rounded-lg border border-line">
+                  <img
+                    src={event.institutionQr}
+                    alt="QR institucional para pago"
+                    className="max-h-48 max-w-[200px] object-contain rounded"
+                  />
+                </div>
+                <div className="text-sm space-y-2 text-ink">
+                  <p className="font-semibold text-navy">Instrucciones para transferencia:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-xs text-muted">
+                    <li>Abra su aplicación bancaria o billetera móvil.</li>
+                    <li>Escanee el código QR institucional por el monto de {event.cost != null ? `${event.cost} Bs` : 'la matrícula'}.</li>
+                    <li>Guarde el comprobante o captura de pantalla de la transferencia.</li>
+                    <li>Adjunte el archivo del comprobante en el campo inferior.</li>
+                  </ol>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-1.5">
+              <Input
+                id="paymentProof"
+                etiqueta="Comprobante de pago"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,application/pdf"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setProofFile(file);
+                  setProofError(null);
+                }}
+                error={proofError ?? undefined}
+              />
+              {proofFile ? (
+                <p className="text-xs text-ok font-medium">
+                  ✓ Comprobante seleccionado: {proofFile.name} ({(proofFile.size / 1024).toFixed(1)} KB)
+                </p>
+              ) : (
+                <p className="text-xs text-muted">
+                  Archivos permitidos: PNG, JPG, WEBP o PDF.
+                </p>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Data Consent */}
+        <div className="pt-2">
+          <label htmlFor="dataConsent" className="flex items-start gap-3 cursor-pointer text-sm text-ink select-none min-h-[44px]">
+            <input
+              id="dataConsent"
+              type="checkbox"
+              {...register('dataConsent')}
+              className="mt-0.5 h-4 w-4 rounded border-line text-navy focus:ring-navy"
+            />
+            <span>Acepto el tratamiento de mis datos para este evento</span>
+          </label>
+          {errors.dataConsent ? (
+            <p role="alert" className="mt-1 text-sm text-danger">{errors.dataConsent.message}</p>
+          ) : null}
+        </div>
+
+        {serverError ? (
+          <div className="rounded-lg bg-danger-bg p-3 text-sm text-danger border border-line" role="alert">
+            {serverError}
+          </div>
+        ) : null}
+
+        <Button
+          type="submit"
+          variant="primario"
+          size="lg"
+          cargando={isSubmitting}
+          className="w-full !text-white text-base font-semibold min-h-[48px] shadow-soft"
+        >
+          Confirmar inscripción
+        </Button>
+      </form>
+    </Card>
   );
 }

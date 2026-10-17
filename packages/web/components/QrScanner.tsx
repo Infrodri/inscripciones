@@ -37,17 +37,52 @@ export function QrScanner({
       onErrorRef.current(cameraErrorMessage(null));
       return;
     }
+
     const scanner = new Html5Qrcode('qr-reader');
+    let isMounted = true;
+
+    function safelyStopScanner(instance: Html5Qrcode) {
+      try {
+        if (instance.isScanning) {
+          instance
+            .stop()
+            .catch(() => undefined)
+            .finally(() => {
+              try {
+                instance.clear();
+              } catch {}
+            });
+        } else {
+          try {
+            instance.clear();
+          } catch {}
+        }
+      } catch {}
+    }
+
     scanner
       .start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: 250 },
-        (text) => onScanRef.current(text),
+        (text) => {
+          if (isMounted) onScanRef.current(text);
+        },
         () => undefined
       )
-      .catch((err: unknown) => onErrorRef.current(cameraErrorMessage(err)));
+      .then(() => {
+        if (!isMounted) {
+          safelyStopScanner(scanner);
+        }
+      })
+      .catch((err: unknown) => {
+        if (isMounted) {
+          onErrorRef.current(cameraErrorMessage(err));
+        }
+      });
+
     return () => {
-      void scanner.stop().catch(() => undefined);
+      isMounted = false;
+      safelyStopScanner(scanner);
     };
   }, [active]);
 

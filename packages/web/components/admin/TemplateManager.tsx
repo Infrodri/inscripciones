@@ -214,6 +214,7 @@ export function TemplateManager({ eventId }: { eventId: string }) {
       {selected ? <TemplateEditor templateId={selected} eventId={eventId} /> : null}
       {toDelete ? (
         <ConfirmDialog
+          open={Boolean(toDelete)}
           titulo="Eliminar plantilla"
           mensaje={`¿Eliminar "${toDelete.name}"? Si otra plantilla usa la misma imagen, el archivo se conserva.`}
           confirmar="Eliminar"
@@ -245,6 +246,6 @@ function TemplateThumb({ templateId, name }: { templateId: string; name: string 
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [templateId]);
-  if (!url) return <p className="text-sm text-[#5B6677]">Cargando miniatura…</p>;
-  return <img src={url} alt={`Miniatura de ${name}`} className="max-h-32 rounded border" />;
+  if (!url) return <p className="text-sm text-muted">Cargando miniatura…</p>;
+  return <img src={url} alt={`Miniatura de ${name}`} className="max-h-32 rounded border border-line" />;
 }

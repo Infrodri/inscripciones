@@ -66,11 +66,34 @@ describe('H1 rutas con roles', () => {
   });
 
   afterAll(async () => {
-    const prisma = getPrisma();
-    await prisma.event.deleteMany({ where: { slug: { contains: `h1-${stamp}` } } });
-    await prisma.user.deleteMany({ where: { email: { contains: `h1-` } } });
-    await prisma.$disconnect();
-    await new Promise<void>((resolve) => server?.close(() => resolve()));
+    try {
+      const prisma = getPrisma();
+      const testEvents = await prisma.event.findMany({
+        where: { slug: { contains: String(stamp) } },
+        select: { id: true },
+      });
+      const ids = testEvents.map((e) => e.id);
+      if (ids.length > 0) {
+        await prisma.attendance.deleteMany({
+          where: { session: { eventId: { in: ids } } },
+        });
+        await prisma.certificateRecipient.deleteMany({
+          where: { eventId: { in: ids } },
+        });
+        await prisma.certificateTemplate.deleteMany({
+          where: { eventId: { in: ids } },
+        });
+        await prisma.participant.deleteMany({ where: { eventId: { in: ids } } });
+        await prisma.speaker.deleteMany({ where: { eventId: { in: ids } } });
+        await prisma.sponsor.deleteMany({ where: { eventId: { in: ids } } });
+        await prisma.session.deleteMany({ where: { eventId: { in: ids } } });
+        await prisma.event.deleteMany({ where: { id: { in: ids } } });
+      }
+      await prisma.user.deleteMany({ where: { email: { contains: `h1-` } } });
+      await prisma.$disconnect();
+    } finally {
+      await new Promise<void>((resolve) => server?.close(() => resolve()));
+    }
   });
 
   it('GET /health sin auth responde 200 con BD', async () => {

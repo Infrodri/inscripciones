@@ -60,7 +60,7 @@ async function assertNoDuplicate(
 export function certificateRecipientRoutes(): Router {
   const router = Router();
 
-  router.get('/events/:eventId/certificate-recipients', admin, async (req, res, next) => {
+  router.get('/events/:eventId/certificate-recipients', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
     try {
       const prisma = getPrisma();
       const roleKind = typeof req.query.roleKind === 'string' ? req.query.roleKind : undefined;

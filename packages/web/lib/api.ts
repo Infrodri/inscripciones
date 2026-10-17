@@ -62,6 +62,10 @@ api.interceptors.request.use((config) => {
   // baseURL aquí (no al crear la instancia): si falta la variable, la
   // petición falla con mensaje claro en vez de ir al origen web.
   config.baseURL = apiBaseUrl();
+  // Evitar duplicar prefijo si el caller pasó una URL relativa que ya incluye /api/v1
+  if (config.url && config.url.startsWith('/api/v1/')) {
+    config.url = config.url.replace(/^\/api\/v1/, '');
+  }
   const token = getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;

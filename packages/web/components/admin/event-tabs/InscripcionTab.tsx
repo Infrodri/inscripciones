@@ -23,12 +23,12 @@ interface EventRow {
 }
 
 const REASON_TEXT: Record<string, string> = {
-  ABIERTAS: 'Abiertas',
+  ABIERTAS: 'Inscripciones abiertas',
   CERRADAS_MANUAL: 'Cerradas manualmente',
   CERRADA_FECHA: 'Cerradas por fecha límite',
-  CUPO_LLENO: 'Cupo lleno',
-  BORRADOR: 'Borrador',
-  FINALIZADO: 'Finalizado',
+  CUPO_LLENO: 'Cupo completo',
+  BORRADOR: 'Borrador (no publicado)',
+  FINALIZADO: 'Evento finalizado',
 };
 
 function toLocalInput(iso: string | null): string {
@@ -69,7 +69,7 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
         await api.post(`/events/${eventId}/close`);
       }
       await refresh();
-      toast.success(abrir ? 'Inscripciones abiertas' : 'Inscripciones cerradas');
+      toast.success(abrir ? 'Inscripciones abiertas exitosamente' : 'Inscripciones cerradas');
     } catch (error) {
       if (!axios.isAxiosError(error) || error.response?.status !== 401)
         toast.error(apiErrorMessage(error));
@@ -93,7 +93,7 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
       setNewDeadline('');
       setNoDeadline(false);
       await refresh();
-      toast.success('Inscripciones abiertas');
+      toast.success('Inscripciones reabiertas exitosamente');
     } catch (error) {
       toast.error(apiErrorMessage(error));
     }
@@ -102,62 +102,81 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
   async function saveLimits(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     try {
+      const cap = capacity !== null ? (capacity === '' ? null : Number(capacity)) : undefined;
+      const dl =
+        deadline !== null
+          ? deadline === ''
+            ? null
+            : new Date(deadline).toISOString()
+          : undefined;
       await api.patch(`/events/${eventId}`, {
-        capacity: capacity === '' || capacity === null ? null : Number(capacity),
-        registrationDeadline:
-          deadline === '' || deadline === null ? null : new Date(deadline).toISOString(),
+        capacity: cap,
+        registrationDeadline: dl,
       });
       await refresh();
-      toast.success('Límites guardados');
+      toast.success('Límites de inscripción guardados');
     } catch (error) {
       toast.error(apiErrorMessage(error));
     }
   }
 
-  if (isLoading) return <p>Cargando…</p>;
-  if (isError || !data) return <p>No se pudo cargar el evento.</p>;
+  if (isLoading) return <p className="text-muted">Cargando estado de inscripciones…</p>;
+  if (isError || !data) return <p className="text-danger">No se pudo cargar el evento.</p>;
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <p className="text-sm">
-          Estado: <Badge tono={data.status}>{data.status}</Badge>{' '}
-          <Badge tono={data.registrationReason === 'ABIERTAS' ? 'ok' : 'aviso'}>
-            {REASON_TEXT[data.registrationReason] ?? data.registrationReason}
-          </Badge>
-        </p>
+    <div className="space-y-6">
+      <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line pb-4">
+          <div>
+            <h2 className="font-serif text-lg font-bold text-navy">Estado de inscripciones</h2>
+            <p className="text-xs text-muted">Controle si el público puede registrarse al evento en este momento.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge tono={data.status}>{data.status}</Badge>
+            <Badge tono={data.registrationReason === 'ABIERTAS' ? 'ok' : 'aviso'}>
+              {REASON_TEXT[data.registrationReason] ?? data.registrationReason}
+            </Badge>
+          </div>
+        </div>
+
         {data.registrationReason === 'CERRADA_FECHA' && data.registrationDeadline ? (
-          <p className="mt-1 text-sm text-[#5B6677]">
-            Cerradas por fecha límite ({formatFechaHora(data.registrationDeadline)})
+          <p className="text-sm text-warn">
+            ⚠ Las inscripciones cerraron por fecha límite ({formatFechaHora(data.registrationDeadline)}).
           </p>
         ) : null}
-        <div className="mt-2">
+
+        <div className="pt-1">
           {data.status === 'ABIERTO' || data.status === 'CERRADO' ? (
             <Switch
               id="insc-abiertas"
               etiqueta={
-                data.status === 'ABIERTO' ? 'Inscripciones abiertas' : 'Inscripciones cerradas'
+                data.status === 'ABIERTO'
+                  ? 'Inscripciones abiertas al público'
+                  : 'Inscripciones cerradas al público'
               }
               checked={data.status === 'ABIERTO'}
               onChange={(value) => void toggle(value)}
             />
           ) : (
-            <p className="text-sm">
-              Estado actual: {data.status}. Publique el evento para abrir inscripciones.
-            </p>
+            <div className="p-3 bg-canvas rounded-[var(--radius-md)] border border-line text-sm text-muted">
+              Estado actual: <strong className="text-ink">{data.status}</strong>. Debe publicar el evento para poder abrir las inscripciones.
+            </div>
           )}
         </div>
       </Card>
+
       {reopening ? (
-        <Card>
-          <h2 className="font-serif text-lg text-[#0A2A5E]">Reabrir con fecha vencida</h2>
-          <p className="mt-1 text-sm">
-            La fecha límite venció. Elija una nueva o márquela sin fecha límite.
+        <Card className="rounded-[12px] border border-warn bg-surface p-6 shadow-soft space-y-4">
+          <h2 className="font-serif text-lg font-bold text-navy border-b border-line pb-2">
+            Reabrir inscripciones (fecha vencida)
+          </h2>
+          <p className="text-sm text-muted">
+            La fecha límite anterior ya expiró. Configure una nueva fecha y hora para la recepción de inscripciones o deshabilite el límite de tiempo.
           </p>
-          <form onSubmit={(e) => void confirmReopen(e)} className="mt-2 space-y-2">
+          <form onSubmit={(e) => void confirmReopen(e)} className="space-y-4">
             <Input
               id="reopen-deadline"
-              etiqueta="Nueva fecha límite"
+              etiqueta="Nueva fecha y hora límite"
               type="datetime-local"
               value={newDeadline}
               onChange={(e) => setNewDeadline(e.target.value)}
@@ -168,12 +187,16 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
                 type="checkbox"
                 checked={noDeadline}
                 onChange={(e) => setNoDeadline(e.target.checked)}
-                className="h-5 w-5"
+                className="h-5 w-5 accent-navy cursor-pointer"
               />
-              <label htmlFor="reopen-nodeadline">Sin fecha límite</label>
+              <label htmlFor="reopen-nodeadline" className="cursor-pointer text-sm font-medium text-ink">
+                Sin fecha límite (abierto hasta que se cierre manualmente)
+              </label>
             </div>
-            <div className="flex gap-2">
-              <Button type="submit">Confirmar reapertura</Button>
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" variant="primario" className="!text-white">
+                Confirmar reapertura
+              </Button>
               <Button variant="secundario" onClick={() => setReopening(false)}>
                 Cancelar
               </Button>
@@ -181,18 +204,23 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
           </form>
         </Card>
       ) : null}
+
       <EnrollmentLinkCard slug={data.slug} />
+
       {data.status === 'BORRADOR' ? (
-        <p className="text-sm text-[#5B6677]">
-          Aviso: el evento aún está en borrador; el enlace funcionará al publicarlo.
-        </p>
+        <div className="p-3 bg-warn-bg border border-warn rounded-[var(--radius-md)] text-sm text-warn">
+          ℹ Aviso: el evento se encuentra en estado borrador. El enlace público mostrará el evento pero las inscripciones estarán inactivas hasta su publicación.
+        </div>
       ) : null}
-      <Card>
-        <h2 className="font-serif text-lg text-[#0A2A5E]">Cupo y fecha límite</h2>
-        <form onSubmit={(e) => void saveLimits(e)} className="mt-2 grid gap-3 md:grid-cols-2">
+
+      <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft space-y-4">
+        <h2 className="font-serif text-lg font-bold text-navy border-b border-line pb-2">
+          Cupo y fecha límite de inscripción
+        </h2>
+        <form onSubmit={(e) => void saveLimits(e)} className="grid gap-4 md:grid-cols-2">
           <Input
             id="insc-cupo"
-            etiqueta="Cupo"
+            etiqueta="Cupo máximo de participantes"
             opcional=" (vacío = sin límite)"
             type="number"
             min={0}
@@ -201,14 +229,16 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
           />
           <Input
             id="insc-limite"
-            etiqueta="Fecha límite"
+            etiqueta="Fecha y hora límite de inscripción"
             opcional=" (opcional)"
             type="datetime-local"
             value={deadline ?? toLocalInput(data.registrationDeadline)}
             onChange={(e) => setDeadline(e.target.value)}
           />
-          <div className="md:col-span-2">
-            <Button type="submit">Guardar</Button>
+          <div className="md:col-span-2 flex justify-end pt-2">
+            <Button type="submit" variant="primario" className="!text-white">
+              Guardar configuración
+            </Button>
           </div>
         </form>
       </Card>

@@ -8,7 +8,7 @@ const serif = Source_Serif_4({ subsets: ['latin'], variable: '--font-serif', dis
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="es" className={`${sans.variable} ${serif.variable}`}>
+    <html lang="es-BO" className={`${sans.variable} ${serif.variable}`}>
       <body>
         {children}
         <Toaster />

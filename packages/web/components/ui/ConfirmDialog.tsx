@@ -3,35 +3,48 @@
 import { useEffect, useRef } from 'react';
 import { Button } from './Button';
 
-export function ConfirmDialog({
-  titulo,
-  mensaje,
-  confirmar = 'Confirmar',
-  onConfirmar,
-  onCerrar,
-  children,
-}: {
+export interface ConfirmDialogProps {
+  open?: boolean;
   titulo: string;
   mensaje: React.ReactNode;
   confirmar?: string;
   onConfirmar: () => void;
   onCerrar: () => void;
   children?: React.ReactNode;
-}) {
+}
+
+export function ConfirmDialog(props: ConfirmDialogProps) {
+  if (props.open !== true) return null;
+  return <ConfirmDialogInner {...props} />;
+}
+
+function ConfirmDialogInner({
+  open = true,
+  titulo,
+  mensaje,
+  confirmar = 'Confirmar',
+  onConfirmar,
+  onCerrar,
+  children,
+}: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
   // Guardar el elemento que abrió el diálogo para restaurar foco
   useEffect(() => {
+    if (!open) return;
     previousActiveElement.current = document.activeElement as HTMLElement;
     // Pequeño delay para asegurar que el elemento trigger ya no esté focused
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       dialogRef.current?.focus();
     }, 0);
-  }, []);
+    return () => clearTimeout(timer);
+  }, [open]);
 
   // Manejar ESC, focus trap y scroll lock
   useEffect(() => {
+    if (!open) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -39,13 +52,33 @@ export function ConfirmDialog({
       }
     };
 
-    // Focus trap
+    // Focus trap con guardia contra recursión de foco
     const handleFocus = (e: FocusEvent) => {
       const dialog = dialogRef.current;
-      if (dialog && !dialog.contains(e.target as Node)) {
-        e.preventDefault();
-        dialog.focus();
+      if (!dialog) return;
+
+      // Si el foco ya está dentro de este diálogo, no intervenir
+      if (dialog.contains(e.target as Node)) return;
+
+      // Guardia contra recursión / conflicto entre múltiples modales:
+      // Si el elemento enfocado pertenece a otro diálogo o modal activo en el DOM, no pelear
+      const targetElement = e.target as HTMLElement | null;
+      if (
+        targetElement?.closest?.('[role="dialog"]') ||
+        targetElement?.closest?.('[role="alertdialog"]') ||
+        targetElement?.closest?.('[aria-modal="true"]')
+      ) {
+        return;
       }
+
+      // Si hay múltiples modales en el DOM y este no es el superior, no forzar foco
+      const dialogs = document.querySelectorAll('[role="dialog"], [role="alertdialog"]');
+      if (dialogs.length > 1 && dialogs[dialogs.length - 1] !== dialog) {
+        return;
+      }
+
+      e.preventDefault();
+      dialog.focus();
     };
 
     // Bloquear scroll del body
@@ -62,14 +95,14 @@ export function ConfirmDialog({
         previousActiveElement.current.focus();
       }
     };
-  }, [onCerrar]);
+  }, [open, onCerrar]);
 
   return (
     <div
       role="alertdialog"
       aria-modal="true"
       aria-label={titulo}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-navy/60 backdrop-blur-xs p-4"
       onClick={onCerrar}
       tabIndex={-1}
       ref={dialogRef}

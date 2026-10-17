@@ -50,7 +50,7 @@ function SessionCard({
     try {
       await api.post(`/sessions/${session.id}/self-checkin/${value ? 'open' : 'close'}`);
       await queryClient.invalidateQueries({ queryKey: ['sessions', eventId] });
-      toast.success(value ? 'Registro por QR abierto' : 'Registro por QR cerrado');
+      toast.success(value ? 'Registro por QR de sala abierto' : 'Registro por QR de sala cerrado');
     } catch (error) {
       if (!axios.isAxiosError(error) || error.response?.status !== 401)
         toast.error(apiErrorMessage(error));
@@ -64,44 +64,58 @@ function SessionCard({
   const desde = new Date(start - windowMs);
 
   return (
-    <Card>
-      <p className="font-medium">
-        {session.label ?? 'Sesión'} — {formatFechaHora(session.startsAt)}
-      </p>
-      <p className="text-sm text-[#5B6677]">
-        Ventana: {formatFechaHora(desde.toISOString())} a{' '}
-        {formatFechaHora(new Date(end).toISOString())}
-        {session.location ? ` · ${session.location}` : ''}
-      </p>
-      <div className="mt-2">
+    <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft space-y-4">
+      <div className="border-b border-line pb-3">
+        <h3 className="font-serif text-lg font-bold text-navy">
+          {session.label ?? 'Sesión'} — {formatFechaHora(session.startsAt)}
+        </h3>
+        <p className="text-xs text-muted mt-1">
+          Ventana de marcación: {formatFechaHora(desde.toISOString())} a {formatFechaHora(new Date(end).toISOString())}
+          {session.location ? ` • Salón: ${session.location}` : ''}
+        </p>
+      </div>
+
+      <div className="p-4 bg-canvas rounded-[var(--radius-md)] border border-line space-y-3">
         <Switch
           id={`self-${session.id}`}
           etiqueta={
             session.selfCheckinOpen
-              ? 'Registro por QR de sala abierto'
+              ? 'Registro por QR de sala abierto (los asistentes pueden escanear)'
               : 'Registro por QR de sala cerrado'
           }
           checked={session.selfCheckinOpen}
           onChange={(value) => void toggleSelf(value)}
         />
+        {session.selfCheckinOpen ? (
+          <div className="pt-2">
+            <QrProjection sessionId={session.id} />
+          </div>
+        ) : (
+          <p className="text-sm text-muted">El registro por QR está cerrado.</p>
+        )}
       </div>
-      {session.selfCheckinOpen ? (
-        <QrProjection sessionId={session.id} />
-      ) : (
-        <p className="mt-2 text-sm text-muted">El registro por QR está cerrado.</p>
-      )}
-      <div className="mt-2">
+
+      <div>
         <SessionScanActions sessionId={session.id} />
       </div>
-      <p className="mt-2 text-sm">
-        Presentes: <strong>{attendances.data?.data.length ?? 0}</strong> / {total}
-      </p>
+
+      <div className="border-t border-line pt-3 flex items-center justify-between text-sm">
+        <span className="text-muted">Asistentes confirmados:</span>
+        <span className="font-semibold text-navy">
+          {attendances.data?.data.length ?? 0} de {total} inscritos
+        </span>
+      </div>
+
       {(attendances.data?.data.length ?? 0) > 0 ? (
-        <ul className="mt-1 space-y-1 text-sm">
+        <ul className="divide-y divide-line rounded-[var(--radius-md)] border border-line bg-canvas p-2 text-xs max-h-48 overflow-y-auto">
           {(attendances.data?.data ?? []).map((a) => (
-            <li key={a.id}>
-              {a.participant.firstName} {a.participant.lastName} — {formatFechaHora(a.scannedAt)} (
-              {a.method})
+            <li key={a.id} className="py-1.5 px-2 flex justify-between items-center">
+              <span className="font-medium text-ink">
+                {a.participant.firstName} {a.participant.lastName}
+              </span>
+              <span className="text-muted">
+                {formatFechaHora(a.scannedAt)} ({a.method})
+              </span>
             </li>
           ))}
         </ul>
@@ -127,15 +141,15 @@ export function AsistenciaTab({ eventId }: { eventId: string }) {
       (await api.get(`/events/${eventId}/stats`)).data,
   });
 
-  if (sessions.isLoading) return <p>Cargando sesiones…</p>;
-  if (sessions.isError) return <p>No se pudieron cargar las sesiones.</p>;
+  if (sessions.isLoading) return <p className="text-muted">Cargando sesiones del evento…</p>;
+  if (sessions.isError) return <p className="text-danger">No se pudieron cargar las sesiones.</p>;
   const list = sessions.data?.data ?? [];
   if (list.length === 0) {
-    return <EmptyState mensaje="Aún no hay sesiones. Agréguelas en la pestaña Datos." />;
+    return <EmptyState mensaje="Aún no hay sesiones configuradas. Agréguelas en la pestaña Datos." />;
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {list.map((s) => (
         <SessionCard
           key={s.id}
@@ -151,7 +165,7 @@ export function AsistenciaTab({ eventId }: { eventId: string }) {
 
 export function AsistenciaTabConReporte({ eventId, slug }: { eventId: string; slug: string }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <AsistenciaTab eventId={eventId} />
       <ReporteAsistencia eventId={eventId} slug={slug} />
     </div>

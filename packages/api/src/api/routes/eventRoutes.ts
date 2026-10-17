@@ -80,10 +80,26 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           skip: (params.page - 1) * params.pageSize,
           take: params.pageSize,
           orderBy: { createdAt: 'desc' },
+          include: {
+            _count: {
+              select: {
+                participants: true,
+                speakers: true,
+                sessions: true,
+              },
+            },
+          },
         }),
         prisma.event.count(),
       ]);
-      res.json(paginatedResponse(items, total, params));
+      const enriched = items.map((item) => ({
+        ...item,
+        participants: item._count.participants,
+        participantsCount: item._count.participants,
+        speakersCount: item._count.speakers,
+        sessionsCount: item._count.sessions,
+      }));
+      res.json(paginatedResponse(enriched, total, params));
     } catch (err) {
       next(err);
     }
@@ -530,7 +546,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
       try {
         const prisma = getPrisma();
         const eventId = req.params.id;
-        const providedTitle = req.body?.title?.trim();
+        const providedTitle = (req.body?.title ?? req.query?.title)?.toString().trim();
 
         // 1. Cargar evento y conteos para audit_log
         const event = await prisma.event.findUnique({

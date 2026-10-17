@@ -21,27 +21,30 @@ export function PdfPreviewDialog({
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [frame, setFrame] = useState<HTMLIFrameElement | null>(null);
-  const cargado = useRef(false);
 
   useEffect(() => {
-    if (cargado.current) return;
-    cargado.current = true;
     let objectUrl: string | null = null;
-    let vivo = true;
+    let active = true;
+
     onCargar()
       .then((blob) => {
-        if (!vivo) return;
+        if (!active) {
+          return;
+        }
         objectUrl = URL.createObjectURL(blob);
         setUrl(objectUrl);
       })
       .catch((err: unknown) => {
-        if (vivo) setError(err instanceof Error ? err.message : 'No se pudo generar');
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'No se pudo generar el archivo PDF');
       });
+
     return () => {
-      vivo = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      active = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
     };
-    // Se carga una vez al abrir el diálogo.
   }, []);
 
   function descargar(): void {
@@ -60,33 +63,44 @@ export function PdfPreviewDialog({
     <Dialog
       titulo={titulo}
       onCerrar={onCerrar}
+      maxWidth="max-w-4xl"
       accion={
-        <>
+        <div className="flex flex-wrap items-center gap-2">
+          {url ? (
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas"
+            >
+              Abrir en pestaña nueva
+            </a>
+          ) : null}
           <Button variant="secundario" onClick={descargar} disabled={!url}>
             Descargar
           </Button>
           <Button onClick={imprimir} disabled={!url}>
             Imprimir
           </Button>
-        </>
+        </div>
       }
     >
       {error ? (
-        <p role="alert" className="text-[#B42318]">
+        <p role="alert" className="text-danger text-sm">
           {error}
         </p>
       ) : !url ? (
-        <p>Cargando vista previa…</p>
+        <p className="text-sm text-muted">Cargando vista previa…</p>
       ) : (
         <>
-          <p className="text-sm text-[#5B6677]">
+          <p className="text-xs text-muted">
             Primera página{totalPaginas !== null ? ` de ${totalPaginas}` : ''}.
           </p>
           <iframe
             ref={setFrame}
             src={url}
             title={titulo}
-            className="mt-2 h-[60vh] w-full rounded-[8px] border border-[#D9DEE7]"
+            className="mt-2 h-[65vh] w-full rounded-[var(--radius-md)] border border-line bg-surface"
           />
         </>
       )}

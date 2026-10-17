@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api, apiErrorMessage, getToken } from '@/lib/api';
+import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -28,7 +28,7 @@ interface SessionRow {
 }
 
 async function fetchBlob(path: string): Promise<Blob> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
+  const res = await fetch(apiUrl(path), {
     headers: { Authorization: `Bearer ${getToken() ?? ''}` },
   });
   if (!res.ok) {
@@ -109,7 +109,7 @@ export function ReporteAsistencia({ eventId, slug }: { eventId: string; slug: st
 
   return (
     <Card>
-      <h2 className="font-serif text-lg text-[#0A2A5E]">Reporte de asistencia</h2>
+      <h2 className="font-serif text-lg text-navy">Reporte de asistencia</h2>
       <div className="mt-2 grid gap-2 md:grid-cols-2">
         <Input
           id="rep-sesion"
@@ -163,7 +163,7 @@ export function ReporteAsistencia({ eventId, slug }: { eventId: string; slug: st
             </thead>
             <tbody>
               {shown.map((p) => (
-                <tr key={p.id} className="border-t border-[#D9DEE7]">
+                <tr key={p.id} className="border-t border-line">
                   <td>{p.ci}</td>
                   <td>
                     {p.lastName}, {p.firstName}

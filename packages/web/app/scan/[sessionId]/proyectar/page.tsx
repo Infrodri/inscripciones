@@ -22,7 +22,8 @@ export default function ProyectarPage({ params }: { params: Promise<{ sessionId:
     try {
       const res = await api.get(`/sessions/${sessionId}/self-checkin/token`);
       const data = res.data as { qrPngUrl: string };
-      const img = await api.get(data.qrPngUrl, { responseType: 'blob' });
+      const pngPath = data.qrPngUrl.replace(/^\/api\/v1/, '');
+      const img = await api.get(pngPath, { responseType: 'blob' });
       const url = URL.createObjectURL(img.data as Blob);
       setQrUrl((previous) => {
         if (previous) URL.revokeObjectURL(previous);

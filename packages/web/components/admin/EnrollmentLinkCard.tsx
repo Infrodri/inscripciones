@@ -19,32 +19,49 @@ export function EnrollmentLinkCard({ slug }: { slug: string }) {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      toast.success('Enlace copiado al portapapeles');
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('No se pudo copiar el enlace');
     }
   }
 
   return (
-    <Card>
-      <h2 className="font-serif text-lg text-[#0A2A5E]">Enlace de inscripción</h2>
-      <p className="mt-1 break-all text-sm">{url}</p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <Button onClick={() => void copy()}>{copied ? 'Copiado' : 'Copiar'}</Button>
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-h-[44px] items-center rounded-[8px] border border-[#D9DEE7] px-4 py-2"
-        >
-          Abrir
-        </a>
-        <CopyBroadcastButton slug={slug} />
-      </div>
-      <div className="mt-3">
-        <p className="text-sm">QR del enlace (para afiches o proyección):</p>
-        <img src={qrPng} alt="QR del enlace de inscripción" className="mt-1 w-40" />
-        <div className="mt-2">
-          <a href={qrPng} download={`qr-enlace-${slug}.png`} className="text-sm underline">
+    <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft">
+      <div className="grid gap-6 md:grid-cols-3 md:items-center">
+        <div className="md:col-span-2 space-y-3">
+          <div className="border-b border-line pb-2">
+            <h2 className="font-serif text-lg font-bold text-navy">Enlace público de inscripción</h2>
+            <p className="text-xs text-muted">Comparta este enlace o proyéctelo para que los participantes se registren.</p>
+          </div>
+          <div className="p-3 bg-canvas rounded-[var(--radius-md)] border border-line text-sm break-all font-mono text-ink select-all">
+            {url}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button variant="primario" size="sm" onClick={() => void copy()} className="!text-white">
+              {copied ? 'Copiado' : 'Copiar'}
+            </Button>
+            <Button asChild variant="secundario" size="sm">
+              <a href={url} target="_blank" rel="noreferrer">
+                Abrir
+              </a>
+            </Button>
+            <CopyBroadcastButton slug={slug} />
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center justify-center p-4 bg-canvas rounded-[var(--radius-md)] border border-line text-center space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted">QR del enlace</span>
+          <img
+            src={qrPng}
+            alt="QR del enlace de inscripción"
+            className="w-32 h-32 object-contain bg-surface p-1.5 rounded-[var(--radius-md)] border border-line shadow-soft"
+          />
+          <a
+            href={qrPng}
+            download={`qr-enlace-${slug}.png`}
+            className="inline-flex items-center text-xs text-navy hover:underline font-medium pt-1"
+          >
             Descargar QR
           </a>
         </div>
