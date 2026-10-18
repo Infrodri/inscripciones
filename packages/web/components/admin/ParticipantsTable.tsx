@@ -375,7 +375,11 @@ export function ParticipantsTable({
             toast.loading('Generando credenciales en PDF…', { id: 'badges' });
             download(`/events/${eventId}/exports/badges.pdf`, `credenciales-${slug}.pdf`)
               .then(() => toast.success('Credenciales descargadas', { id: 'badges' }))
-              .catch((err) => toast.error(err instanceof Error ? err.message : 'Error al generar credenciales', { id: 'badges' }));
+              .catch((err) =>
+                toast.error(err instanceof Error ? err.message : 'Error al generar credenciales', {
+                  id: 'badges',
+                })
+              );
           }}
         >
           Exportar credenciales (PDF)
@@ -473,7 +477,11 @@ export function ParticipantsTable({
                         <Button variant="secundario" size="sm" onClick={() => setPreviewId(p.id)}>
                           Diploma
                         </Button>
-                        <Button variant="secundario" size="sm" onClick={() => setExpanded(expanded === p.id ? null : p.id)}>
+                        <Button
+                          variant="secundario"
+                          size="sm"
+                          onClick={() => setExpanded(expanded === p.id ? null : p.id)}
+                        >
                           Asistencia
                         </Button>
                         {isAdmin ? (

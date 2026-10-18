@@ -18,7 +18,7 @@ const user = {
   id: 'u1',
   email: 'admin@usfx.bo',
   name: 'Administrador USFX',
-  role: 'ADMIN'
+  role: 'ADMIN',
 };
 
 async function run() {
@@ -27,8 +27,16 @@ async function run() {
   const targets = [
     { name: 'login', path: '/admin/login', requiresAuth: false },
     { name: 'eventos', path: '/admin/eventos', requiresAuth: true },
-    { name: 'inscritos', path: '/admin/eventos/23753f72-72c2-4c75-9771-c4cf2355f578?tab=inscritos', requiresAuth: true },
-    { name: 'certificados', path: '/admin/eventos/23753f72-72c2-4c75-9771-c4cf2355f578/certificados', requiresAuth: true },
+    {
+      name: 'inscritos',
+      path: '/admin/eventos/23753f72-72c2-4c75-9771-c4cf2355f578?tab=inscritos',
+      requiresAuth: true,
+    },
+    {
+      name: 'certificados',
+      path: '/admin/eventos/23753f72-72c2-4c75-9771-c4cf2355f578/certificados',
+      requiresAuth: true,
+    },
     { name: 'escaner', path: '/admin/escaner', requiresAuth: true },
     { name: 'usuarios', path: '/admin/usuarios', requiresAuth: true },
     { name: 'evento-publico', path: '/e/congreso-derecho-2026', requiresAuth: false },
@@ -50,24 +58,27 @@ async function run() {
     for (const target of targets) {
       const page = await context.newPage();
 
-      page.on('console', msg => {
+      page.on('console', (msg) => {
         if (msg.type() === 'error') {
           console.error(`[Console Error on ${target.name} (${vp.label}px)]:`, msg.text());
           errors.push({ target: target.name, vp: vp.label, text: msg.text() });
         }
       });
 
-      page.on('pageerror', err => {
+      page.on('pageerror', (err) => {
         console.error(`[Page Uncaught Error on ${target.name} (${vp.label}px)]:`, err.message);
         errors.push({ target: target.name, vp: vp.label, text: err.message });
       });
 
       if (target.requiresAuth) {
         // Inicializar sessionStorage antes de cargar
-        await page.addInitScript(({ token, user }) => {
-          sessionStorage.setItem('inscripciones:token', token);
-          sessionStorage.setItem('inscripciones:user', JSON.stringify(user));
-        }, { token, user });
+        await page.addInitScript(
+          ({ token, user }) => {
+            sessionStorage.setItem('inscripciones:token', token);
+            sessionStorage.setItem('inscripciones:user', JSON.stringify(user));
+          },
+          { token, user }
+        );
       }
 
       const url = `http://localhost:3000${target.path}`;
@@ -97,7 +108,7 @@ async function run() {
   }
 }
 
-run().catch(err => {
+run().catch((err) => {
   console.error('Fatal error during capture:', err);
   process.exit(1);
 });

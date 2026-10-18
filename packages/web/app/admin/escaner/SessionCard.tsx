@@ -14,12 +14,7 @@ interface SessionCardProps {
   onCopiarEnlace: (sessionId: string) => void;
 }
 
-export function SessionCard({
-  session,
-  now,
-  onProyectar,
-  onCopiarEnlace,
-}: SessionCardProps) {
+export function SessionCard({ session, now, onProyectar, onCopiarEnlace }: SessionCardProps) {
   const isActive = isSessionActiveNow(
     now,
     session.startsAt,
@@ -48,9 +43,7 @@ export function SessionCard({
               📅 {formatRangoSesion(session.startsAt, session.endsAt)}
             </span>
             {session.location ? (
-              <span className="inline-flex items-center gap-1.5">
-                📍 {session.location}
-              </span>
+              <span className="inline-flex items-center gap-1.5">📍 {session.location}</span>
             ) : null}
           </div>
         </div>

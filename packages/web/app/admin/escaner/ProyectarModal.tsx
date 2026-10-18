@@ -137,9 +137,8 @@ function ProyectarModalInner({
       };
       setSelfCheckinOpen(sessionRes.selfCheckinOpen);
 
-      const statsRes = (await api.get(`/events/${session.event.id}/stats`).catch(() => null))?.data as
-        | { perSession?: Array<{ id: string; checkedIn: number }> }
-        | undefined;
+      const statsRes = (await api.get(`/events/${session.event.id}/stats`).catch(() => null))
+        ?.data as { perSession?: Array<{ id: string; checkedIn: number }> } | undefined;
       const count = statsRes?.perSession?.find((ps) => ps.id === session.id)?.checkedIn;
       if (typeof count === 'number') {
         setCheckedInCount(count);
@@ -299,7 +298,8 @@ function ProyectarModalInner({
                 />
               </div>
               <p className="mt-3 text-xs text-muted">
-                Este código se regenera automáticamente cada 45 segundos para prevenir duplicaciones.
+                Este código se regenera automáticamente cada 45 segundos para prevenir
+                duplicaciones.
               </p>
             </div>
           ) : (
@@ -314,18 +314,11 @@ function ProyectarModalInner({
 
         {/* Action Buttons */}
         <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-line pt-4">
-          <Button
-            variant="secundario"
-            size="sm"
-            onClick={handleDescargarQr}
-            disabled={!qrBlobUrl}
-          >
+          <Button variant="secundario" size="sm" onClick={handleDescargarQr} disabled={!qrBlobUrl}>
             Descargar imagen QR
           </Button>
           <Button variant="secundario" size="sm" asChild>
-            <a href={`/scan/${session.id}/proyectar`}>
-              Pantalla completa para proyector
-            </a>
+            <a href={`/scan/${session.id}/proyectar`}>Pantalla completa para proyector</a>
           </Button>
           <Button variant="fantasma" size="sm" onClick={onCerrar}>
             Cerrar

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { PageHeader } from '@/components/ui/Table';
-import { Award, Printer, Palette, CheckCircle2, AlertCircle, Users, ExternalLink } from 'lucide-react';
+import { Award, Printer, Palette, CheckCircle2, ExternalLink } from 'lucide-react';
 
 interface EventItem {
   id: string;
@@ -20,12 +20,14 @@ interface EventItem {
   issuesCertificate?: boolean;
 }
 
-interface Participant {
+interface CertificatePerson {
   id: string;
-  firstName: string;
-  lastName: string;
-  ci: string;
-  type: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  ci?: string;
+  recipientCi?: string;
+  type?: string;
   certificateCode?: string | null;
 }
 
@@ -61,12 +63,12 @@ export default function CertificadosGlobalPage() {
         const res = await api.get(`/participants/event/${selectedEventId}`, {
           params: { pageSize: 150 },
         });
-        return (res.data?.data ?? []) as Participant[];
+        return (res.data?.data ?? []) as CertificatePerson[];
       }
       const res = await api.get(`/certificate-recipients/event/${selectedEventId}`, {
         params: { roleKind },
       });
-      return (res.data?.data ?? []) as Participant[];
+      return (res.data?.data ?? []) as CertificatePerson[];
     },
     enabled: Boolean(selectedEventId),
   });
@@ -97,7 +99,9 @@ export default function CertificadosGlobalPage() {
       );
 
       if (!res.ok) {
-        const errJson = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        const errJson = (await res.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
         throw new Error(errJson?.error?.message ?? 'Error al generar diplomas');
       }
 
@@ -132,7 +136,7 @@ export default function CertificadosGlobalPage() {
 
       {/* Main Control Card */}
       <Card className="p-6 border border-line bg-surface rounded-xl shadow-soft space-y-6">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <Input
             id="event-select-certs"
             etiqueta="Evento Académico"
@@ -152,11 +156,24 @@ export default function CertificadosGlobalPage() {
             etiqueta="Tipo de Certificado / Rol"
             desplegable
             value={roleKind}
-            onChange={(e) => setRoleKind(e.target.value as any)}
+            onChange={(e) =>
+              setRoleKind(e.target.value as 'ASISTENTE' | 'EXPOSITOR' | 'ORGANIZADOR')
+            }
           >
             <option value="ASISTENTE">Certificados de Asistencia (Participantes)</option>
             <option value="EXPOSITOR">Certificados de Expositor / Ponente</option>
             <option value="ORGANIZADOR">Certificados de Organizador / Comité</option>
+          </Input>
+
+          <Input
+            id="scope-select"
+            etiqueta="Alcance de Emisión"
+            desplegable
+            value={scope}
+            onChange={(e) => setScope(e.target.value as 'eligible' | 'all')}
+          >
+            <option value="eligible">Solo aptos por asistencia</option>
+            <option value="all">Todos los inscritos</option>
           </Input>
         </div>
 
@@ -188,7 +205,8 @@ export default function CertificadosGlobalPage() {
                   Diplomas Completos (Todo a Color)
                 </div>
                 <p className="text-xs text-muted">
-                  Incluye el diseño de fondo completo, membretes, marcos ornamentales, textos y nombres. Ideal para envío digital o impresión desde cero en papel blanco.
+                  Incluye el diseño de fondo completo, membretes, marcos ornamentales, textos y
+                  nombres. Ideal para envío digital o impresión desde cero en papel blanco.
                 </p>
               </div>
               <Button
@@ -211,7 +229,8 @@ export default function CertificadosGlobalPage() {
                   Para Hojas Preimpresas (Solo Nombres)
                 </div>
                 <p className="text-xs text-muted">
-                  Fondo transparente. Imprime únicamente los nombres en las coordenadas exactas de la plantilla, listo para introducir el papel físico preimpreso en la impresora.
+                  Fondo transparente. Imprime únicamente los nombres en las coordenadas exactas de
+                  la plantilla, listo para introducir el papel físico preimpreso en la impresora.
                 </p>
               </div>
               <Button
@@ -264,10 +283,13 @@ export default function CertificadosGlobalPage() {
                 >
                   <div className="space-y-0.5">
                     <p className="font-serif font-bold text-navy text-sm">
-                      {idx + 1}. {r.firstName ? `${r.firstName} ${r.lastName}` : (r as any).fullName}
+                      {idx + 1}.{' '}
+                      {r.firstName
+                        ? `${r.firstName} ${r.lastName}`
+                        : (r.fullName ?? 'Participante')}
                     </p>
                     <p className="text-xs text-muted font-mono">
-                      CI: {r.ci || (r as any).recipientCi || 'S/N'} • Rol: {roleKind}
+                      CI: {r.ci || r.recipientCi || 'S/N'} • Rol: {roleKind}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">

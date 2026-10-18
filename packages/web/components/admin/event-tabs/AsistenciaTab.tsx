@@ -70,7 +70,8 @@ function SessionCard({
           {session.label ?? 'Sesión'} — {formatFechaHora(session.startsAt)}
         </h3>
         <p className="text-xs text-muted mt-1">
-          Ventana de marcación: {formatFechaHora(desde.toISOString())} a {formatFechaHora(new Date(end).toISOString())}
+          Ventana de marcación: {formatFechaHora(desde.toISOString())} a{' '}
+          {formatFechaHora(new Date(end).toISOString())}
           {session.location ? ` • Salón: ${session.location}` : ''}
         </p>
       </div>
@@ -145,7 +146,9 @@ export function AsistenciaTab({ eventId }: { eventId: string }) {
   if (sessions.isError) return <p className="text-danger">No se pudieron cargar las sesiones.</p>;
   const list = sessions.data?.data ?? [];
   if (list.length === 0) {
-    return <EmptyState mensaje="Aún no hay sesiones configuradas. Agréguelas en la pestaña Datos." />;
+    return (
+      <EmptyState mensaje="Aún no hay sesiones configuradas. Agréguelas en la pestaña Datos." />
+    );
   }
 
   return (

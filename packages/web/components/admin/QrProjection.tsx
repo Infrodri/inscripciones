@@ -79,9 +79,7 @@ export function QrProjection({ sessionId }: { sessionId: string }) {
               className="mt-4 h-auto w-full max-w-md rounded-[var(--radius-md)]"
             />
             {url && (
-              <p className="mt-4 break-all text-center text-sm text-[var(--color-ink)]">
-                {url}
-              </p>
+              <p className="mt-4 break-all text-center text-sm text-[var(--color-ink)]">{url}</p>
             )}
           </div>
         </Dialog>

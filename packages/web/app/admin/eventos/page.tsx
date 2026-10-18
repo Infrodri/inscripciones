@@ -143,17 +143,18 @@ export default function EventosPage() {
     onError: (error) => toast.error(apiErrorMessage(error)),
   });
 
-  const filteredEvents = data?.data.filter((e) => {
-    if (!showTestFilter) return true;
-    return /^(Evento H1|Copia H1|Evento E2E)/.test(e.title);
-  }) ?? [];
+  const filteredEvents =
+    data?.data.filter((e) => {
+      if (!showTestFilter) return true;
+      return /^(Evento H1|Copia H1|Evento E2E)/.test(e.title);
+    }) ?? [];
 
   const selectedEvents = data?.data.filter((e) => selectedIds.includes(e.id)) ?? [];
   const totalSelectedInscritos = selectedEvents.reduce((sum, e) => sum + (e.participants ?? 0), 0);
   const hasInscritosInSelection = selectedEvents.some((e) => (e.participants ?? 0) > 0);
 
   function toggleSelect(id: string, checked: boolean) {
-    setSelectedIds((prev) => checked ? [...prev, id] : prev.filter((id) => id !== id));
+    setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((id) => id !== id)));
   }
 
   function toggleAll(checked: boolean) {
@@ -178,7 +179,10 @@ export default function EventosPage() {
   };
 
   if (isLoading) return <p className="text-muted">Cargando eventos…</p>;
-  if (isError) return <p className="text-danger">No se pudieron cargar los eventos: {apiErrorMessage(error)}</p>;
+  if (isError)
+    return (
+      <p className="text-danger">No se pudieron cargar los eventos: {apiErrorMessage(error)}</p>
+    );
   if (!data || data.data.length === 0) {
     return (
       <div className="bg-surface rounded-[var(--radius-md)] border border-line p-6">
@@ -216,7 +220,9 @@ export default function EventosPage() {
           <div className="flex items-center gap-2 text-sm text-warn">
             <input
               type="checkbox"
-              checked={filteredEvents.length > 0 && filteredEvents.every((e) => selectedIds.includes(e.id))}
+              checked={
+                filteredEvents.length > 0 && filteredEvents.every((e) => selectedIds.includes(e.id))
+              }
               onChange={(e) => toggleAll(e.target.checked)}
               className="h-4 w-4 rounded border-line text-navy focus:ring-navy"
             />
@@ -257,7 +263,9 @@ export default function EventosPage() {
         <div className="mt-4 flex items-center gap-2">
           <input
             type="checkbox"
-            checked={filteredEvents.length > 0 && filteredEvents.every((e) => selectedIds.includes(e.id))}
+            checked={
+              filteredEvents.length > 0 && filteredEvents.every((e) => selectedIds.includes(e.id))
+            }
             onChange={(e) => toggleAll(e.target.checked)}
             className="h-4 w-4 rounded border-line text-navy focus:ring-navy"
             id="select-all"
@@ -274,25 +282,37 @@ export default function EventosPage() {
           mensaje={
             <div className="space-y-3">
               <p className="text-sm">
-                Se eliminarán <strong>{selectedIds.length}</strong> evento{selectedIds.length > 1 ? 's' : ''}:
+                Se eliminarán <strong>{selectedIds.length}</strong> evento
+                {selectedIds.length > 1 ? 's' : ''}:
               </p>
               <ul className="ml-4 list-disc space-y-1 text-sm max-h-48 overflow-auto">
                 {selectedEvents.map((e) => (
-                  <li key={e.id} className={(e.participants ?? 0) > 0 ? 'text-danger font-medium' : ''}>
-                    {e.title} {(e.participants ?? 0) > 0 && <span className="text-danger"> ({(e.participants ?? 0)} inscritos)</span>}
+                  <li
+                    key={e.id}
+                    className={(e.participants ?? 0) > 0 ? 'text-danger font-medium' : ''}
+                  >
+                    {e.title}{' '}
+                    {(e.participants ?? 0) > 0 && (
+                      <span className="text-danger"> ({e.participants ?? 0} inscritos)</span>
+                    )}
                   </li>
                 ))}
               </ul>
               {hasInscritosInSelection && (
                 <p className="text-sm text-danger">
-                  ⚠ {selectedEvents.filter((e) => (e.participants ?? 0) > 0).length} evento{selectedEvents.filter((e) => (e.participants ?? 0) > 0).length > 1 ? 's' : ''} tienen inscritos y se borrarán en cascada.
+                  ⚠ {selectedEvents.filter((e) => (e.participants ?? 0) > 0).length} evento
+                  {selectedEvents.filter((e) => (e.participants ?? 0) > 0).length > 1
+                    ? 's'
+                    : ''}{' '}
+                  tienen inscritos y se borrarán en cascada.
                 </p>
               )}
               <p className="text-sm">
                 Total de inscritos afectados: <strong>{totalSelectedInscritos}</strong>
               </p>
               <p className="text-sm text-muted">
-                Escriba <kbd className="px-1.5 py-0.5 bg-line rounded text-ink">ELIMINAR</kbd> para confirmar:
+                Escriba <kbd className="px-1.5 py-0.5 bg-line rounded text-ink">ELIMINAR</kbd> para
+                confirmar:
               </p>
               <input
                 type="text"

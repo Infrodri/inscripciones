@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { PageHeader } from '@/components/ui/Table';
-import { IdCard, Download, Users, Calendar, MapPin, Search } from 'lucide-react';
+import { IdCard, Download, Users, Calendar, MapPin } from 'lucide-react';
 
 interface EventItem {
   id: string;
@@ -80,7 +80,12 @@ export default function CredencialesPage() {
       const res = await fetch(apiUrl(`/events/${currentEvent.id}/exports/badges.pdf`), {
         headers: { Authorization: `Bearer ${getToken() ?? ''}` },
       });
-      if (!res.ok) throw new Error('Error al generar credenciales');
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
+        throw new Error(body?.error?.message ?? 'Error al generar credenciales');
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -90,7 +95,7 @@ export default function CredencialesPage() {
       URL.revokeObjectURL(url);
       toast.success('Lote de credenciales descargado exitosamente');
     } catch (err) {
-      toast.error(apiErrorMessage(err));
+      toast.error(err instanceof Error ? err.message : apiErrorMessage(err));
     } finally {
       setExporting(false);
     }
