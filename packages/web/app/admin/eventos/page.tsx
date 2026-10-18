@@ -7,7 +7,7 @@ import axios from 'axios';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, getSessionUser } from '@/lib/api';
-import { formatFecha } from '@/lib/format';
+import { formatFecha, sortEventsChronologically } from '@/lib/format';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -26,6 +26,7 @@ interface EventRow {
   ownership?: 'propio' | 'asignado';
   accessLevel?: 'ADMIN' | 'OWNER' | 'MANAGER' | 'OPERATOR';
   isOwner?: boolean;
+  sessions?: Array<{ startsAt: string; endsAt?: string | null }>;
 }
 
 interface EventCardProps {
@@ -50,8 +51,9 @@ function EventCard({ event, isAdmin, onDelete, participants, onSelect, selected 
     queryKey: ['sessions', event.id],
     queryFn: async (): Promise<{ data: Array<{ startsAt: string }> }> =>
       (await api.get(`/sessions/event/${event.id}`)).data,
+    enabled: !event.sessions || event.sessions.length === 0,
   });
-  const dates = (sessions.data?.data ?? []).map((s) => s.startsAt).sort();
+  const dates = (event.sessions ?? sessions.data?.data ?? []).map((s) => s.startsAt).sort();
   const first = dates[0];
   const last = dates[dates.length - 1];
   const inscritosCount = participants ?? event.participants ?? stats.data?.participants ?? 0;
@@ -164,6 +166,8 @@ export default function EventosPage() {
       return /^(Evento H1|Copia H1|Evento E2E)/.test(e.title);
     }) ?? [];
 
+  const sortedEvents = sortEventsChronologically(filteredEvents);
+
   const selectedEvents = data?.data.filter((e) => selectedIds.includes(e.id)) ?? [];
   const totalSelectedInscritos = selectedEvents.reduce((sum, e) => sum + (e.participants ?? 0), 0);
   const hasInscritosInSelection = selectedEvents.some((e) => (e.participants ?? 0) > 0);
@@ -174,7 +178,7 @@ export default function EventosPage() {
 
   function toggleAll(checked: boolean) {
     if (checked) {
-      setSelectedIds(filteredEvents.map((e) => e.id));
+      setSelectedIds(sortedEvents.map((e) => e.id));
     } else {
       setSelectedIds([]);
     }
@@ -236,7 +240,7 @@ export default function EventosPage() {
             <input
               type="checkbox"
               checked={
-                filteredEvents.length > 0 && filteredEvents.every((e) => selectedIds.includes(e.id))
+                sortedEvents.length > 0 && sortedEvents.every((e) => selectedIds.includes(e.id))
               }
               onChange={(e) => toggleAll(e.target.checked)}
               className="h-4 w-4 rounded border-line text-navy focus:ring-navy"
@@ -262,7 +266,7 @@ export default function EventosPage() {
       )}
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        {filteredEvents.map((e) => (
+        {sortedEvents.map((e) => (
           <EventCard
             key={e.id}
             event={e}
@@ -275,19 +279,19 @@ export default function EventosPage() {
         ))}
       </div>
 
-      {selectedIds.length === 0 && filteredEvents.length > 0 && (
+      {selectedIds.length === 0 && sortedEvents.length > 0 && (
         <div className="mt-4 flex items-center gap-2">
           <input
             type="checkbox"
             checked={
-              filteredEvents.length > 0 && filteredEvents.every((e) => selectedIds.includes(e.id))
+              sortedEvents.length > 0 && sortedEvents.every((e) => selectedIds.includes(e.id))
             }
             onChange={(e) => toggleAll(e.target.checked)}
             className="h-4 w-4 rounded border-line text-navy focus:ring-navy"
             id="select-all"
           />
           <label htmlFor="select-all" className="text-sm text-muted cursor-pointer">
-            Seleccionar todos ({filteredEvents.length})
+            Seleccionar todos ({sortedEvents.length})
           </label>
         </div>
       )}

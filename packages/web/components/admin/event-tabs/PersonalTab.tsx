@@ -116,9 +116,21 @@ export function PersonalTab({ eventId }: { eventId: string }) {
   }
 
   if (isError) {
+    const is404 =
+      Boolean((error as { response?: { status?: number } })?.response?.status === 404) ||
+      (error instanceof Error && error.message.includes('404'));
     return (
-      <div className="rounded-xl border border-danger/30 bg-danger/5 p-6 text-sm text-danger">
-        Error al cargar personal: {apiErrorMessage(error)}
+      <div className="rounded-xl border border-danger/30 bg-danger/5 p-6 text-sm text-danger space-y-2">
+        <p className="font-semibold">
+          {is404
+            ? 'Endpoint no disponible aún (404 Not Found)'
+            : `Error al cargar personal: ${apiErrorMessage(error)}`}
+        </p>
+        {is404 && (
+          <p className="text-xs text-muted leading-relaxed">
+            El servicio API en Render está desplegando la última versión que añade la gestión de personal por evento. En cuanto Render termine el despliegue de los cambios, esta pestaña estará 100% operativa automáticamente sin necesidad de recargar.
+          </p>
+        )}
       </div>
     );
   }

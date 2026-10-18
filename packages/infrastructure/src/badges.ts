@@ -29,23 +29,22 @@ function getHeaderImage(): Buffer | null {
   if (imageSearchAttempted) return cachedHeaderImage;
   imageSearchAttempted = true;
 
-  const candidatePaths: string[] = [];
-
-  if (typeof __dirname !== 'undefined') {
-    candidatePaths.push(
-      path.resolve(__dirname, '../assets/facultad-derecho-usfx.jpg'),
-      path.resolve(__dirname, '../../assets/facultad-derecho-usfx.jpg'),
-      path.resolve(__dirname, '../../web/public/facultad-derecho-usfx.jpg'),
-      path.resolve(__dirname, '../../../packages/web/public/facultad-derecho-usfx.jpg')
-    );
-  }
-
-  candidatePaths.push(
+  const candidatePaths: string[] = [
+    path.resolve(__dirname, '../assets/facultad-derecho-usfx.jpg'),
+    path.resolve(__dirname, 'assets/facultad-derecho-usfx.jpg'),
+    path.resolve(__dirname, '../../assets/facultad-derecho-usfx.jpg'),
+    path.resolve(__dirname, '../../web/public/facultad-derecho-usfx.jpg'),
+    path.resolve(__dirname, '../../../packages/web/public/facultad-derecho-usfx.jpg'),
+    path.resolve(__dirname, '../../../packages/infrastructure/assets/facultad-derecho-usfx.jpg'),
     path.resolve(process.cwd(), 'packages/infrastructure/assets/facultad-derecho-usfx.jpg'),
     path.resolve(process.cwd(), 'packages/web/public/facultad-derecho-usfx.jpg'),
     path.resolve(process.cwd(), 'assets/facultad-derecho-usfx.jpg'),
-    path.resolve(process.cwd(), 'public/facultad-derecho-usfx.jpg')
-  );
+    path.resolve(process.cwd(), 'public/facultad-derecho-usfx.jpg'),
+    path.resolve(process.cwd(), '../infrastructure/assets/facultad-derecho-usfx.jpg'),
+    path.resolve(process.cwd(), '../web/public/facultad-derecho-usfx.jpg'),
+  ];
+
+
 
   for (const p of candidatePaths) {
     try {
@@ -279,11 +278,18 @@ function drawBadgeCard(
   doc.roundedRect(qrX, qrY, containerSize, containerSize, 4).fill('#FFFFFF');
   doc.roundedRect(qrX, qrY, containerSize, containerSize, 4).lineWidth(0.75).stroke('#E2E8F0');
 
-  doc.image(p.qrPngBuffer, qrX + qrPadding, qrY + qrPadding, {
-    fit: [qrSize, qrSize],
-    align: 'center',
-    valign: 'center',
-  });
+  try {
+    doc.image(p.qrPngBuffer, qrX + qrPadding, qrY + qrPadding, {
+      fit: [qrSize, qrSize],
+      align: 'center',
+      valign: 'center',
+    });
+  } catch {
+    doc.fontSize(7).fillColor('#DC2626').text('QR no disponible', qrX, qrY + qrSize / 2, {
+      width: qrSize,
+      align: 'center',
+    });
+  }
 
   // Footer: Micro divider and text
   const lineW = mmToPt(26);
@@ -374,7 +380,11 @@ export async function renderBadgeSheet(
   }
 
   doc.end();
-  await new Promise<void>((resolve) => out.on('finish', () => resolve()));
+  await new Promise<void>((resolve, reject) => {
+    out.on('finish', () => resolve());
+    out.on('error', (err) => reject(err));
+    doc.on('error', (err) => reject(err));
+  });
   return participants.length;
 }
 
@@ -399,5 +409,9 @@ export async function renderSingleBadge(
   drawBadgeCard(doc, participant, 0, 0, w, h, false);
   doc.end();
 
-  await new Promise<void>((resolve) => out.on('finish', () => resolve()));
+  await new Promise<void>((resolve, reject) => {
+    out.on('finish', () => resolve());
+    out.on('error', (err) => reject(err));
+    doc.on('error', (err) => reject(err));
+  });
 }

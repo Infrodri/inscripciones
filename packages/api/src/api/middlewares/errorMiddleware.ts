@@ -31,8 +31,10 @@ export function errorMiddleware(
     res.status(status).json({ error: { code, message, details: [] } });
     return;
   }
+  const fallbackMessage =
+    err instanceof Error ? err.message : 'Ocurrió un error inesperado al procesar la solicitud';
   res.status(500).json({
-    error: { code: 'VALIDATION_ERROR', message: 'Ocurrió un error inesperado', details: [] },
+    error: { code: 'INTERNAL_ERROR', message: fallbackMessage, details: [] },
   });
 }
 

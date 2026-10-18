@@ -23,7 +23,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node -e \"const fs=require('fs'); fs.mkdirSync('dist/assets', {recursive:true}); if (fs.existsSync('assets/facultad-derecho-usfx.jpg')) fs.copyFileSync('assets/facultad-derecho-usfx.jpg', 'dist/assets/facultad-derecho-usfx.jpg');\"",
     "test": "vitest run --passWithNoTests"
   },
   "version": "0.1.0"

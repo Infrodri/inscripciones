@@ -102,6 +102,10 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
             staffAssignments: {
               select: { userId: true, accessLevel: true },
             },
+            sessions: {
+              select: { startsAt: true, endsAt: true },
+              orderBy: { startsAt: 'asc' },
+            },
             _count: {
               select: {
                 participants: true,
@@ -122,12 +126,51 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           isOwner,
           ownership,
           accessLevel,
+          sessions: item.sessions,
           participants: item._count.participants,
           participantsCount: item._count.participants,
           speakersCount: item._count.speakers,
           sessionsCount: item._count.sessions,
         };
       });
+
+      // Orden cronológico idéntico al portal público:
+      // Próximos/activos más cercanos primero, finalizados/pasados al final.
+      const now = Date.now();
+      enriched.sort((a, b) => {
+        const aPast =
+          a.status === 'FINALIZADO' ||
+          (Boolean(a.sessions &&
+            a.sessions.length > 0 &&
+            a.sessions.every((s) => new Date(s.endsAt || s.startsAt).getTime() < now)));
+        const bPast =
+          b.status === 'FINALIZADO' ||
+          (Boolean(b.sessions &&
+            b.sessions.length > 0 &&
+            b.sessions.every((s) => new Date(s.endsAt || s.startsAt).getTime() < now)));
+
+        if (!aPast && bPast) return -1;
+        if (aPast && !bPast) return 1;
+
+        if (!aPast && !bPast) {
+          const aStarts = (a.sessions ?? []).length > 0
+            ? Math.min(...a.sessions.map((s) => new Date(s.startsAt).getTime()))
+            : Infinity;
+          const bStarts = (b.sessions ?? []).length > 0
+            ? Math.min(...b.sessions.map((s) => new Date(s.startsAt).getTime()))
+            : Infinity;
+          return aStarts - bStarts;
+        }
+
+        const aEnds = (a.sessions ?? []).length > 0
+          ? Math.max(...a.sessions.map((s) => new Date(s.endsAt || s.startsAt).getTime()))
+          : 0;
+        const bEnds = (b.sessions ?? []).length > 0
+          ? Math.max(...b.sessions.map((s) => new Date(s.endsAt || s.startsAt).getTime()))
+          : 0;
+        return bEnds - aEnds;
+      });
+
       res.json(paginatedResponse(enriched, total, params));
     } catch (err) {
       next(err);
