@@ -180,6 +180,37 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
       const items = events.map((event) =>
         publicEventView(event as unknown as Record<string, unknown>, env, event._count.participants)
       );
+
+      // Orden cronológico: eventos activos/próximos más cercanos primero, pasados/finalizados al final.
+      const now = Date.now();
+      items.sort((a, b) => {
+        const aPast = a.status === 'FINALIZADO';
+        const bPast = b.status === 'FINALIZADO';
+
+        if (!aPast && bPast) return -1;
+        if (aPast && !bPast) return 1;
+
+        if (!aPast && !bPast) {
+          const aStarts = (a.sessions as Array<{ startsAt: string }> | undefined)?.[0]?.startsAt
+            ? new Date((a.sessions as Array<{ startsAt: string }>)[0].startsAt).getTime()
+            : Infinity;
+          const bStarts = (b.sessions as Array<{ startsAt: string }> | undefined)?.[0]?.startsAt
+            ? new Date((b.sessions as Array<{ startsAt: string }>)[0].startsAt).getTime()
+            : Infinity;
+          return aStarts - bStarts;
+        }
+
+        const aSessions = a.sessions as Array<{ endsAt?: string | null; startsAt: string }> | undefined;
+        const bSessions = b.sessions as Array<{ endsAt?: string | null; startsAt: string }> | undefined;
+        const aDate = aSessions?.[aSessions.length - 1]?.startsAt
+          ? new Date(aSessions[aSessions.length - 1].startsAt).getTime()
+          : 0;
+        const bDate = bSessions?.[bSessions.length - 1]?.startsAt
+          ? new Date(bSessions[bSessions.length - 1].startsAt).getTime()
+          : 0;
+        return bDate - aDate;
+      });
+
       res.json({ data: items });
     } catch (err) {
       next(err);

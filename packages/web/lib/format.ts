@@ -132,3 +132,54 @@ export function getProximaSesion<T extends { startsAt: string | Date }>(
   const future = sorted.find((s) => new Date(s.startsAt).getTime() >= now);
   return future ?? sorted[0];
 }
+
+/**
+ * Ordena eventos cronológicamente:
+ * 1. Eventos activos o próximos más cercanos a iniciar primero (ascendente por fecha de inicio).
+ * 2. Eventos pasados/finalizados al final (descendente por fecha de realización).
+ */
+export function sortEventsChronologically<
+  T extends {
+    status?: string;
+    sessions?: Array<{ startsAt: string | Date; endsAt?: string | Date | null }>;
+  },
+>(events: T[]): T[] {
+  const now = Date.now();
+
+  return [...events].sort((a, b) => {
+    const aPast =
+      a.status === 'FINALIZADO' ||
+      (Boolean(a.sessions &&
+        a.sessions.length > 0 &&
+        a.sessions.every((s) => new Date(s.endsAt || s.startsAt).getTime() < now)));
+    const bPast =
+      b.status === 'FINALIZADO' ||
+      (Boolean(b.sessions &&
+        b.sessions.length > 0 &&
+        b.sessions.every((s) => new Date(s.endsAt || s.startsAt).getTime() < now)));
+
+    if (!aPast && bPast) return -1;
+    if (aPast && !bPast) return 1;
+
+    if (!aPast && !bPast) {
+      const aStarts = a.sessions?.[0]?.startsAt
+        ? new Date(a.sessions[0].startsAt).getTime()
+        : Infinity;
+      const bStarts = b.sessions?.[0]?.startsAt
+        ? new Date(b.sessions[0].startsAt).getTime()
+        : Infinity;
+      return aStarts - bStarts;
+    }
+
+    const aSessions = a.sessions;
+    const bSessions = b.sessions;
+    const aDate = aSessions?.[aSessions.length - 1]?.startsAt
+      ? new Date(aSessions[aSessions.length - 1].startsAt).getTime()
+      : 0;
+    const bDate = bSessions?.[bSessions.length - 1]?.startsAt
+      ? new Date(bSessions[bSessions.length - 1].startsAt).getTime()
+      : 0;
+    return bDate - aDate;
+  });
+}
+

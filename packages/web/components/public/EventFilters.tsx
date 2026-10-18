@@ -12,6 +12,8 @@ interface EventFiltersProps {
   availableKinds: string[];
   selectedModality: string;
   onModalityChange: (modality: string) => void;
+  onlyFree?: boolean;
+  onOnlyFreeChange?: (free: boolean) => void;
   onClearFilters: () => void;
   totalFiltered: number;
 }
@@ -24,11 +26,13 @@ export function EventFilters({
   availableKinds,
   selectedModality,
   onModalityChange,
+  onlyFree = false,
+  onOnlyFreeChange = () => {},
   onClearFilters,
   totalFiltered,
 }: EventFiltersProps) {
   const hasActiveFilters =
-    search.trim() !== '' || selectedKind !== 'TODOS' || selectedModality !== 'TODAS';
+    search.trim() !== '' || selectedKind !== 'TODOS' || selectedModality !== 'TODAS' || onlyFree;
 
   return (
     <div className="space-y-4 max-w-6xl mx-auto">
@@ -59,7 +63,7 @@ export function EventFilters({
           )}
         </div>
 
-        <div className="sm:w-56 shrink-0">
+        <div className="sm:w-52 shrink-0">
           <label htmlFor="modality-select" className="sr-only">
             Filtrar por modalidad
           </label>
@@ -75,6 +79,24 @@ export function EventFilters({
             <option value="HIBRIDO">Híbrido</option>
           </select>
         </div>
+
+        <label
+          htmlFor="only-free-checkbox"
+          className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border text-sm font-medium cursor-pointer transition-colors min-h-[44px] shrink-0 select-none ${
+            onlyFree
+              ? 'bg-ok-bg text-ok border-ok/40 font-bold'
+              : 'bg-surface text-muted border-line hover:text-ink hover:bg-canvas'
+          }`}
+        >
+          <input
+            id="only-free-checkbox"
+            type="checkbox"
+            checked={onlyFree}
+            onChange={(e) => onOnlyFreeChange(e.target.checked)}
+            className="h-4 w-4 rounded border-line text-ok focus:ring-ok accent-emerald-600"
+          />
+          <span>Gratis</span>
+        </label>
 
         {hasActiveFilters && (
           <Button

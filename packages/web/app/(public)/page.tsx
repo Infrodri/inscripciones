@@ -4,7 +4,7 @@ import { useState, useDeferredValue, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { PublicEvent } from '@/lib/types';
-import { normalizeText } from '@/lib/format';
+import { normalizeText, sortEventsChronologically } from '@/lib/format';
 import { HeroSection } from '@/components/public/HeroSection';
 import { CertificateLookup } from '@/components/public/CertificateLookup';
 import { EventFilters } from '@/components/public/EventFilters';
@@ -16,6 +16,7 @@ export default function HomePage() {
   const deferredSearch = useDeferredValue(search);
   const [selectedKind, setSelectedKind] = useState('TODOS');
   const [selectedModality, setSelectedModality] = useState('TODAS');
+  const [onlyFree, setOnlyFree] = useState(false);
 
   const eventsSectionRef = useRef<HTMLDivElement>(null);
   const verifySectionRef = useRef<HTMLDivElement>(null);
@@ -37,11 +38,12 @@ export default function HomePage() {
     return ['TODOS', ...rawKinds.sort()];
   }, [events]);
 
-  // Accent-insensitive filtered events
+  // Accent-insensitive filtered events sorted chronologically:
+  // Nearest upcoming first, past/finalized events at the bottom.
   const filteredEvents = useMemo(() => {
     const normQuery = normalizeText(deferredSearch);
 
-    return events.filter((ev) => {
+    const filtered = events.filter((ev) => {
       // 1. Kind filter
       if (selectedKind !== 'TODOS' && ev.eventKind !== selectedKind) {
         return false;
@@ -52,7 +54,12 @@ export default function HomePage() {
         return false;
       }
 
-      // 3. Normalized text search over title, kind, institution, organizer, description
+      // 3. Gratis / Free filter
+      if (onlyFree && !ev.isFree) {
+        return false;
+      }
+
+      // 4. Normalized text search over title, kind, institution, organizer, description
       if (normQuery) {
         const titleNorm = normalizeText(ev.title);
         const kindNorm = normalizeText(ev.eventKind);
@@ -72,12 +79,15 @@ export default function HomePage() {
 
       return true;
     });
-  }, [events, deferredSearch, selectedKind, selectedModality]);
+
+    return sortEventsChronologically(filtered);
+  }, [events, deferredSearch, selectedKind, selectedModality, onlyFree]);
 
   function handleClearFilters() {
     setSearch('');
     setSelectedKind('TODOS');
     setSelectedModality('TODAS');
+    setOnlyFree(false);
   }
 
   function scrollToEvents() {
@@ -119,6 +129,8 @@ export default function HomePage() {
           availableKinds={availableKinds}
           selectedModality={selectedModality}
           onModalityChange={setSelectedModality}
+          onlyFree={onlyFree}
+          onOnlyFreeChange={setOnlyFree}
           onClearFilters={handleClearFilters}
           totalFiltered={filteredEvents.length}
         />
