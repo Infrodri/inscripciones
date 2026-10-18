@@ -284,7 +284,7 @@ async function main() {
   ];
 
   for (const exp of expositoresSectorial) {
-    const spk = await apiPost(`/api/v1/events/${createdSectorial.id}/speakers`, exp);
+    const spk = await apiPost('/api/v1/speakers', { eventId: createdSectorial.id, ...exp });
     console.log(` - Expositor/Relator creado: ${exp.fullName} (${spk.id})`);
     logEntries.push({
       type: 'SPEAKER',
@@ -332,7 +332,8 @@ async function main() {
     startsAt: '2026-10-16T11:00:00-04:00',
     endsAt: '2026-10-16T12:30:00-04:00',
   });
-  await apiPost(`/api/v1/events/${createdE1.id}/speakers`, {
+  await apiPost('/api/v1/speakers', {
+    eventId: createdE1.id,
     fullName: 'Marco Antonio Barroso Mendizábal',
     role: 'EXPOSITOR',
     titleProfession:
@@ -375,17 +376,20 @@ async function main() {
     startsAt: '2026-10-12T18:00:00-04:00',
     endsAt: '2026-10-12T20:00:00-04:00',
   });
-  await apiPost(`/api/v1/events/${createdE2.id}/speakers`, {
+  await apiPost('/api/v1/speakers', {
+    eventId: createdE2.id,
     fullName: 'Dr. César Suárez Saavedra',
     role: 'EXPOSITOR',
     titleProfession: 'Abogado y docente',
   });
-  await apiPost(`/api/v1/events/${createdE2.id}/speakers`, {
+  await apiPost('/api/v1/speakers', {
+    eventId: createdE2.id,
     fullName: 'Dr. Wilder Manuel Castillo Subirana',
     role: 'EXPOSITOR',
     titleProfession: 'Abogado y docente',
   });
-  await apiPost(`/api/v1/events/${createdE2.id}/speakers`, {
+  await apiPost('/api/v1/speakers', {
+    eventId: createdE2.id,
     fullName: 'Dr. Marco Antonio Barroso Mendizábal',
     role: 'MODERADOR',
     titleProfession: 'Abogado, diplomático del Ministerio de Relaciones Exteriores y docente',
@@ -425,22 +429,26 @@ async function main() {
     startsAt: '2026-10-13T18:00:00-04:00',
     endsAt: '2026-10-13T20:00:00-04:00',
   });
-  await apiPost(`/api/v1/events/${createdE3.id}/speakers`, {
+  await apiPost('/api/v1/speakers', {
+    eventId: createdE3.id,
     fullName: 'Dr. Mario Gonzáles Durán',
     role: 'EXPOSITOR',
     titleProfession: 'Abogado, docente universitario y jurista',
   });
-  await apiPost(`/api/v1/events/${createdE3.id}/speakers`, {
+  await apiPost('/api/v1/speakers', {
+    eventId: createdE3.id,
     fullName: 'Dr. Carlos Eduardo Ortega Sivila',
     role: 'EXPOSITOR',
     titleProfession: 'Abogado, Magistrado del Tribunal Supremo de Justicia y docente universitario',
   });
-  await apiPost(`/api/v1/events/${createdE3.id}/speakers`, {
+  await apiPost('/api/v1/speakers', {
+    eventId: createdE3.id,
     fullName: 'Dr. Jaime René Conde Andrade',
     role: 'EXPOSITOR',
     titleProfession: 'Abogado y docente universitario',
   });
-  await apiPost(`/api/v1/events/${createdE3.id}/speakers`, {
+  await apiPost('/api/v1/speakers', {
+    eventId: createdE3.id,
     fullName: 'Periodista Delfin Ustarez',
     role: 'MODERADOR',
     titleProfession: 'Periodista',
