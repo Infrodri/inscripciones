@@ -57,9 +57,11 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
 
   const canManageCertificates =
     isAdmin || data?.accessLevel === 'OWNER' || data?.accessLevel === 'MANAGER';
+  const canManagePersonal =
+    isAdmin || data?.accessLevel === 'OWNER' || data?.accessLevel === 'MANAGER';
   const visibleTabs = TABS.filter((t) => {
     if (t.id === 'certificados') return canManageCertificates;
-    if (t.id === 'personal') return isAdmin;
+    if (t.id === 'personal') return canManagePersonal;
     return true;
   });
   const tab = rawTab && VALID_TABS.has(rawTab) ? rawTab : 'resumen';
@@ -211,7 +213,7 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         ) : null}
-        {tab === 'personal' && isAdmin ? <PersonalTab eventId={id} /> : null}
+        {tab === 'personal' && canManagePersonal ? <PersonalTab eventId={id} /> : null}
         {tab === 'datos' ? <DatosTab eventId={id} /> : null}
       </div>
     </div>

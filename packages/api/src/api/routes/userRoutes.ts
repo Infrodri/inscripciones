@@ -118,6 +118,119 @@ export function userRoutes(): Router {
     }
   );
 
+  // Obtener eventos asignados a un usuario (ADMIN)
+  router.get('/:id/events', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const user = await prisma.user.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, name: true, email: true, role: true, active: true },
+      });
+      if (!user) throw new DomainError('NOT_FOUND', 'Usuario no encontrado');
+
+      const assignments = await prisma.eventStaff.findMany({
+        where: { userId: req.params.id },
+        include: {
+          event: {
+            select: { id: true, title: true, slug: true, status: true, modality: true, location: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json({
+        user,
+        data: assignments.map((a) => ({
+          id: a.id,
+          eventId: a.eventId,
+          eventTitle: a.event.title,
+          eventSlug: a.event.slug,
+          eventStatus: a.event.status,
+          eventLocation: a.event.location,
+          accessLevel: a.accessLevel,
+          createdAt: a.createdAt,
+        })),
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Asignar/sincronizar eventos delegados a un usuario STAFF (ADMIN)
+  router.put(
+    '/:id/events',
+    requireRole('ADMIN'),
+    validateBody(
+      z.object({
+        assignments: z.array(
+          z.object({
+            eventId: z.string().uuid(),
+            accessLevel: z.enum(['OPERATOR', 'MANAGER']).default('OPERATOR'),
+          })
+        ),
+      })
+    ),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+        if (!user) throw new DomainError('NOT_FOUND', 'Usuario no encontrado');
+        if (user.role !== 'STAFF') {
+          throw new DomainError(
+            'VALIDATION_ERROR',
+            'Solo se pueden delegar eventos a usuarios con rol STAFF'
+          );
+        }
+
+        const assignments = req.body.assignments as Array<{
+          eventId: string;
+          accessLevel: 'OPERATOR' | 'MANAGER';
+        }>;
+
+        await prisma.$transaction(async (tx) => {
+          const targetEventIds = assignments.map((a) => a.eventId);
+
+          // Remover asignaciones que ya no estén en la lista
+          await tx.eventStaff.deleteMany({
+            where: {
+              userId: user.id,
+              eventId: { notIn: targetEventIds },
+            },
+          });
+
+          // Crear o actualizar asignaciones seleccionadas
+          for (const item of assignments) {
+            await tx.eventStaff.upsert({
+              where: {
+                eventId_userId: { eventId: item.eventId, userId: user.id },
+              },
+              update: {
+                accessLevel: item.accessLevel,
+              },
+              create: {
+                eventId: item.eventId,
+                userId: user.id,
+                accessLevel: item.accessLevel,
+                assignedBy: req.user?.id,
+              },
+            });
+          }
+        });
+
+        const updated = await prisma.eventStaff.findMany({
+          where: { userId: user.id },
+          include: {
+            event: { select: { id: true, title: true, slug: true, status: true } },
+          },
+        });
+
+        res.json({ ok: true, data: updated });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   // Eliminar usuario
   router.delete('/:id', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
     try {

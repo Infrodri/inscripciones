@@ -14,6 +14,7 @@ import { parsePagination, paginatedResponse } from '../../shared/pagination.js';
 import type { FileStorage } from '@inscripciones/infrastructure/fileStorage.js';
 import { filePublicUrl, type PublicUrlEnv } from '../../shared/urls.js';
 import { assertEventAccess, getEventUserAccess } from '../../application/accessControl.js';
+import { hashPassword } from '../../infrastructure/passwordHasher.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -683,39 +684,65 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
     }
   );
 
-  // Endpoints de asignación de STAFF a eventos (Solo ADMIN)
-  router.get('/:id/staff', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+  // Endpoints de asignación de STAFF a eventos (ADMIN o MANAGER del evento)
+  const staffOrAdmin = requireRole('ADMIN', 'STAFF');
+
+  router.get('/:id/staff', staffOrAdmin, async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
-      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
-      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      await assertEventAccess(prisma, req.user, req.params.id, 'OPERATOR');
 
-      const staffList = await prisma.eventStaff.findMany({
-        where: { eventId: req.params.id },
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, role: true, active: true },
+      const [staffList, recipients] = await Promise.all([
+        prisma.eventStaff.findMany({
+          where: { eventId: req.params.id },
+          include: {
+            user: {
+              select: { id: true, name: true, email: true, role: true, active: true },
+            },
+            assigner: {
+              select: { id: true, name: true, email: true },
+            },
           },
-          assigner: {
-            select: { id: true, name: true, email: true },
-          },
-        },
-        orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: 'asc' },
+        }),
+        prisma.certificateRecipient.findMany({
+          where: { eventId: req.params.id, roleKind: 'ORGANIZADOR' },
+          select: { id: true, fullName: true, email: true, note: true },
+        }),
+      ]);
+
+      const enriched = staffList.map((item) => {
+        const recipient = recipients.find(
+          (r) =>
+            (r.email && r.email.toLowerCase() === item.user.email.toLowerCase()) ||
+            r.fullName.trim().toLowerCase() === item.user.name.trim().toLowerCase()
+        );
+        return {
+          ...item,
+          commission: recipient?.note ?? null,
+          isOrganizerRecipient: Boolean(recipient),
+          recipientId: recipient?.id ?? null,
+        };
       });
-      res.json({ data: staffList });
+
+      res.json({ data: enriched });
     } catch (err) {
       next(err);
     }
   });
 
-  router.post('/:id/staff', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+  router.post('/:id/staff', staffOrAdmin, async (req: AuthRequest, res, next) => {
     try {
       const schema = z.object({
         userId: z.string().uuid(),
         accessLevel: z.enum(['OPERATOR', 'MANAGER']).default('OPERATOR'),
+        commission: z.string().optional().nullable(),
+        registerAsOrganizer: z.boolean().optional().default(false),
       });
       const body = schema.parse(req.body);
       const prisma = getPrisma();
+
+      await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
 
       const [event, targetUser] = await Promise.all([
         prisma.event.findUnique({ where: { id: req.params.id } }),
@@ -756,19 +783,226 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           user: { select: { id: true, name: true, email: true, role: true, active: true } },
         },
       });
+
+      // Si se solicita registrar como Organizador para certificado de reconocimiento
+      if (body.registerAsOrganizer) {
+        let orgTemplate =
+          (await prisma.certificateTemplate.findFirst({
+            where: { eventId: event.id, roleKind: 'ORGANIZADOR', isDefault: true },
+          })) ??
+          (await prisma.certificateTemplate.findFirst({
+            where: { eventId: event.id, roleKind: 'ORGANIZADOR' },
+          }));
+
+        if (!orgTemplate) {
+          const fallback =
+            (await prisma.certificateTemplate.findFirst({
+              where: { eventId: event.id, isDefault: true },
+            })) ??
+            (await prisma.certificateTemplate.findFirst({
+              where: { eventId: event.id },
+            }));
+
+          if (fallback) {
+            orgTemplate = await prisma.certificateTemplate.create({
+              data: {
+                eventId: event.id,
+                roleKind: 'ORGANIZADOR',
+                name: 'Certificado de Organizador / Comité',
+                filePath: fallback.filePath,
+                widthPx: fallback.widthPx,
+                heightPx: fallback.heightPx,
+                pageWidthMm: fallback.pageWidthMm,
+                pageHeightMm: fallback.pageHeightMm,
+                nameBox: fallback.nameBox as never,
+                isDefault: false,
+              },
+            });
+          }
+        }
+
+        if (orgTemplate) {
+          const existingRecipient = await prisma.certificateRecipient.findFirst({
+            where: {
+              eventId: event.id,
+              templateId: orgTemplate.id,
+              fullName: targetUser.name,
+            },
+          });
+          if (!existingRecipient) {
+            await prisma.certificateRecipient.create({
+              data: {
+                eventId: event.id,
+                roleKind: 'ORGANIZADOR',
+                fullName: targetUser.name,
+                email: targetUser.email,
+                templateId: orgTemplate.id,
+                note: body.commission?.trim() || 'Comité Organizador',
+                createdBy: req.user?.id,
+              },
+            });
+          }
+        }
+      }
+
       res.status(201).json(assignment);
     } catch (err) {
       next(err);
     }
   });
 
-  router.patch('/:id/staff/:userId', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+  // Crear nuevo usuario STAFF y asignarlo directamente al evento
+  router.post('/:id/staff/create-and-assign', staffOrAdmin, async (req: AuthRequest, res, next) => {
+    try {
+      const schema = z.object({
+        name: z.string().min(1, 'El nombre completo es requerido'),
+        email: z.string().email('Correo electrónico no válido'),
+        password: z.string().min(6).optional(),
+        accessLevel: z.enum(['OPERATOR', 'MANAGER']).default('OPERATOR'),
+        commission: z.string().optional().nullable(),
+        registerAsOrganizer: z.boolean().optional().default(false),
+      });
+      const body = schema.parse(req.body);
+      const prisma = getPrisma();
+
+      await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
+
+      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+
+      // Buscar si el usuario ya existe por email
+      let user = await prisma.user.findUnique({
+        where: { email: body.email.toLowerCase().trim() },
+      });
+
+      if (user) {
+        if (!user.active) {
+          throw new DomainError('VALIDATION_ERROR', 'Ya existe un usuario con este correo pero está inactivo');
+        }
+      } else {
+        // Crear nuevo usuario STAFF con contraseña por defecto o proporcionada
+        const defaultPassword = body.password && body.password.trim().length >= 6
+          ? body.password.trim()
+          : `staff${Math.floor(100000 + Math.random() * 900000)}`;
+        const passwordHash = await hashPassword(defaultPassword);
+
+        user = await prisma.user.create({
+          data: {
+            email: body.email.toLowerCase().trim(),
+            passwordHash,
+            name: body.name.trim(),
+            role: 'STAFF',
+            active: true,
+          },
+        });
+      }
+
+      // Verificar si ya está asignado al evento
+      const existing = await prisma.eventStaff.findUnique({
+        where: {
+          eventId_userId: { eventId: event.id, userId: user.id },
+        },
+      });
+
+      let assignment;
+      if (existing) {
+        assignment = await prisma.eventStaff.update({
+          where: { id: existing.id },
+          data: { accessLevel: body.accessLevel },
+          include: {
+            user: { select: { id: true, name: true, email: true, role: true, active: true } },
+          },
+        });
+      } else {
+        assignment = await prisma.eventStaff.create({
+          data: {
+            eventId: event.id,
+            userId: user.id,
+            accessLevel: body.accessLevel,
+            assignedBy: req.user?.id,
+          },
+          include: {
+            user: { select: { id: true, name: true, email: true, role: true, active: true } },
+          },
+        });
+      }
+
+      // Si se solicitó registrar como Organizador para certificado de reconocimiento
+      if (body.registerAsOrganizer || body.commission) {
+        let orgTemplate =
+          (await prisma.certificateTemplate.findFirst({
+            where: { eventId: event.id, roleKind: 'ORGANIZADOR', isDefault: true },
+          })) ??
+          (await prisma.certificateTemplate.findFirst({
+            where: { eventId: event.id, roleKind: 'ORGANIZADOR' },
+          }));
+
+        if (!orgTemplate) {
+          const fallback =
+            (await prisma.certificateTemplate.findFirst({
+              where: { eventId: event.id, isDefault: true },
+            })) ??
+            (await prisma.certificateTemplate.findFirst({
+              where: { eventId: event.id },
+            }));
+
+          if (fallback) {
+            orgTemplate = await prisma.certificateTemplate.create({
+              data: {
+                eventId: event.id,
+                roleKind: 'ORGANIZADOR',
+                name: 'Certificado de Organizador / Comité',
+                filePath: fallback.filePath,
+                widthPx: fallback.widthPx,
+                heightPx: fallback.heightPx,
+                pageWidthMm: fallback.pageWidthMm,
+                pageHeightMm: fallback.pageHeightMm,
+                nameBox: fallback.nameBox as never,
+                isDefault: false,
+              },
+            });
+          }
+        }
+
+        if (orgTemplate) {
+          const existingRecipient = await prisma.certificateRecipient.findFirst({
+            where: {
+              eventId: event.id,
+              templateId: orgTemplate.id,
+              fullName: user.name,
+            },
+          });
+          if (!existingRecipient) {
+            await prisma.certificateRecipient.create({
+              data: {
+                eventId: event.id,
+                roleKind: 'ORGANIZADOR',
+                fullName: user.name,
+                email: user.email,
+                templateId: orgTemplate.id,
+                note: body.commission?.trim() || 'Comité Organizador',
+                createdBy: req.user?.id,
+              },
+            });
+          }
+        }
+      }
+
+      res.status(201).json(assignment);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.patch('/:id/staff/:userId', staffOrAdmin, async (req: AuthRequest, res, next) => {
     try {
       const schema = z.object({
         accessLevel: z.enum(['OPERATOR', 'MANAGER']),
       });
       const body = schema.parse(req.body);
       const prisma = getPrisma();
+
+      await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
 
       const existing = await prisma.eventStaff.findUnique({
         where: {
@@ -794,9 +1028,11 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
     }
   });
 
-  router.delete('/:id/staff/:userId', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+  router.delete('/:id/staff/:userId', staffOrAdmin, async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
+      await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
+
       const existing = await prisma.eventStaff.findUnique({
         where: {
           eventId_userId: { eventId: req.params.id, userId: req.params.userId },
