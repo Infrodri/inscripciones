@@ -74,6 +74,11 @@ export function userRoutes(): Router {
         if (req.body.name !== undefined) dataToUpdate.name = req.body.name;
         if (req.body.role !== undefined) dataToUpdate.role = req.body.role;
         if (req.body.active !== undefined) dataToUpdate.active = req.body.active;
+        if (req.body.active === false) {
+          await prisma.eventStaff.deleteMany({
+            where: { userId: req.params.id },
+          });
+        }
         if (req.body.password) {
           dataToUpdate.passwordHash = await hashPassword(req.body.password);
         }

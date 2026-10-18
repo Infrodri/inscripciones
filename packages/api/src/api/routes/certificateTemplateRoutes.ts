@@ -13,6 +13,7 @@ import { detectPageSize } from '@inscripciones/infrastructure/certificates.js';
 import { renderCertificates } from '@inscripciones/infrastructure/pdf.js';
 import { fontPaths } from '../../shared/fonts.js';
 import { formatPrintedName } from '../../domain/nameFormat.js';
+import { assertEventAccess } from '../../application/accessControl.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -62,28 +63,15 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
   // Solo ADMIN por ruta (las plantillas son privadas). Ni app.use ni
   // router.use sirven aquí: rechazarían el STAFF de rutas montadas después.
   const admin = requireRole('ADMIN');
+  const staffOrAdmin = requireRole('ADMIN', 'STAFF');
 
   router.get(
     '/events/:eventId/certificate-templates',
-    requireRole('ADMIN', 'STAFF'),
+    staffOrAdmin,
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({
-          where: { id: req.params.eventId },
-          select: { id: true, createdBy: true, creator: { select: { role: true } } },
-        });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        if (
-          req.user?.role === 'STAFF' &&
-          event.createdBy !== req.user.id &&
-          event.creator?.role === 'STAFF'
-        ) {
-          throw new DomainError(
-            'FORBIDDEN',
-            'No tiene permiso para ver las plantillas de este evento'
-          );
-        }
+        await assertEventAccess(prisma, req.user, req.params.eventId, 'OPERATOR');
         const roleKind = typeof req.query.roleKind === 'string' ? req.query.roleKind : undefined;
         const items = await prisma.certificateTemplate.findMany({
           where: {
@@ -103,11 +91,13 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
   // texto: nameBox llega como JSON serializado y se parsea aquí.
   router.post(
     '/events/:eventId/certificate-templates/upload',
-    admin,
+    staffOrAdmin,
     upload.single('file'),
-    async (req, res, next) => {
+    async (req: AuthRequest, res, next) => {
       try {
         if (!req.file) throw new DomainError('VALIDATION_ERROR', 'Debe adjuntar la imagen');
+        const prisma = getPrisma();
+        await assertEventAccess(prisma, req.user, req.params.eventId, 'MANAGER');
         const parsed = z
           .object({
             name: z.string().min(1),
@@ -129,7 +119,6 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
         }
         const { width, height } = await validateTemplateImage(req.file.buffer, req.file.mimetype);
         const detected = detectPageSize(width, height);
-        const prisma = getPrisma();
         const key = `templates/${req.params.eventId}/${randomUUID()}.jpg`;
         const image = await sharp(req.file.buffer).jpeg({ quality: 92 }).toBuffer();
         await privateStorage.save(image, key, 'image/jpeg');
@@ -160,11 +149,16 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
 
   router.patch(
     '/certificate-templates/:id',
-    admin,
+    staffOrAdmin,
     validateBody(templateUpdateSchema),
-    async (req, res, next) => {
+    async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
+        const template = await prisma.certificateTemplate.findUnique({
+          where: { id: req.params.id },
+        });
+        if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
+        await assertEventAccess(prisma, req.user, template.eventId, 'MANAGER');
         const updated = await prisma.certificateTemplate.update({
           where: { id: req.params.id },
           data: req.body,
@@ -176,13 +170,14 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
     }
   );
 
-  router.post('/certificate-templates/:id/set-default', admin, async (req, res, next) => {
+  router.post('/certificate-templates/:id/set-default', staffOrAdmin, async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
       const template = await prisma.certificateTemplate.findUnique({
         where: { id: req.params.id },
       });
       if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
+      await assertEventAccess(prisma, req.user, template.eventId, 'MANAGER');
       await prisma.$transaction([
         prisma.certificateTemplate.updateMany({
           where: { eventId: template.eventId, roleKind: template.roleKind, isDefault: true },
@@ -201,15 +196,16 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
 
   router.post(
     '/certificate-templates/:id/duplicate',
-    admin,
+    staffOrAdmin,
     validateBody(z.object({ name: z.string().min(1) })),
-    async (req, res, next) => {
+    async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
         const source = await prisma.certificateTemplate.findUnique({
           where: { id: req.params.id },
         });
         if (!source) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
+        await assertEventAccess(prisma, req.user, source.eventId, 'MANAGER');
         const copy = await prisma.certificateTemplate.create({
           data: {
             eventId: source.eventId,
@@ -234,14 +230,15 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
   // Archivo de plantilla (ADMIN y STAFF para previsualización).
   router.get(
     '/certificate-templates/:id/file',
-    requireRole('ADMIN', 'STAFF'),
-    async (req, res, next) => {
+    staffOrAdmin,
+    async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
         const template = await prisma.certificateTemplate.findUnique({
           where: { id: req.params.id },
         });
         if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
+        await assertEventAccess(prisma, req.user, template.eventId, 'OPERATOR');
         const buffer = await privateStorage.read(template.filePath);
         res.header('Content-Type', 'image/jpeg');
         res.send(buffer);
@@ -270,9 +267,9 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
   // y caja, sin heredar is_default). Solo plantillas marcadas como compartidas.
   router.post(
     '/events/:eventId/certificate-templates/import',
-    admin,
+    staffOrAdmin,
     validateBody(z.object({ sourceTemplateId: z.string().uuid() })),
-    async (req, res, next) => {
+    async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
         const source = await prisma.certificateTemplate.findUnique({
@@ -281,8 +278,7 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
         if (!source || !source.isShared || source.eventId === req.params.eventId) {
           throw new DomainError('NOT_FOUND', 'Plantilla no encontrada o no compartida');
         }
-        const event = await prisma.event.findUnique({ where: { id: req.params.eventId } });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        const event = await assertEventAccess(prisma, req.user, req.params.eventId, 'MANAGER');
         const copy = await prisma.certificateTemplate.create({
           data: {
             eventId: event.id,
@@ -306,13 +302,14 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
   );
 
   // Eliminar: no borra el archivo si otra plantilla aún lo referencia.
-  router.delete('/certificate-templates/:id', admin, async (req, res, next) => {
+  router.delete('/certificate-templates/:id', staffOrAdmin, async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
       const template = await prisma.certificateTemplate.findUnique({
         where: { id: req.params.id },
       });
       if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
+      await assertEventAccess(prisma, req.user, template.eventId, 'MANAGER');
       await prisma.certificateTemplate.delete({ where: { id: template.id } });
       const remaining = await prisma.certificateTemplate.count({
         where: { filePath: template.filePath },
@@ -329,14 +326,15 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
   // Vista previa de 1 página antes del lote (ADMIN y STAFF).
   router.get(
     '/certificate-templates/:id/preview.pdf',
-    requireRole('ADMIN', 'STAFF'),
-    async (req, res, next) => {
+    staffOrAdmin,
+    async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
         const template = await prisma.certificateTemplate.findUnique({
           where: { id: req.params.id },
         });
         if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
+        await assertEventAccess(prisma, req.user, template.eventId, 'OPERATOR');
         const sampleName =
           typeof req.query.sampleName === 'string' && req.query.sampleName !== ''
             ? req.query.sampleName

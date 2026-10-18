@@ -17,6 +17,7 @@ import {
 } from '../../application/selfCheckin.js';
 import { logger } from '../../shared/logger.js';
 import type { AppEnv } from '../env.js';
+import { assertSessionAccess } from '../../application/accessControl.js';
 
 const admin = requireRole('ADMIN', 'STAFF');
 
@@ -71,6 +72,7 @@ export function selfCheckinAdminRoutes(env: AppEnv): Router {
   router.post('/sessions/:id/self-checkin/open', admin, async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
+      await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
       const session = await prisma.session.update({
         where: { id: req.params.id },
         data: { selfCheckinOpen: true },
@@ -93,6 +95,7 @@ export function selfCheckinAdminRoutes(env: AppEnv): Router {
   router.post('/sessions/:id/self-checkin/close', admin, async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
+      await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
       const session = await prisma.session.update({
         where: { id: req.params.id },
         data: { selfCheckinOpen: false },
@@ -112,11 +115,10 @@ export function selfCheckinAdminRoutes(env: AppEnv): Router {
     }
   });
 
-  router.get('/sessions/:id/self-checkin/token', admin, async (req, res, next) => {
+  router.get('/sessions/:id/self-checkin/token', admin, async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
-      const session = await prisma.session.findUnique({ where: { id: req.params.id } });
-      if (!session) throw new DomainError('NOT_FOUND', 'Sesión no encontrada');
+      const session = await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
       const token = issueSelfCheckinToken(env.JWT_SECRET, session.id);
       res.json({
         url: `${env.PUBLIC_SITE_URL}/a/${token}`,
@@ -129,11 +131,10 @@ export function selfCheckinAdminRoutes(env: AppEnv): Router {
   });
 
   // PNG del QR vigente (se regenera solo: cada request usa la ventana actual).
-  router.get('/sessions/:id/self-checkin/qr.png', admin, async (req, res, next) => {
+  router.get('/sessions/:id/self-checkin/qr.png', admin, async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
-      const session = await prisma.session.findUnique({ where: { id: req.params.id } });
-      if (!session) throw new DomainError('NOT_FOUND', 'Sesión no encontrada');
+      const session = await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
       const token = issueSelfCheckinToken(env.JWT_SECRET, session.id);
       const png = await qrPngBuffer(`${env.PUBLIC_SITE_URL}/a/${token}`);
       res.header('Content-Type', 'image/png');

@@ -18,6 +18,7 @@ import { qrPngBuffer } from '@inscripciones/infrastructure/qr.js';
 import { createMailer } from '@inscripciones/infrastructure/mailer.js';
 import { buildConfirmationMail } from '../../application/confirmationMail.js';
 import { parseEnv } from '../env.js';
+import { assertEventAccess } from '../../application/accessControl.js';
 
 // Listado con datos personales: solo ADMIN/STAFF autenticados (STAFF lo usa en puerta).
 export function participantRoutes(): Router {
@@ -28,21 +29,7 @@ export function participantRoutes(): Router {
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({
-          where: { id: req.params.eventId },
-          select: { id: true, createdBy: true, creator: { select: { role: true } } },
-        });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        if (
-          req.user?.role === 'STAFF' &&
-          event.createdBy !== req.user.id &&
-          event.creator?.role === 'STAFF'
-        ) {
-          throw new DomainError(
-            'FORBIDDEN',
-            'No tiene permiso para ver los participantes de este evento'
-          );
-        }
+        const event = await assertEventAccess(prisma, req.user, req.params.eventId, 'OPERATOR');
         const params = parsePagination(req.query);
         const query =
           typeof req.query.q === 'string' && req.query.q.trim() !== '' ? req.query.q.trim() : null;
@@ -124,11 +111,12 @@ export function participantRoutes(): Router {
     }
   );
 
-  router.get('/:id/attendances', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
+  router.get('/:id/attendances', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
       const participant = await prisma.participant.findUnique({ where: { id: req.params.id } });
       if (!participant) throw new DomainError('NOT_FOUND', 'Inscrito no encontrado');
+      await assertEventAccess(prisma, req.user, participant.eventId, 'OPERATOR');
       const items = await prisma.attendance.findMany({
         where: { participantId: participant.id },
         include: { session: { select: { id: true, label: true, startsAt: true } } },
@@ -144,16 +132,17 @@ export function participantRoutes(): Router {
     .partial()
     .extend({ type: z.enum(['ESTUDIANTE', 'DOCENTE', 'PROFESIONAL', 'PUBLICO']).optional() });
 
-  // Editar inscrito (ADMIN): mismas reglas que la inscripción; conserva qr_token. Auditado.
+  // Editar inscrito (MANAGER o ADMIN): mismas reglas que la inscripción; conserva qr_token. Auditado.
   router.patch(
     '/:id',
-    requireRole('ADMIN'),
+    requireRole('ADMIN', 'STAFF'),
     validateBody(participantUpdateSchema),
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
         const participant = await prisma.participant.findUnique({ where: { id: req.params.id } });
         if (!participant) throw new DomainError('NOT_FOUND', 'Inscrito no encontrado');
+        await assertEventAccess(prisma, req.user, participant.eventId, 'MANAGER');
         const data: Record<string, unknown> = {};
         if (req.body.firstName !== undefined) {
           const value = normalizeName(String(req.body.firstName));
@@ -231,12 +220,13 @@ export function participantRoutes(): Router {
     }
   );
 
-  // Eliminar inscrito (ADMIN): se impide si tiene asistencias (conserva reportes). Auditado.
-  router.delete('/:id', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+  // Eliminar inscrito (MANAGER o ADMIN): se impide si tiene asistencias (conserva reportes). Auditado.
+  router.delete('/:id', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
       const participant = await prisma.participant.findUnique({ where: { id: req.params.id } });
       if (!participant) throw new DomainError('NOT_FOUND', 'Inscrito no encontrado');
+      await assertEventAccess(prisma, req.user, participant.eventId, 'MANAGER');
       const attendances = await prisma.attendance.count({
         where: { participantId: participant.id },
       });
@@ -262,8 +252,8 @@ export function participantRoutes(): Router {
     }
   });
 
-  // Reenviar QR por correo (ADMIN). Mismo manejo de fallo que certificados.
-  router.post('/:id/resend-qr', requireRole('ADMIN'), async (req, res, next) => {
+  // Reenviar QR por correo (OPERATOR o ADMIN). Mismo manejo de fallo que certificados.
+  router.post('/:id/resend-qr', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
       const participant = await prisma.participant.findUnique({
@@ -271,6 +261,7 @@ export function participantRoutes(): Router {
         include: { event: { include: { sessions: { orderBy: { startsAt: 'asc' } } } } },
       });
       if (!participant) throw new DomainError('NOT_FOUND', 'Inscrito no encontrado');
+      await assertEventAccess(prisma, req.user, participant.eventId, 'OPERATOR');
       if (!participant.email) throw new DomainError('VALIDATION_ERROR', 'Sin correo');
       const env = parseEnv(process.env);
       if (!env.SMTP_HOST)

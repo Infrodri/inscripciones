@@ -82,7 +82,7 @@ describe('POST /api/v1/public/certificates/verify', () => {
       body: JSON.stringify({ ci: testCi, code: 'codigo-inexistente' }),
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as { valid: boolean; message: string };
     expect(body.valid).toBe(false);
     expect(body.message).toContain('No se encontró un certificado');
   });
@@ -94,7 +94,7 @@ describe('POST /api/v1/public/certificates/verify', () => {
       body: JSON.stringify({ ci: '9999999-wrong', code: testCode }),
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as { valid: boolean; message: string };
     expect(body.valid).toBe(false);
     expect(body.message).toContain('No se encontró un certificado');
   });
@@ -106,7 +106,10 @@ describe('POST /api/v1/public/certificates/verify', () => {
       body: JSON.stringify({ ci: testCi, code: testCode }),
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as {
+      valid: boolean;
+      certificate: { eventTitle: string; recipientName: string; role: string };
+    };
     expect(body.valid).toBe(true);
     expect(body.certificate).toBeDefined();
     expect(body.certificate.eventTitle).toBe('Congreso de Prueba Verificación');

@@ -6,6 +6,7 @@ import { validateBody } from '../middlewares/validateMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { assertSessionWindow } from '../../application/attendanceService.js';
+import { assertSessionAccess, canAccessEvent } from '../../application/accessControl.js';
 
 const checkinSchema = z.object({
   qrToken: z.string().optional(),
@@ -30,11 +31,7 @@ export function attendanceRoutes(): Router {
           throw new DomainError('VALIDATION_ERROR', 'Indique el QR o el participante');
         }
         const prisma = getPrisma();
-        const session = await prisma.session.findUnique({
-          where: { id: req.params.id },
-          include: { event: true },
-        });
-        if (!session) throw new DomainError('NOT_FOUND', 'Sesión no encontrada');
+        const session = await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
         assertSessionWindow(new Date(), {
           startsAt: session.startsAt,
           endsAt: session.endsAt,
@@ -83,7 +80,7 @@ export function attendanceRoutes(): Router {
   router.get(
     '/sessions/:id/participants/search',
     requireRole('ADMIN', 'STAFF'),
-    async (req, res, next) => {
+    async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
         const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
@@ -91,8 +88,7 @@ export function attendanceRoutes(): Router {
           res.json({ data: [] });
           return;
         }
-        const session = await prisma.session.findUnique({ where: { id: req.params.id } });
-        if (!session) throw new DomainError('NOT_FOUND', 'Sesión no encontrada');
+        const session = await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
         const items = await prisma.participant.findMany({
           where: {
             eventId: session.eventId,
@@ -112,12 +108,11 @@ export function attendanceRoutes(): Router {
     }
   );
 
-  // Quienes marcaron en una sesión (ADMIN o STAFF), con hora y método.
-  router.get('/sessions/:id/attendances', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
+  // Quienes marcaron en una sesión (ADMIN o STAFF con acceso), con hora y método.
+  router.get('/sessions/:id/attendances', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
-      const session = await prisma.session.findUnique({ where: { id: req.params.id } });
-      if (!session) throw new DomainError('NOT_FOUND', 'Sesión no encontrada');
+      const session = await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
       const items = await prisma.attendance.findMany({
         where: { sessionId: session.id, voidedAt: null },
         include: {
@@ -131,16 +126,33 @@ export function attendanceRoutes(): Router {
     }
   });
 
-  // Anulación con motivo y auditoría (solo ADMIN). No borra la fila.
+  // Anulación con motivo y auditoría (ADMIN o STAFF con MANAGER). No borra la fila.
   router.post(
     '/attendances/:id/void',
-    requireRole('ADMIN'),
+    requireRole('ADMIN', 'STAFF'),
     validateBody(voidSchema),
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const attendance = await prisma.attendance.findUnique({ where: { id: req.params.id } });
+        const attendance = await prisma.attendance.findUnique({
+          where: { id: req.params.id },
+          include: {
+            session: {
+              include: {
+                event: {
+                  include: {
+                    staffAssignments: { select: { userId: true, accessLevel: true } },
+                    creator: { select: { id: true, role: true } },
+                  },
+                },
+              },
+            },
+          },
+        });
         if (!attendance) throw new DomainError('NOT_FOUND', 'Asistencia no encontrada');
+        if (!canAccessEvent(req.user, attendance.session.event, 'MANAGER')) {
+          throw new DomainError('FORBIDDEN', 'No tiene permisos para anular asistencias en este evento');
+        }
         const updated = await prisma.attendance.update({
           where: { id: attendance.id },
           data: { voidedAt: new Date(), voidedBy: req.user?.id, voidReason: req.body.reason },

@@ -5,6 +5,7 @@ import { validateBody } from '../middlewares/validateMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { DomainError } from '../../domain/errors.js';
+import { assertEventAccess } from '../../application/accessControl.js';
 
 const speakerSchema = z.object({
   eventId: z.string().uuid(),
@@ -25,21 +26,7 @@ export function speakerRoutes(): Router {
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({
-          where: { id: req.params.eventId },
-          select: { id: true, createdBy: true, creator: { select: { role: true } } },
-        });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        if (
-          req.user?.role === 'STAFF' &&
-          event.createdBy !== req.user.id &&
-          event.creator?.role === 'STAFF'
-        ) {
-          throw new DomainError(
-            'FORBIDDEN',
-            'No tiene permiso para ver los expositores de este evento'
-          );
-        }
+        await assertEventAccess(prisma, req.user, req.params.eventId, 'OPERATOR');
         const items = await prisma.speaker.findMany({
           where: { eventId: req.params.eventId },
           orderBy: { position: 'asc' },
@@ -50,22 +37,33 @@ export function speakerRoutes(): Router {
       }
     }
   );
-  router.post('/', requireRole('ADMIN'), validateBody(speakerSchema), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const created = await prisma.speaker.create({ data: req.body });
-      res.status(201).json(created);
-    } catch (err) {
-      next(err);
-    }
-  });
-  router.put(
-    '/:id',
-    requireRole('ADMIN'),
-    validateBody(speakerUpdateSchema),
-    async (req, res, next) => {
+
+  router.post(
+    '/',
+    requireRole('ADMIN', 'STAFF'),
+    validateBody(speakerSchema),
+    async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
+        await assertEventAccess(prisma, req.user, req.body.eventId, 'MANAGER');
+        const created = await prisma.speaker.create({ data: req.body });
+        res.status(201).json(created);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.put(
+    '/:id',
+    requireRole('ADMIN', 'STAFF'),
+    validateBody(speakerUpdateSchema),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const speaker = await prisma.speaker.findUnique({ where: { id: req.params.id } });
+        if (!speaker) throw new DomainError('NOT_FOUND', 'Expositor no encontrado');
+        await assertEventAccess(prisma, req.user, speaker.eventId, 'MANAGER');
         const updated = await prisma.speaker.update({
           where: { id: req.params.id },
           data: req.body,
@@ -76,9 +74,13 @@ export function speakerRoutes(): Router {
       }
     }
   );
-  router.delete('/:id', requireRole('ADMIN'), async (req, res, next) => {
+
+  router.delete('/:id', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
+      const speaker = await prisma.speaker.findUnique({ where: { id: req.params.id } });
+      if (!speaker) throw new DomainError('NOT_FOUND', 'Expositor no encontrado');
+      await assertEventAccess(prisma, req.user, speaker.eventId, 'MANAGER');
       await prisma.speaker.delete({ where: { id: req.params.id } });
       res.status(204).send();
     } catch (err) {

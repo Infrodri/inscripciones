@@ -77,6 +77,12 @@ describe('Pestañas del evento', () => {
       })
     ).json()) as { id: string };
     eventId = event.id;
+    const staffUser = await prisma.user.findUnique({ where: { email: staffEmail } });
+    if (staffUser) {
+      await prisma.eventStaff.create({
+        data: { eventId, userId: staffUser.id, accessLevel: 'OPERATOR' },
+      });
+    }
     const session = (await (
       await api('/api/v1/sessions', adminToken, {
         method: 'POST',

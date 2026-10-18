@@ -67,6 +67,12 @@ describe('H8 lista de asistencia', () => {
       })
     ).json()) as { id: string };
     eventId = event.id;
+    const staffUser = await prisma.user.findUnique({ where: { email: staffEmail } });
+    if (staffUser) {
+      await prisma.eventStaff.create({
+        data: { eventId, userId: staffUser.id, accessLevel: 'OPERATOR' },
+      });
+    }
     await prisma.participant.create({
       data: {
         eventId,

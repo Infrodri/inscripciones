@@ -11,6 +11,7 @@ import { fontPaths } from '../../shared/fonts.js';
 import { logger } from '../../shared/logger.js';
 import { formatPrintedName } from '../../domain/nameFormat.js';
 import { attendancePercentage } from '../../application/attendanceService.js';
+import { assertEventAccess } from '../../application/accessControl.js';
 
 function lazyCode(): string {
   return randomBytes(9).toString('base64url');
@@ -51,17 +52,8 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
           })
           .parse(req.query);
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({
-          where: { id: req.params.id },
-          include: { sessions: true },
-        });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        if (req.user?.role === 'STAFF' && event.createdBy !== req.user.id) {
-          throw new DomainError(
-            'FORBIDDEN',
-            'No tiene permiso para exportar certificados de este evento'
-          );
-        }
+        const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
+        const sessions = await prisma.session.findMany({ where: { eventId: event.id } });
         const images = new Map<string, Buffer>();
         async function imageFor(filePath: string): Promise<Buffer> {
           const cached = images.get(filePath);
@@ -99,7 +91,7 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
             participants = participants.filter((p) => ids.has(p.id));
           }
           if (query.scope === 'eligible') {
-            const total = event.sessions.length;
+            const total = sessions.length;
             const eligible: typeof participants = [];
             for (const participant of participants) {
               const attended = await prisma.attendance.count({

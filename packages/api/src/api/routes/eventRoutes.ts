@@ -13,6 +13,12 @@ import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { parsePagination, paginatedResponse } from '../../shared/pagination.js';
 import type { FileStorage } from '@inscripciones/infrastructure/fileStorage.js';
 import { filePublicUrl, type PublicUrlEnv } from '../../shared/urls.js';
+import {
+  assertEventAccess,
+  canAccessEvent,
+  getEventUserAccess,
+  type EventStaffRole,
+} from '../../application/accessControl.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -47,6 +53,14 @@ const eventSchema = z.object({
   emailCertificates: z.boolean().optional(),
   certificateEmailSubject: z.string().nullable().optional(),
   certificateEmailBody: z.string().nullable().optional(),
+  staffAssignments: z
+    .array(
+      z.object({
+        userId: z.string().uuid(),
+        accessLevel: z.enum(['OPERATOR', 'MANAGER']).default('OPERATOR'),
+      })
+    )
+    .optional(),
 });
 
 async function validateBanner(
@@ -75,7 +89,17 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
     try {
       const prisma = getPrisma();
       const params = parsePagination(req.query);
-      const whereClause = req.user?.role === 'STAFF' ? { createdBy: req.user.id } : {};
+      const isStaff = req.user?.role === 'STAFF';
+      const userId = req.user?.id;
+      const whereClause =
+        isStaff && userId
+          ? {
+              OR: [
+                { createdBy: userId },
+                { staffAssignments: { some: { userId } } },
+              ],
+            }
+          : {};
       const [items, total] = await Promise.all([
         prisma.event.findMany({
           where: whereClause,
@@ -83,6 +107,9 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           take: params.pageSize,
           orderBy: { createdAt: 'desc' },
           include: {
+            staffAssignments: {
+              select: { userId: true, accessLevel: true },
+            },
             _count: {
               select: {
                 participants: true,
@@ -94,13 +121,21 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
         }),
         prisma.event.count({ where: whereClause }),
       ]);
-      const enriched = items.map((item) => ({
-        ...item,
-        participants: item._count.participants,
-        participantsCount: item._count.participants,
-        speakersCount: item._count.speakers,
-        sessionsCount: item._count.sessions,
-      }));
+      const enriched = items.map((item) => {
+        const isOwner = req.user?.role === 'ADMIN' ? true : item.createdBy === req.user?.id;
+        const accessLevel = getEventUserAccess(req.user, item);
+        const ownership = isOwner ? 'propio' : 'asignado';
+        return {
+          ...item,
+          isOwner,
+          ownership,
+          accessLevel,
+          participants: item._count.participants,
+          participantsCount: item._count.participants,
+          speakersCount: item._count.speakers,
+          sessionsCount: item._count.sessions,
+        };
+      });
       res.json(paginatedResponse(enriched, total, params));
     } catch (err) {
       next(err);
@@ -121,17 +156,49 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
       }
       const cost = isFree ? null : req.body.cost;
       const prisma = getPrisma();
-      const created = await prisma.event.create({
-        data: {
-          ...req.body,
-          isFree,
-          cost,
-          registrationDeadline: req.body.registrationDeadline
-            ? new Date(req.body.registrationDeadline)
-            : undefined,
-          createdBy: req.user?.id,
-        },
+      const { staffAssignments, ...eventData } = req.body;
+
+      // Validate staff assignments if provided by ADMIN
+      if (req.user?.role === 'ADMIN' && Array.isArray(staffAssignments) && staffAssignments.length > 0) {
+        const userIds = staffAssignments.map((a: { userId: string }) => a.userId);
+        const validUsers = await prisma.user.findMany({
+          where: { id: { in: userIds }, role: 'STAFF', active: true },
+          select: { id: true },
+        });
+        if (validUsers.length !== userIds.length) {
+          throw new DomainError(
+            'VALIDATION_ERROR',
+            'Una o más asignaciones corresponden a usuarios no válidos, inactivos o que no son STAFF'
+          );
+        }
+      }
+
+      const created = await prisma.$transaction(async (tx) => {
+        const ev = await tx.event.create({
+          data: {
+            ...eventData,
+            isFree,
+            cost,
+            registrationDeadline: eventData.registrationDeadline
+              ? new Date(eventData.registrationDeadline)
+              : undefined,
+            createdBy: req.user?.id,
+          },
+        });
+
+        if (req.user?.role === 'ADMIN' && Array.isArray(staffAssignments) && staffAssignments.length > 0) {
+          await tx.eventStaff.createMany({
+            data: staffAssignments.map((a: { userId: string; accessLevel?: 'OPERATOR' | 'MANAGER' }) => ({
+              eventId: ev.id,
+              userId: a.userId,
+              accessLevel: a.accessLevel ?? 'OPERATOR',
+              assignedBy: req.user?.id,
+            })),
+          });
+        }
+        return ev;
       });
+
       res.status(201).json(created);
     } catch (err) {
       next(err);
@@ -141,21 +208,16 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
   router.get('/:id', async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
-      const event = await prisma.event.findUnique({
-        where: { id: req.params.id },
-        include: { creator: { select: { role: true } } },
-      });
-      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-      if (
-        req.user?.role === 'STAFF' &&
-        event.createdBy !== req.user.id &&
-        event.creator?.role === 'STAFF'
-      ) {
-        throw new DomainError('FORBIDDEN', 'No tiene permiso para acceder a este evento');
-      }
+      const event = await assertEventAccess(prisma, req.user, req.params.id, 'OPERATOR');
       const registered = await prisma.participant.count({ where: { eventId: event.id } });
+      const accessLevel = getEventUserAccess(req.user, event);
+      const isOwner = req.user?.role === 'ADMIN' || event.createdBy === req.user?.id;
+      const ownership = isOwner ? 'propio' : 'asignado';
       res.json({
         ...event,
+        isOwner,
+        ownership,
+        accessLevel,
         registered,
         registrationReason: registrationReason(
           {
@@ -173,13 +235,14 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
 
   router.post(
     '/:id/banner',
-    requireRole('ADMIN'),
+    requireRole('ADMIN', 'STAFF'),
     upload.single('banner'),
     async (req: AuthRequest, res, next) => {
       try {
         if (!req.file) throw new DomainError('VALIDATION_ERROR', 'Debe adjuntar el afiche');
         await validateBanner(req.file.buffer, req.file.mimetype);
         const prisma = getPrisma();
+        await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
         const ext = req.file.mimetype === 'image/png' ? 'png' : 'jpg';
         const key = `banners/${req.params.id}/${randomUUID()}.${ext}`;
         // Copia reducida a 1200px de ancho para og:image/share, mismo bucket público.
@@ -213,7 +276,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
 
   router.post(
     '/:id/institution-qr',
-    requireRole('ADMIN'),
+    requireRole('ADMIN', 'STAFF'),
     qrUpload.any(),
     async (req: AuthRequest, res, next) => {
       try {
@@ -223,8 +286,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           throw new DomainError('UNSUPPORTED_FILE', 'El QR institucional debe ser PNG o SVG');
         }
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({ where: { id: req.params.id } });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
 
         const ext = file.mimetype === 'image/svg+xml' ? 'svg' : 'png';
         const key = `institution-qr/${req.params.id}/${randomUUID()}.${ext}`;
@@ -252,11 +314,10 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
     }
   );
 
-  router.post('/:id/publish', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+  router.post('/:id/publish', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
-      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
-      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
       const updated = await prisma.event.update({
         where: { id: event.id },
         data: { status: 'ABIERTO' },
@@ -278,11 +339,10 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
 
   // Cerrar inscripciones (solo desde ABIERTO) y reabrir (solo desde CERRADO).
   // No tocan BORRADOR ni FINALIZADO.
-  router.post('/:id/close', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+  router.post('/:id/close', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
-      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
-      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
       if (event.status !== 'ABIERTO') {
         throw new DomainError('VALIDATION_ERROR', 'Solo se puede cerrar un evento abierto');
       }
@@ -308,7 +368,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
   // Reabrir exige nueva fecha límite (o quitarla) si la actual ya venció.
   router.post(
     '/:id/reopen',
-    requireRole('ADMIN'),
+    requireRole('ADMIN', 'STAFF'),
     validateBody(
       z.object({
         registrationDeadline: z.string().datetime({ offset: true }).nullable().optional(),
@@ -318,8 +378,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({ where: { id: req.params.id } });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
         if (event.status !== 'CERRADO') {
           throw new DomainError('VALIDATION_ERROR', 'Solo se puede reabrir un evento cerrado');
         }
@@ -366,16 +425,12 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
     }
   );
 
-  // Finalizar (ADMIN): cierra inscripciones y todos los registros de sala.
+  // Finalizar (MANAGER o ADMIN): cierra inscripciones y todos los registros de sala.
   // Conserva todo para certificados.
-  router.post('/:id/finalize', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+  router.post('/:id/finalize', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
-      const event = await prisma.event.findUnique({
-        where: { id: req.params.id },
-        include: { sessions: { select: { id: true } } },
-      });
-      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
       if (event.status === 'FINALIZADO') {
         throw new DomainError('VALIDATION_ERROR', 'El evento ya está finalizado');
       }
@@ -404,9 +459,9 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
 
   router.patch(
     '/:id',
-    requireRole('ADMIN'),
+    requireRole('ADMIN', 'STAFF'),
     validateBody(eventSchema.partial()),
-    async (req, res, next) => {
+    async (req: AuthRequest, res, next) => {
       try {
         if (
           req.body.capacity !== undefined &&
@@ -425,14 +480,13 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           );
         }
         const prisma = getPrisma();
+        const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
+
         let costToUpdate: number | null | undefined = undefined;
 
         if (req.body.isFree !== undefined || req.body.cost !== undefined) {
-          const existing = await prisma.event.findUnique({ where: { id: req.params.id } });
-          if (!existing) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-
-          const effectiveIsFree = req.body.isFree !== undefined ? req.body.isFree : existing.isFree;
-          const currentSavedCost = existing.cost !== null ? Number(existing.cost) : null;
+          const effectiveIsFree = req.body.isFree !== undefined ? req.body.isFree : event.isFree;
+          const currentSavedCost = event.cost !== null ? Number(event.cost) : null;
           const effectiveCost = req.body.cost !== undefined ? req.body.cost : currentSavedCost;
 
           if (!effectiveIsFree) {
@@ -448,10 +502,11 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           }
         }
 
+        const { staffAssignments: _staff, ...fieldsToUpdate } = req.body;
         const updated = await prisma.event.update({
           where: { id: req.params.id },
           data: {
-            ...req.body,
+            ...fieldsToUpdate,
             ...(costToUpdate !== undefined ? { cost: costToUpdate } : {}),
             registrationDeadline: req.body.registrationDeadline
               ? new Date(req.body.registrationDeadline)
@@ -465,7 +520,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
     }
   );
 
-  router.post('/:id/duplicate', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+  router.post('/:id/duplicate', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const body = z
         .object({
@@ -475,6 +530,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
         })
         .parse(req.body);
       const prisma = getPrisma();
+      await assertEventAccess(prisma, req.user, req.params.id, 'OPERATOR');
       const source = await prisma.event.findUnique({
         where: { id: req.params.id },
         include: { speakers: true, sponsors: true, sessions: true, certificateTemplates: true },
@@ -500,6 +556,13 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           issuesCertificate: source.issuesCertificate,
           minAttendancePercent: source.minAttendancePercent,
           checkinWindowMinutes: source.checkinWindowMinutes,
+          requireCareer: source.requireCareer,
+          requireSemester: source.requireSemester,
+          requireInstitution: source.requireInstitution,
+          requirePhone: source.requirePhone,
+          emailCertificates: source.emailCertificates,
+          certificateEmailSubject: source.certificateEmailSubject,
+          certificateEmailBody: source.certificateEmailBody,
           createdBy: req.user?.id,
           speakers: {
             create: source.speakers.map((s) => ({
@@ -539,6 +602,140 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
         },
       });
       res.status(201).json(created);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Endpoints de asignación de STAFF a eventos (Solo ADMIN)
+  router.get('/:id/staff', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+
+      const staffList = await prisma.eventStaff.findMany({
+        where: { eventId: req.params.id },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, role: true, active: true },
+          },
+          assigner: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      res.json({ data: staffList });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/:id/staff', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+    try {
+      const schema = z.object({
+        userId: z.string().uuid(),
+        accessLevel: z.enum(['OPERATOR', 'MANAGER']).default('OPERATOR'),
+      });
+      const body = schema.parse(req.body);
+      const prisma = getPrisma();
+
+      const [event, targetUser] = await Promise.all([
+        prisma.event.findUnique({ where: { id: req.params.id } }),
+        prisma.user.findUnique({ where: { id: body.userId } }),
+      ]);
+      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      if (!targetUser) throw new DomainError('NOT_FOUND', 'Usuario no encontrado');
+      if (targetUser.role !== 'STAFF') {
+        throw new DomainError(
+          'VALIDATION_ERROR',
+          'Solo se puede delegar eventos a usuarios con rol STAFF'
+        );
+      }
+      if (!targetUser.active) {
+        throw new DomainError('VALIDATION_ERROR', 'El usuario seleccionado está inactivo');
+      }
+
+      const existing = await prisma.eventStaff.findUnique({
+        where: {
+          eventId_userId: { eventId: event.id, userId: targetUser.id },
+        },
+      });
+      if (existing) {
+        throw new DomainError(
+          'VALIDATION_ERROR',
+          'El usuario ya tiene acceso asignado a este evento'
+        );
+      }
+
+      const assignment = await prisma.eventStaff.create({
+        data: {
+          eventId: event.id,
+          userId: targetUser.id,
+          accessLevel: body.accessLevel,
+          assignedBy: req.user?.id,
+        },
+        include: {
+          user: { select: { id: true, name: true, email: true, role: true, active: true } },
+        },
+      });
+      res.status(201).json(assignment);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.patch('/:id/staff/:userId', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+    try {
+      const schema = z.object({
+        accessLevel: z.enum(['OPERATOR', 'MANAGER']),
+      });
+      const body = schema.parse(req.body);
+      const prisma = getPrisma();
+
+      const existing = await prisma.eventStaff.findUnique({
+        where: {
+          eventId_userId: { eventId: req.params.id, userId: req.params.userId },
+        },
+      });
+      if (!existing) {
+        throw new DomainError('NOT_FOUND', 'Asignación no encontrada');
+      }
+
+      const updated = await prisma.eventStaff.update({
+        where: {
+          eventId_userId: { eventId: req.params.id, userId: req.params.userId },
+        },
+        data: { accessLevel: body.accessLevel },
+        include: {
+          user: { select: { id: true, name: true, email: true, role: true, active: true } },
+        },
+      });
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete('/:id/staff/:userId', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {
+    try {
+      const prisma = getPrisma();
+      const existing = await prisma.eventStaff.findUnique({
+        where: {
+          eventId_userId: { eventId: req.params.id, userId: req.params.userId },
+        },
+      });
+      if (!existing) {
+        throw new DomainError('NOT_FOUND', 'Asignación no encontrada');
+      }
+
+      await prisma.eventStaff.delete({
+        where: {
+          eventId_userId: { eventId: req.params.id, userId: req.params.userId },
+        },
+      });
+      res.json({ ok: true });
     } catch (err) {
       next(err);
     }

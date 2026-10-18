@@ -5,6 +5,7 @@ import { validateBody } from '../middlewares/validateMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { DomainError } from '../../domain/errors.js';
+import { assertEventAccess } from '../../application/accessControl.js';
 
 const sponsorSchema = z.object({
   eventId: z.string().uuid(),
@@ -22,21 +23,7 @@ export function sponsorRoutes(): Router {
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({
-          where: { id: req.params.eventId },
-          select: { id: true, createdBy: true, creator: { select: { role: true } } },
-        });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        if (
-          req.user?.role === 'STAFF' &&
-          event.createdBy !== req.user.id &&
-          event.creator?.role === 'STAFF'
-        ) {
-          throw new DomainError(
-            'FORBIDDEN',
-            'No tiene permiso para ver los auspiciantes de este evento'
-          );
-        }
+        await assertEventAccess(prisma, req.user, req.params.eventId, 'OPERATOR');
         const items = await prisma.sponsor.findMany({
           where: { eventId: req.params.eventId },
           orderBy: { position: 'asc' },
@@ -47,22 +34,33 @@ export function sponsorRoutes(): Router {
       }
     }
   );
-  router.post('/', requireRole('ADMIN'), validateBody(sponsorSchema), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const created = await prisma.sponsor.create({ data: req.body });
-      res.status(201).json(created);
-    } catch (err) {
-      next(err);
-    }
-  });
-  router.put(
-    '/:id',
-    requireRole('ADMIN'),
-    validateBody(sponsorUpdateSchema),
-    async (req, res, next) => {
+
+  router.post(
+    '/',
+    requireRole('ADMIN', 'STAFF'),
+    validateBody(sponsorSchema),
+    async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
+        await assertEventAccess(prisma, req.user, req.body.eventId, 'MANAGER');
+        const created = await prisma.sponsor.create({ data: req.body });
+        res.status(201).json(created);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.put(
+    '/:id',
+    requireRole('ADMIN', 'STAFF'),
+    validateBody(sponsorUpdateSchema),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params.id } });
+        if (!sponsor) throw new DomainError('NOT_FOUND', 'Auspiciante no encontrado');
+        await assertEventAccess(prisma, req.user, sponsor.eventId, 'MANAGER');
         const updated = await prisma.sponsor.update({
           where: { id: req.params.id },
           data: req.body,
@@ -73,9 +71,13 @@ export function sponsorRoutes(): Router {
       }
     }
   );
-  router.delete('/:id', requireRole('ADMIN'), async (req, res, next) => {
+
+  router.delete('/:id', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
+      const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params.id } });
+      if (!sponsor) throw new DomainError('NOT_FOUND', 'Auspiciante no encontrado');
+      await assertEventAccess(prisma, req.user, sponsor.eventId, 'MANAGER');
       await prisma.sponsor.delete({ where: { id: req.params.id } });
       res.status(204).send();
     } catch (err) {

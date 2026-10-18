@@ -82,6 +82,12 @@ describe('H3 asistencia', () => {
       })
     ).json()) as { id: string };
     eventId = event.id;
+    const staffUser = await prisma.user.findUnique({ where: { email: staffEmail } });
+    if (staffUser) {
+      await prisma.eventStaff.create({
+        data: { eventId, userId: staffUser.id, accessLevel: 'OPERATOR' },
+      });
+    }
     const now = Date.now();
     const active = (await (
       await api('/api/v1/sessions', adminToken, {

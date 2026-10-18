@@ -6,8 +6,9 @@ import { validateBody } from '../middlewares/validateMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { normalizeName } from '../../shared/normalize.js';
+import { assertEventAccess } from '../../application/accessControl.js';
 
-const admin = requireRole('ADMIN');
+const staffOrAdmin = requireRole('ADMIN', 'STAFF');
 const MANUAL_ROLES = ['EXPOSITOR', 'ORGANIZADOR', 'OTRO'] as const;
 
 const recipientSchema = z.object({
@@ -56,31 +57,17 @@ async function assertNoDuplicate(
   }
 }
 
-// Receptores manuales (EXPOSITOR, ORGANIZADOR, OTRO). Solo ADMIN, por ruta.
+// Receptores manuales (EXPOSITOR, ORGANIZADOR, OTRO).
 export function certificateRecipientRoutes(): Router {
   const router = Router();
 
   router.get(
     '/events/:eventId/certificate-recipients',
-    requireRole('ADMIN', 'STAFF'),
+    staffOrAdmin,
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({
-          where: { id: req.params.eventId },
-          select: { id: true, createdBy: true, creator: { select: { role: true } } },
-        });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        if (
-          req.user?.role === 'STAFF' &&
-          event.createdBy !== req.user.id &&
-          event.creator?.role === 'STAFF'
-        ) {
-          throw new DomainError(
-            'FORBIDDEN',
-            'No tiene permiso para ver los receptores de este evento'
-          );
-        }
+        await assertEventAccess(prisma, req.user, req.params.eventId, 'OPERATOR');
         const roleKind = typeof req.query.roleKind === 'string' ? req.query.roleKind : undefined;
         const items = await prisma.certificateRecipient.findMany({
           where: {
@@ -98,14 +85,15 @@ export function certificateRecipientRoutes(): Router {
 
   router.post(
     '/events/:eventId/certificate-recipients',
-    admin,
+    staffOrAdmin,
     validateBody(recipientSchema),
     async (req: AuthRequest, res, next) => {
       try {
+        const prisma = getPrisma();
+        await assertEventAccess(prisma, req.user, req.params.eventId, 'MANAGER');
         const fullName = normalizeName(req.body.fullName);
         await assertTemplateRole(req.params.eventId, req.body.roleKind, req.body.templateId);
         await assertNoDuplicate(req.params.eventId, req.body.templateId, fullName);
-        const prisma = getPrisma();
         const created = await prisma.certificateRecipient.create({
           data: {
             eventId: req.params.eventId,
@@ -125,9 +113,14 @@ export function certificateRecipientRoutes(): Router {
     }
   );
 
-  router.delete('/certificate-recipients/:id', admin, async (req, res, next) => {
+  router.delete('/certificate-recipients/:id', staffOrAdmin, async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
+      const recipient = await prisma.certificateRecipient.findUnique({
+        where: { id: req.params.id },
+      });
+      if (!recipient) throw new DomainError('NOT_FOUND', 'Receptor no encontrado');
+      await assertEventAccess(prisma, req.user, recipient.eventId, 'MANAGER');
       await prisma.certificateRecipient.delete({ where: { id: req.params.id } });
       res.status(204).send();
     } catch (err) {
@@ -138,7 +131,7 @@ export function certificateRecipientRoutes(): Router {
   // Alta masiva: un nombre por línea conceptual; reporta creados y duplicados.
   router.post(
     '/events/:eventId/certificate-recipients/bulk',
-    admin,
+    staffOrAdmin,
     validateBody(
       z.object({
         roleKind: z.enum(MANUAL_ROLES),
@@ -150,8 +143,9 @@ export function certificateRecipientRoutes(): Router {
     ),
     async (req: AuthRequest, res, next) => {
       try {
-        await assertTemplateRole(req.params.eventId, req.body.roleKind, req.body.templateId);
         const prisma = getPrisma();
+        await assertEventAccess(prisma, req.user, req.params.eventId, 'MANAGER');
+        await assertTemplateRole(req.params.eventId, req.body.roleKind, req.body.templateId);
         const created: unknown[] = [];
         const duplicates: string[] = [];
         for (const item of req.body.items) {
@@ -187,10 +181,11 @@ export function certificateRecipientRoutes(): Router {
   // plantilla default de EXPOSITOR; el admin ajusta antes de confirmar.
   router.post(
     '/events/:eventId/certificate-recipients/from-speakers',
-    admin,
+    staffOrAdmin,
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
+        await assertEventAccess(prisma, req.user, req.params.eventId, 'MANAGER');
         const template = await prisma.certificateTemplate.findFirst({
           where: { eventId: req.params.eventId, roleKind: 'EXPOSITOR', isDefault: true },
         });

@@ -5,6 +5,7 @@ import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
 import { validateBody } from '../middlewares/validateMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
+import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { renderCertificates, type CertificateJob } from '@inscripciones/infrastructure/pdf.js';
 import { fontPaths } from '../../shared/fonts.js';
 import { formatPrintedName } from '../../domain/nameFormat.js';
@@ -12,8 +13,9 @@ import { attendancePercentage } from '../../application/attendanceService.js';
 import { defaultCertificateBody, sendCertificateMail } from '../../application/certificateMail.js';
 import { logger } from '../../shared/logger.js';
 import type { AppEnv } from '../env.js';
+import { assertEventAccess } from '../../application/accessControl.js';
 
-const admin = requireRole('ADMIN');
+const admin = requireRole('ADMIN', 'STAFF');
 const BATCH_SIZE = 20;
 
 type NameBox = {
@@ -136,7 +138,7 @@ export function certificateMailRoutes(
   }
 
   // Envío individual a un inscrito.
-  router.post('/participants/:id/send-certificate', admin, async (req, res, next) => {
+  router.post('/participants/:id/send-certificate', admin, async (req: AuthRequest, res, next) => {
     try {
       requireSmtp();
       const prisma = getPrisma();
@@ -145,6 +147,7 @@ export function certificateMailRoutes(
         include: { event: { include: { sessions: true } } },
       });
       if (!participant) throw new DomainError('NOT_FOUND', 'Inscrito no encontrado');
+      await assertEventAccess(prisma, req.user, participant.eventId, 'MANAGER');
       if (!participant.email) throw new DomainError('VALIDATION_ERROR', 'Sin correo');
       const template = await prisma.certificateTemplate.findFirst({
         where: { eventId: participant.eventId, roleKind: 'ASISTENTE', isDefault: true },
@@ -191,7 +194,7 @@ export function certificateMailRoutes(
   });
 
   // Envío individual a un receptor manual (usa el correo guardado).
-  router.post('/certificate-recipients/:id/send-certificate', admin, async (req, res, next) => {
+  router.post('/certificate-recipients/:id/send-certificate', admin, async (req: AuthRequest, res, next) => {
     try {
       requireSmtp();
       const prisma = getPrisma();
@@ -200,6 +203,7 @@ export function certificateMailRoutes(
         include: { template: true, event: { include: { sessions: true } } },
       });
       if (!recipient) throw new DomainError('NOT_FOUND', 'Receptor no encontrado');
+      await assertEventAccess(prisma, req.user, recipient.eventId, 'MANAGER');
       if (!recipient.email) throw new DomainError('VALIDATION_ERROR', 'Sin correo');
       const pdf = await renderOnePdf(privateStorage, recipient.template, recipient.fullName);
       const texts = mailTexts(recipient.event, recipient.template.name, recipient.fullName);
@@ -242,15 +246,13 @@ export function certificateMailRoutes(
         offset: z.number().int().min(0).default(0),
       })
     ),
-    async (req, res, next) => {
+    async (req: AuthRequest, res, next) => {
       try {
         requireSmtp();
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({
-          where: { id: req.params.id },
-          include: { sessions: true },
-        });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
+        const sessions = await prisma.session.findMany({ where: { eventId: event.id } });
+        const eventWithSessions = { ...event, sessions };
         if (!event.emailCertificates) {
           throw new DomainError(
             'VALIDATION_ERROR',
@@ -320,7 +322,7 @@ export function certificateMailRoutes(
             participants = participants.filter((p) => ids.has(p.id));
           }
           if (req.body.scope === 'eligible') {
-            const total = event.sessions.length;
+            const total = sessions.length;
             const filtered = [];
             for (const p of participants) {
               const attended = await prisma.attendance.count({
@@ -384,7 +386,7 @@ export function certificateMailRoutes(
         for (const candidate of batch) {
           if ((await emailedToday(event.id)) >= limit) break;
           const pdf = await renderOnePdf(privateStorage, candidate.template, candidate.name);
-          const texts = mailTexts(event, candidate.template.name, candidate.name);
+          const texts = mailTexts(eventWithSessions, candidate.template.name, candidate.name);
           try {
             await sendCertificateMail(env, {
               to: candidate.email as string,
@@ -442,10 +444,11 @@ export function certificateMailRoutes(
     '/events/:id/test-certificate-email',
     admin,
     validateBody(z.object({ email: z.string().email('El correo no es válido') })),
-    async (req, res, next) => {
+    async (req: AuthRequest, res, next) => {
       try {
         requireSmtp();
         const prisma = getPrisma();
+        await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
         const template = await prisma.certificateTemplate.findFirst({
           where: { eventId: req.params.id, isDefault: true },
           orderBy: { createdAt: 'asc' },

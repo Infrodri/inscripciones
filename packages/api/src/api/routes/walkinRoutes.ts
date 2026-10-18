@@ -10,6 +10,7 @@ import { buildParticipantRow } from '../../application/registrationService.js';
 import { assertSessionWindow, attendancePercentage } from '../../application/attendanceService.js';
 import { renderAttendanceList } from '@inscripciones/infrastructure/pdf.js';
 import { logger } from '../../shared/logger.js';
+import { assertEventAccess } from '../../application/accessControl.js';
 
 const walkinSchema = personSchema.extend({
   type: z.enum(['ESTUDIANTE', 'DOCENTE', 'PROFESIONAL', 'PUBLICO']).default('ESTUDIANTE'),
@@ -31,12 +32,9 @@ export function walkinRoutes(): Router {
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({
-          where: { id: req.params.id },
-          include: { sessions: true },
-        });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        const session = event.sessions.find((s) => s.id === req.body.sessionId);
+        const event = await assertEventAccess(prisma, req.user, req.params.id, 'OPERATOR');
+        const sessions = await prisma.session.findMany({ where: { eventId: event.id } });
+        const session = sessions.find((s) => s.id === req.body.sessionId);
         if (!session || session.eventId !== event.id)
           throw new DomainError('NOT_FOUND', 'Sesión no encontrada');
         assertSessionWindow(new Date(), {
@@ -70,19 +68,19 @@ export function walkinRoutes(): Router {
     }
   );
 
-  // Estadísticas del evento con porcentaje y aptos (ADMIN o STAFF).
-  router.get('/events/:id/stats', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
+  // Estadísticas del evento con porcentaje y aptos (ADMIN o STAFF con acceso).
+  router.get('/events/:id/stats', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
-      const event = await prisma.event.findUnique({
-        where: { id: req.params.id },
-        include: { sessions: { orderBy: { startsAt: 'asc' } } },
+      const event = await assertEventAccess(prisma, req.user, req.params.id, 'OPERATOR');
+      const sessions = await prisma.session.findMany({
+        where: { eventId: event.id },
+        orderBy: { startsAt: 'asc' },
       });
-      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
       const [participantIds, perSession] = await Promise.all([
         prisma.participant.findMany({ where: { eventId: event.id }, select: { id: true } }),
         Promise.all(
-          event.sessions.map(async (session) => ({
+          sessions.map(async (session) => ({
             id: session.id,
             label: session.label,
             startsAt: session.startsAt,
@@ -92,7 +90,7 @@ export function walkinRoutes(): Router {
           }))
         ),
       ]);
-      const totalSessions = event.sessions.length;
+      const totalSessions = sessions.length;
       let eligible = 0;
       for (const participant of participantIds) {
         const attended = await prisma.attendance.count({
@@ -113,18 +111,18 @@ export function walkinRoutes(): Router {
     }
   });
 
-  // Lista de asistencia imprimible como respaldo sin internet (ADMIN o STAFF).
+  // Lista de asistencia imprimible como respaldo sin internet (ADMIN o STAFF con acceso).
   router.get(
     '/events/:id/exports/attendance-list.pdf',
     requireRole('ADMIN', 'STAFF'),
-    async (req, res, next) => {
+    async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const event = await prisma.event.findUnique({
-          where: { id: req.params.id },
-          include: { sessions: { orderBy: { startsAt: 'asc' } } },
+        const event = await assertEventAccess(prisma, req.user, req.params.id, 'OPERATOR');
+        const sessionsList = await prisma.session.findMany({
+          where: { eventId: event.id },
+          orderBy: { startsAt: 'asc' },
         });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
         const participants = await prisma.participant.findMany({
           where: { eventId: event.id },
           orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
@@ -133,7 +131,7 @@ export function walkinRoutes(): Router {
           fullName: `${p.lastName}, ${p.firstName}`,
           ci: p.ci,
         }));
-        const sessionPages = event.sessions
+        const sessionPages = sessionsList
           .filter((s) => !req.query.sessionId || s.id === req.query.sessionId)
           .map((session) => ({
             label: session.label,

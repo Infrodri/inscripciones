@@ -6,6 +6,7 @@ import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
+import { assertEventAccess } from '../../application/accessControl.js';
 
 const PARTICIPANT_COLUMNS = [
   'first_name',
@@ -41,11 +42,7 @@ export function exportRoutes(): Router {
       try {
         const prisma = getPrisma();
         const format = req.query.format === 'csv' ? 'csv' : 'xlsx';
-        const event = await prisma.event.findUnique({ where: { id: req.params.id } });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        if (req.user?.role === 'STAFF' && event.createdBy !== req.user.id) {
-          throw new DomainError('FORBIDDEN', 'No tiene permiso para exportar de este evento');
-        }
+        const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
         // Filtros de la vista previa (q, type) para que lo exportado coincida.
         const query =
           typeof req.query.q === 'string' && req.query.q.trim() !== '' ? req.query.q.trim() : null;

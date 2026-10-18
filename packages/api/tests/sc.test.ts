@@ -81,6 +81,12 @@ describe('Bloque B QR de sala', () => {
       })
     ).json()) as { id: string };
     eventId = event.id;
+    const staffUser = await prisma.user.findUnique({ where: { email: staffEmail } });
+    if (staffUser) {
+      await prisma.eventStaff.create({
+        data: { eventId, userId: staffUser.id, accessLevel: 'OPERATOR' },
+      });
+    }
     const now = Date.now();
     const active = (await (
       await api('/api/v1/sessions', adminToken, {
@@ -164,7 +170,7 @@ describe('Bloque B QR de sala', () => {
 
   it('token manipulado responde INVALID_QR', async () => {
     const token = issueSelfCheckinToken(secret, activeSessionId);
-    const tampered = `${token.slice(0, -1)}A`;
+    const tampered = token.slice(0, 10) + (token[10] === 'a' ? 'b' : 'a') + token.slice(11);
     const res = await api('/api/v1/public/self-checkin', null, {
       method: 'POST',
       body: JSON.stringify({ token: tampered, ci: `SC${s9}` }),
@@ -272,6 +278,7 @@ describe('Bloque B QR de sala', () => {
 
   it('porcentaje mezcla SELF_QR y QR', async () => {
     const prisma = getPrisma();
+    const staffUser = await prisma.user.findFirst({ where: { email: `sc-staff-${stamp}@test.com` } });
     const event = await prisma.event.create({
       data: {
         slug: `sc-mix-${stamp}`,
@@ -281,6 +288,13 @@ describe('Bloque B QR de sala', () => {
         organizer: 'O',
         location: 'L',
         minAttendancePercent: 80,
+        ...(staffUser
+          ? {
+              staffAssignments: {
+                create: { userId: staffUser.id, accessLevel: 'OPERATOR' },
+              },
+            }
+          : {}),
       },
     });
     const session = await prisma.session.create({
