@@ -84,7 +84,7 @@ function RowAttendances({ participantId, isAdmin }: { participantId: string; isA
   }
 
   const rows = (data?.data ?? []).filter((a) => !a.voidedAt);
-  if (rows.length === 0) return <p className="text-sm text-[#5B6677]">Sin asistencias.</p>;
+  if (rows.length === 0) return <p className="text-sm text-muted">Sin asistencias.</p>;
   return (
     <ul className="space-y-1 text-sm">
       {rows.map((a) => (
@@ -391,10 +391,10 @@ export function ParticipantsTable({
         </div>
       ) : (
         <div className="mt-3">
-          <Table>
+          <Table minWidth="min-w-[1180px]">
             <thead>
               <tr>
-                <th aria-label="Seleccionar">
+                <th aria-label="Seleccionar" className="w-12 text-center">
                   <input
                     type="checkbox"
                     aria-label="Seleccionar todos"
@@ -406,28 +406,30 @@ export function ParticipantsTable({
                           : selected.filter((id) => !rows.some((p) => p.id === id))
                       )
                     }
-                    className="h-5 w-5"
+                    className="h-4 w-4 rounded border-line text-navy focus:ring-navy cursor-pointer"
                   />
                 </th>
-                <th>CI</th>
-                <th>Nombre completo</th>
-                <th>Correo</th>
-                <th>Celular</th>
-                <th>Tipo</th>
-                <th>Inscrito el</th>
+                <th className="min-w-[90px]">CI</th>
+                <th className="min-w-[180px]">Nombre completo</th>
+                <th className="min-w-[200px]">Correo</th>
+                <th className="min-w-[110px]">Celular</th>
+                <th className="min-w-[110px]">Tipo</th>
+                <th className="min-w-[140px]">Inscrito el</th>
                 {sessionList.map((s) => (
-                  <th key={s.id}>{s.label ?? 'Sesión'}</th>
+                  <th key={s.id} className="min-w-[90px] text-center">
+                    {s.label ?? 'Sesión'}
+                  </th>
                 ))}
-                <th>%</th>
-                <th>Apto</th>
-                <th>Acciones</th>
+                <th className="w-16 text-center">%</th>
+                <th className="w-24 text-center">Apto</th>
+                <th className="min-w-[240px]">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((p) => (
                 <Fragment key={p.id}>
-                  <tr className="border-t border-[#D9DEE7]">
-                    <td>
+                  <tr className="border-t border-line hover:bg-canvas/50 transition-colors">
+                    <td className="text-center">
                       <input
                         type="checkbox"
                         aria-label={`Seleccionar a ${p.lastName}`}
@@ -439,31 +441,49 @@ export function ParticipantsTable({
                               : selected.filter((id) => id !== p.id)
                           )
                         }
-                        className="h-5 w-5"
+                        className="h-4 w-4 rounded border-line text-navy focus:ring-navy cursor-pointer"
                       />
                     </td>
-                    <td>{p.ci}</td>
-                    <td>
+                    <td className="font-mono text-xs whitespace-nowrap">{p.ci}</td>
+                    <td className="font-medium text-ink">
                       {p.lastName}, {p.firstName}
                       {p.certificateEmailedAt ? (
-                        <span className="block text-xs text-[#1E7B4F]">
+                        <span className="block text-xs font-normal text-ok">
                           Enviado {formatFechaHora(p.certificateEmailedAt)}
                         </span>
                       ) : p.certificateEmailError ? (
-                        <span className="block text-xs text-[#B42318]">
+                        <span className="block text-xs font-normal text-danger">
                           Falló: {p.certificateEmailError}
                         </span>
                       ) : null}
                     </td>
-                    <td>{p.email ?? '—'}</td>
-                    <td>{p.phone ?? '—'}</td>
-                    <td>{p.type}</td>
-                    <td>{formatFechaHora(p.createdAt)}</td>
-                    {sessionList.map((s) => (
-                      <td key={s.id}>{marks.data?.[s.id]?.has(p.id) ? '✓' : '—'}</td>
-                    ))}
-                    <td>{p.pct !== undefined ? `${Math.round(p.pct)}%` : '—'}</td>
+                    <td className="text-xs text-muted max-w-[220px] truncate" title={p.email ?? ''}>
+                      {p.email ?? '—'}
+                    </td>
+                    <td className="font-mono text-xs whitespace-nowrap text-muted">
+                      {p.phone ?? '—'}
+                    </td>
                     <td>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-canvas text-ink border border-line">
+                        {p.type}
+                      </span>
+                    </td>
+                    <td className="text-xs text-muted whitespace-nowrap">
+                      {formatFechaHora(p.createdAt)}
+                    </td>
+                    {sessionList.map((s) => (
+                      <td key={s.id} className="text-center font-bold text-xs">
+                        {marks.data?.[s.id]?.has(p.id) ? (
+                          <span className="text-ok">✓</span>
+                        ) : (
+                          <span className="text-muted/40">—</span>
+                        )}
+                      </td>
+                    ))}
+                    <td className="text-center font-mono text-xs font-semibold">
+                      {p.pct !== undefined ? `${Math.round(p.pct)}%` : '—'}
+                    </td>
+                    <td className="text-center whitespace-nowrap">
                       {p.eligible === undefined ? (
                         '—'
                       ) : (
@@ -473,7 +493,7 @@ export function ParticipantsTable({
                       )}
                     </td>
                     <td>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <Button variant="secundario" size="sm" onClick={() => setPreviewId(p.id)}>
                           Diploma
                         </Button>
@@ -501,9 +521,14 @@ export function ParticipantsTable({
                     </td>
                   </tr>
                   {expanded === p.id ? (
-                    <tr key={`${p.id}-detalle`}>
-                      <td colSpan={10 + sessionList.length}>
-                        <RowAttendances participantId={p.id} isAdmin={isAdmin} />
+                    <tr key={`${p.id}-detalle`} className="bg-canvas/30">
+                      <td colSpan={10 + sessionList.length} className="p-4 border-b border-line">
+                        <div className="rounded-[var(--radius-md)] border border-line bg-surface p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
+                            Registro de Asistencias de {p.firstName} {p.lastName}
+                          </p>
+                          <RowAttendances participantId={p.id} isAdmin={isAdmin} />
+                        </div>
                       </td>
                     </tr>
                   ) : null}

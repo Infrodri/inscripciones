@@ -40,15 +40,25 @@ export function previewFit(
   sample: string,
   box: NameBox,
   imgWidthPx: number,
-  measure: (text: string, px: number, family: string) => number
-): { sizePt: number; overflow: boolean } {
+  measure: (text: string, px: number, family: string) => number,
+  boxHPt?: number
+): { sizePt: number; overflow: boolean; heightConstrained: boolean } {
   const clean = sample.trim().replace(/\s+/g, ' ');
   const boxPx = (box.wPct / 100) * imgWidthPx;
   const family = FONT_FAMILY[box.fontKey];
   let size = box.sizePt;
-  while (size > 8 && measure(clean, (size * 96) / 72, family) > boxPx) size -= 0.5;
-  const fits = measure(clean, (size * 96) / 72, family) <= boxPx;
-  return { sizePt: size, overflow: !fits };
+  let heightConstrained = false;
+  if (boxHPt && boxHPt > 0) {
+    const maxFromH = boxHPt * 0.85;
+    if (size > maxFromH) {
+      size = Math.max(8, Math.round(maxFromH * 10) / 10);
+      heightConstrained = true;
+    }
+  }
+  const pxPerPt = imgWidthPx > 0 ? imgWidthPx / 841.89 : 96 / 72;
+  while (size > 8 && measure(clean, size * pxPerPt, family) > boxPx) size -= 0.5;
+  const fits = measure(clean, size * pxPerPt, family) <= boxPx;
+  return { sizePt: size, overflow: !fits, heightConstrained };
 }
 
 function formatSampleName(name: string, mode: NameBox['nameCase']): string {
@@ -81,6 +91,7 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
   const [sample, setSample] = useState('María Eugenia Santiváñez Rocha');
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [imgWidth, setImgWidth] = useState(0);
+  const [imgHeight, setImgHeight] = useState(0);
   const [frameWidth, setFrameWidth] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -113,6 +124,7 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
         if (found) {
           setBox(found.nameBox);
           setImgWidth(found.widthPx);
+          setImgHeight(found.heightPx);
           initialBox.current = found.nameBox;
           setDirty(false);
         }
@@ -267,14 +279,10 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
 
   if (!box) return <p className="mt-4 text-sm text-muted">Cargando editor de plantilla…</p>;
 
-  // Escala visual de la tipografía acorde al ancho renderizado de la imagen
-  const scale =
-    frameWidth > 0 && imgWidth > 0
-      ? frameWidth / imgWidth
-      : frameWidth > 0
-        ? frameWidth / 2000
-        : 0.4;
-  const visualFontSize = Math.max(9, Math.round(box.sizePt * (96 / 72) * scale));
+  // Escala visual precisa: calcular el tamaño de fuente en pantalla para que coincida exactamente con PDFKit
+  const pageWPt = 841.89; // Ancho A4 en puntos PostScript (297mm)
+  const visualFontSize =
+    frameWidth > 0 ? Math.max(9, Math.round(box.sizePt * (frameWidth / pageWPt))) : 16;
 
   return (
     <div className="mt-6 rounded-xl border border-line bg-surface p-5 shadow-soft">
@@ -303,14 +311,21 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
       <div
         ref={frameRef}
         className="relative mt-4 w-full select-none overflow-hidden rounded-lg border border-line bg-canvas shadow-inner"
-        style={{ aspectRatio: '2000 / 1414' }}
+        style={{
+          aspectRatio: imgWidth > 0 && imgHeight > 0 ? `${imgWidth} / ${imgHeight}` : '297 / 210',
+        }}
       >
         {imgUrl ? (
           <img
             src={imgUrl}
             alt="Plantilla de certificado"
-            className="absolute inset-0 h-full w-full object-contain pointer-events-none"
+            className="absolute inset-0 h-full w-full object-fill pointer-events-none"
             draggable={false}
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (img.naturalWidth && !imgWidth) setImgWidth(img.naturalWidth);
+              if (img.naturalHeight && !imgHeight) setImgHeight(img.naturalHeight);
+            }}
           />
         ) : null}
 
@@ -618,7 +633,12 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
         </Button>
       </div>
 
-      <FitNotice sample={sample} box={box} imgWidthPx={imgWidth} />
+      <FitNotice
+        sample={sample}
+        box={box}
+        imgWidthPx={imgWidth}
+        boxHPt={(box.hPct / 100) * 595.28}
+      />
 
       {/* Modal de visualización interactiva del PDF */}
       {showPdfPreview ? (
@@ -646,20 +666,28 @@ function FitNotice({
   sample,
   box,
   imgWidthPx,
+  boxHPt,
 }: {
   sample: string;
   box: NameBox;
   imgWidthPx: number;
+  boxHPt?: number;
 }) {
   if (imgWidthPx === 0) return null;
   const canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
   const ctx = canvas?.getContext('2d');
   if (!ctx) return null;
-  const fit = previewFit(sample, box, imgWidthPx, (text, px, family) => {
-    ctx.font = `${px}px ${family}`;
-    return ctx.measureText(text).width;
-  });
-  if (!fit.overflow && fit.sizePt >= box.sizePt) return null;
+  const fit = previewFit(
+    sample,
+    box,
+    imgWidthPx,
+    (text, px, family) => {
+      ctx.font = `${px}px ${family}`;
+      return ctx.measureText(text).width;
+    },
+    boxHPt
+  );
+  if (!fit.overflow && !fit.heightConstrained && fit.sizePt >= box.sizePt) return null;
   return (
     <p
       role="status"
@@ -667,7 +695,9 @@ function FitNotice({
     >
       {fit.overflow
         ? 'Aviso: el nombre seleccionado no cabe en la caja ni al tamaño mínimo (8 pt); se imprimirá ajustado al límite.'
-        : `Aviso: el nombre seleccionado se reducirá automáticamente a ${fit.sizePt.toFixed(1)} pt para caber dentro del ancho.`}
+        : fit.heightConstrained
+          ? `Aviso: el tamaño (${box.sizePt} pt) excede la altura de la caja; se ajustará automáticamente a ${fit.sizePt.toFixed(1)} pt para no desbordar verticalmente.`
+          : `Aviso: el nombre seleccionado se reducirá automáticamente a ${fit.sizePt.toFixed(1)} pt para caber dentro del ancho.`}
     </p>
   );
 }

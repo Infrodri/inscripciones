@@ -3,10 +3,20 @@
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 
-export function Table({ children }: { children: ReactNode }) {
+export function Table({
+  children,
+  minWidth = 'min-w-[1020px]',
+}: {
+  children: ReactNode;
+  minWidth?: string;
+}) {
   return (
-    <div className="overflow-x-auto rounded-[8px] border border-[#D9DEE7]">
-      <table className="w-full min-w-[560px] bg-white text-left text-sm">{children}</table>
+    <div className="overflow-x-auto rounded-[var(--radius-md)] border border-line bg-surface shadow-soft">
+      <table
+        className={`w-full ${minWidth} bg-surface text-left text-sm [&_th]:px-3.5 [&_th]:py-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-muted [&_th]:bg-canvas/70 [&_th]:border-b [&_th]:border-line [&_th]:whitespace-nowrap [&_td]:px-3.5 [&_td]:py-3 [&_td]:text-sm [&_td]:text-ink [&_td]:border-b [&_td]:border-line/60 [&_td]:align-middle [&_tbody_tr]:hover:bg-canvas/40 [&_tbody_tr]:transition-colors`}
+      >
+        {children}
+      </table>
     </div>
   );
 }
@@ -49,16 +59,18 @@ export function PageHeader({
   return (
     <div>
       {migas && migas.length > 0 ? (
-        <nav aria-label="Migas de pan" className="text-sm text-[#5B6677]">
+        <nav aria-label="Migas de pan" className="text-sm text-muted">
           {migas.map((miga, index) => (
             <span key={miga.etiqueta}>
               {index > 0 ? ' › ' : null}
               {miga.href ? (
-                <a href={miga.href} className="underline">
+                <a href={miga.href} className="underline hover:text-navy">
                   {miga.etiqueta}
                 </a>
               ) : (
-                <span aria-current="page">{miga.etiqueta}</span>
+                <span aria-current="page" className="text-ink font-medium">
+                  {miga.etiqueta}
+                </span>
               )}
             </span>
           ))}
@@ -68,22 +80,22 @@ export function PageHeader({
         <button
           type="button"
           onClick={volver}
-          className="inline-flex min-h-[44px] items-center rounded-[8px] border border-[#D9DEE7] bg-white px-3 py-2"
+          className="inline-flex min-h-[44px] items-center rounded-[var(--radius-md)] border border-line bg-surface text-ink px-3 py-2 text-sm hover:bg-canvas transition-colors"
         >
           ← Volver
         </button>
-        <h1 className="font-serif text-2xl text-[#0A2A5E]">{titulo}</h1>
+        <h1 className="font-serif text-2xl text-navy">{titulo}</h1>
         {accion}
       </div>
-      {descripcion ? <p className="mt-1 text-sm text-[#5B6677]">{descripcion}</p> : null}
+      {descripcion ? <p className="mt-1 text-sm text-muted">{descripcion}</p> : null}
     </div>
   );
 }
 
 export function EmptyState({ mensaje, accion }: { mensaje: string; accion?: ReactNode }) {
   return (
-    <div className="rounded-[8px] border border-dashed border-[#D9DEE7] bg-white p-6 text-center">
-      <p className="text-[#5B6677]">{mensaje}</p>
+    <div className="rounded-[var(--radius-md)] border border-dashed border-line bg-surface p-6 text-center">
+      <p className="text-muted">{mensaje}</p>
       {accion ? <div className="mt-3">{accion}</div> : null}
     </div>
   );

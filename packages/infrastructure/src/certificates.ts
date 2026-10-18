@@ -51,10 +51,17 @@ export function layoutName(
   maxWidthPt: number,
   sizePt: number,
   minPt: number,
-  measure: (text: string, sizePt: number) => number
+  measure: (text: string, sizePt: number) => number,
+  maxHeightPt?: number
 ): NameLayout {
   const clean = text.trim().replace(/\s+/g, ' ');
   let size = sizePt;
+  if (maxHeightPt && maxHeightPt > 0) {
+    const maxFontFromHeight = maxHeightPt * 0.85;
+    if (size > maxFontFromHeight) {
+      size = Math.max(minPt, maxFontFromHeight);
+    }
+  }
   while (size > minPt && measure(clean, size) > maxWidthPt) size -= 0.5;
   const fits = measure(clean, size) <= maxWidthPt;
   return { sizePt: size, lines: [clean], shrunk: size < sizePt, overflow: !fits };

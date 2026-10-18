@@ -71,15 +71,31 @@ export async function renderCertificates(
       return doc.widthOfString(text);
     };
     const boxWPt = (box.wPct / 100) * pageW;
-    const layout = layoutName(job.name, boxWPt, box.sizePt, 8, measure);
+    const boxHPt = (box.hPct / 100) * pageH;
+    const xPt = (box.xPct / 100) * pageW;
+    const yPt = (box.yPct / 100) * pageH;
+
+    // Margen horizontal interno mínimo (2mm ≈ 5.6pt) para coincidir con la vista previa interactiva
+    const padX = mmToPt(2);
+    const innerWPt = Math.max(10, boxWPt - padX * 2);
+    const targetX = xPt + padX;
+
+    const layout = layoutName(job.name, innerWPt, box.sizePt, 8, measure, boxHPt);
     if (layout.shrunk) report.shrunk += 1;
     if (layout.overflow) report.overflow.push(job.name);
     doc.font(fontPath).fontSize(layout.sizePt).fillColor(box.color);
-    const xPt = (box.xPct / 100) * pageW;
-    const yPt = (box.yPct / 100) * pageH;
-    const lineHeight = layout.sizePt * 1.2;
+
+    // Centrado vertical dentro de la caja para coincidir con la vista interactiva (items-center)
+    const lineHeight = layout.sizePt * 1.15;
+    const totalTextH = layout.lines.length * lineHeight;
+    const offsetY = Math.max(0, (boxHPt - totalTextH) / 2);
+    const targetY = yPt + offsetY;
+
     layout.lines.forEach((line, lineIndex) => {
-      doc.text(line, xPt, yPt + lineIndex * lineHeight, { width: boxWPt, align: box.align });
+      doc.text(line, targetX, targetY + lineIndex * lineHeight, {
+        width: innerWPt,
+        align: box.align,
+      });
     });
     if (job.code) {
       doc

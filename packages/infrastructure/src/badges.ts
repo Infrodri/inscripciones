@@ -206,19 +206,25 @@ export async function renderBadgeSheet(
   participants: BadgeParticipant[],
   out: Writable
 ): Promise<number> {
+  const pageWidth = mmToPt(210); // A4 width: 595.28 pt
+  const pageHeight = mmToPt(297); // A4 height: 841.89 pt
+  const margin = mmToPt(10);
+  const usableW = pageWidth - margin * 2;
+  const usableH = pageHeight - margin * 2;
+
   const doc = new PDFDocument({
-    size: 'A4',
-    margin: mmToPt(10),
+    size: [pageWidth, pageHeight],
+    margin,
     autoFirstPage: false,
   });
 
   doc.pipe(out);
 
-  const pageWidth = doc.page.width;
-  const pageHeight = doc.page.height;
-  const margin = mmToPt(10);
-  const usableW = pageWidth - margin * 2;
-  const usableH = pageHeight - margin * 2;
+  if (participants.length === 0) {
+    doc.end();
+    await new Promise<void>((resolve) => out.on('finish', () => resolve()));
+    return 0;
+  }
 
   const cols = 2;
   const rows = 2;
@@ -230,7 +236,7 @@ export async function renderBadgeSheet(
 
   for (let i = 0; i < participants.length; i++) {
     if (currentOnPage === 0) {
-      doc.addPage();
+      doc.addPage({ size: [pageWidth, pageHeight], margin });
       // Draw cut guides (dashed lines)
       doc.save();
       doc.strokeColor('#E5E7EB').lineWidth(0.5).dash(4, { space: 4 });
