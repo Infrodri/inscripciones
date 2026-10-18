@@ -35,31 +35,38 @@ async function main() {
   );
   console.log('====================================================\n');
 
-  if (!apiUrl || !email || !password) {
-    console.error('ERROR: Faltan variables de entorno requeridas:');
-    if (!apiUrl) console.error(' - PROD_API_URL');
-    if (!email) console.error(' - PROD_ADMIN_EMAIL');
-    if (!password) console.error(' - PROD_ADMIN_PASSWORD');
-    console.error('\nConfigure estas variables antes de continuar.');
+  let token = process.env.PROD_ADMIN_TOKEN || '';
+
+  if (!apiUrl) {
+    console.error('ERROR: Falta variable de entorno requerida: PROD_API_URL');
+    process.exit(1);
+  }
+
+  if (!token && (!email || !password)) {
+    console.error('ERROR: Faltan credenciales de administración (PROD_ADMIN_TOKEN o PROD_ADMIN_EMAIL + PROD_ADMIN_PASSWORD).');
     process.exit(1);
   }
 
   // 1. Autenticación en API de producción
-  console.log('1. Autenticando con usuario administrador en la API...');
-  const loginRes = await fetch(`${apiUrl}/api/v1/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
+  if (!token) {
+    console.log('1. Autenticando con usuario administrador en la API...');
+    const loginRes = await fetch(`${apiUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
 
-  if (!loginRes.ok) {
-    console.error(`Error en login (${loginRes.status}): Credenciales no válidas o error en el servicio`);
-    process.exit(1);
+    if (!loginRes.ok) {
+      console.error(`Error en login (${loginRes.status}): Credenciales no válidas o error en el servicio`);
+      process.exit(1);
+    }
+
+    const loginData = (await loginRes.json()) as { token: string; user?: { role: string } };
+    token = loginData.token;
+    console.log('Autenticación exitosa. Token obtenido.\n');
+  } else {
+    console.log('1. Utilizando token de administración autenticado provisto.\n');
   }
-
-  const loginData = (await loginRes.json()) as { token: string; user?: { role: string } };
-  const token = loginData.token;
-  console.log('Autenticación exitosa. Token obtenido.\n');
 
   // Modo ROLLBACK
   if (isRollback) {
