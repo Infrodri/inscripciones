@@ -60,7 +60,7 @@ export function AdminChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  if (pathname.startsWith('/admin/login')) {
+  if (pathname.startsWith('/admin/login') || pathname.includes('/proyectar')) {
     return <>{children}</>;
   }
 
@@ -75,6 +75,9 @@ export function AdminChrome({ children }: { children: ReactNode }) {
 
   // Current page label for header
   let currentTitle = 'Administración';
+  if (pathname.startsWith('/scan')) {
+    currentTitle = 'Acreditación y Puerta';
+  }
   for (const sec of navSections) {
     for (const it of sec.items) {
       if (pathname === it.href || (it.href !== '/' && pathname.startsWith(`${it.href}/`))) {

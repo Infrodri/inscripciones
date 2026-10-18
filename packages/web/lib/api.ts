@@ -53,8 +53,16 @@ export function handleUnauthorized(
   }
 ): void {
   clearSession();
-  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
-    redirect('/admin/login');
+  if (typeof window !== 'undefined') {
+    // NUNCA redirigir al login si el usuario está en el portal público (/ o /e/...)
+    const isPublic =
+      window.location.pathname === '/' || window.location.pathname.startsWith('/e/');
+    if (isPublic) {
+      return;
+    }
+    if (!window.location.pathname.startsWith('/admin/login')) {
+      redirect('/admin/login');
+    }
   }
 }
 
@@ -67,7 +75,13 @@ api.interceptors.request.use((config) => {
     config.url = config.url.replace(/^\/api\/v1/, '');
   }
   const token = getToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  // No enviar Bearer token a endpoints públicos para evitar 401 por sesión expirada
+  const isPublicUrl =
+    config.url &&
+    (config.url.startsWith('/public') || config.url.includes('/public/'));
+  if (token && !isPublicUrl) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 

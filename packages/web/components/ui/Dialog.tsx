@@ -10,34 +10,57 @@ export function Dialog({
   children,
   accion,
   maxWidth = 'max-w-lg',
+  open = true,
 }: {
   titulo: string;
   onCerrar: () => void;
   children: ReactNode;
   accion?: ReactNode;
   maxWidth?: string;
+  open?: boolean;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<Element | null>(null);
+  const onCerrarRef = useRef(onCerrar);
+  onCerrarRef.current = onCerrar;
 
   useEffect(() => {
+    if (!open) return;
     openerRef.current = document.activeElement;
     const panel = panelRef.current;
-    const focusables = (): HTMLElement[] =>
-      Array.from(
-        panel?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        ) ?? []
+    if (!panel) return;
+
+    // Solo enfocar inicialmente si el foco actual no está ya dentro del diálogo
+    if (!panel.contains(document.activeElement)) {
+      const inputs = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'input:not([type="hidden"]), select, textarea'
+        )
       ).filter((el) => !el.hasAttribute('disabled'));
-    focusables()[0]?.focus();
+
+      if (inputs.length > 0) {
+        inputs[0].focus();
+      } else {
+        const otherFocusables = Array.from(
+          panel.querySelectorAll<HTMLElement>(
+            'button, [href], [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => !el.hasAttribute('disabled'));
+        otherFocusables[0]?.focus();
+      }
+    }
 
     function onKey(e: KeyboardEvent): void {
       if (e.key === 'Escape') {
-        onCerrar();
+        onCerrarRef.current();
         return;
       }
       if (e.key !== 'Tab' || !panel) return;
-      const items = focusables();
+      const items = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.hasAttribute('disabled'));
       if (items.length === 0) return;
       const first = items[0];
       const last = items[items.length - 1];
@@ -55,7 +78,9 @@ export function Dialog({
       document.removeEventListener('keydown', onKey);
       (openerRef.current as HTMLElement | null)?.focus?.();
     };
-  }, [onCerrar]);
+  }, [open]);
+
+  if (!open) return null;
 
   return (
     <div

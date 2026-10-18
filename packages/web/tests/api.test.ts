@@ -9,12 +9,22 @@ describe('lib/api', () => {
     expect(getToken()).toBeNull();
   });
 
-  it('401 limpia la sesión y redirige a /admin/login', () => {
+  it('401 en ruta de administración limpia la sesión y redirige a /admin/login', () => {
     setToken('abc');
+    window.history.pushState({}, '', '/admin/eventos');
     const redirect = vi.fn();
     handleUnauthorized(redirect);
     expect(getToken()).toBeNull();
     expect(redirect).toHaveBeenCalledWith('/admin/login');
+  });
+
+  it('401 en el portal público limpia la sesión sin redirigir al login', () => {
+    setToken('abc');
+    window.history.pushState({}, '', '/');
+    const redirect = vi.fn();
+    handleUnauthorized(redirect);
+    expect(getToken()).toBeNull();
+    expect(redirect).not.toHaveBeenCalled();
   });
 
   it('extrae el mensaje en español del envelope', () => {

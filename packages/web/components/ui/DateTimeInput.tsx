@@ -43,12 +43,16 @@ export function DateTimeInput({
   const strVal = typeof value === 'string' ? value : '';
   const [datePart, setDatePart] = useState('');
   const [timePart, setTimePart] = useState('09:00');
+  const prevStrValRef = useRef(strVal);
 
   // Calendar navigation state
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
 
   useEffect(() => {
+    if (strVal === prevStrValRef.current) return;
+    prevStrValRef.current = strVal;
+
     if (!strVal) {
       setDatePart('');
       return;
@@ -83,6 +87,7 @@ export function DateTimeInput({
 
   function emitValue(newDate: string, newTime: string) {
     if (!newDate.trim()) {
+      prevStrValRef.current = '';
       onChange?.({ target: { value: '', id, name } });
       return;
     }
@@ -94,6 +99,7 @@ export function DateTimeInput({
       const year = parts[2];
       const time = newTime.trim() || '09:00';
       const isoLocal = `${year}-${month}-${day}T${time}`;
+      prevStrValRef.current = isoLocal;
       onChange?.({ target: { value: isoLocal, id, name } });
     }
   }

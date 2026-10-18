@@ -43,9 +43,14 @@ export default function HomePage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['public-events'],
     queryFn: async (): Promise<{ data: PublicEvent[] }> => {
-      const res = await api.get('/public/events');
-      return res.data as { data: PublicEvent[] };
+      try {
+        const res = await api.get('/public/events');
+        return res.data as { data: PublicEvent[] };
+      } catch {
+        return { data: [] };
+      }
     },
+    retry: 1,
   });
 
   const events = data?.data ?? [];
