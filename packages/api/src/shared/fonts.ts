@@ -11,7 +11,8 @@ export function fontPaths(): Record<'sans' | 'serif' | 'script', string> {
     path.resolve(process.cwd(), 'assets', 'fonts'),
   ].filter((c): c is string => Boolean(c));
 
-  const dir = candidates.find((d) => fs.existsSync(path.join(d, 'Sans-Regular.ttf'))) ?? candidates[0];
+  const dir =
+    candidates.find((d) => fs.existsSync(path.join(d, 'Sans-Regular.ttf'))) ?? candidates[0];
 
   return {
     sans: path.join(dir, 'Sans-Regular.ttf'),

@@ -73,3 +73,62 @@ export function formatRangoSesion(
   }).format(endDate);
   return `${startStr} – ${endTime}`;
 }
+
+/**
+ * Formatea el costo de un evento.
+ * Evita 'null Bs'. Si es de pago pero cost es null/undefined/0 retorna 'Consultar costo'.
+ */
+export function formatCosto(isFree: boolean, cost?: number | null): string {
+  if (isFree) return 'Gratuito';
+  if (cost === null || cost === undefined || Number.isNaN(Number(cost)) || Number(cost) <= 0) {
+    return 'Consultar costo';
+  }
+  return `${Number(cost)} Bs`;
+}
+
+/**
+ * Normaliza texto eliminando tildes y diacríticos para búsquedas insensibles.
+ * Ej: "tecnología" -> "tecnologia"
+ */
+export function normalizeText(text?: string | null): string {
+  if (!text) return '';
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Mapea enums de modalidad a etiquetas con capitalización adecuada en español.
+ */
+export function formatModality(modality?: string | null): string {
+  switch (modality) {
+    case 'PRESENCIAL':
+      return 'Presencial';
+    case 'VIRTUAL':
+      return 'Virtual';
+    case 'HIBRIDO':
+      return 'Híbrido';
+    default:
+      return modality
+        ? modality.charAt(0).toUpperCase() + modality.slice(1).toLowerCase()
+        : 'Presencial';
+  }
+}
+
+/**
+ * Obtiene la sesión más próxima en el tiempo (mínimo startsAt) en vez de asumir sessions[0].
+ */
+export function getProximaSesion<T extends { startsAt: string | Date }>(
+  sessions?: T[] | null
+): T | null {
+  if (!sessions || sessions.length === 0) return null;
+  const now = Date.now();
+  // Primero buscar la sesión futura más próxima
+  const sorted = [...sessions].sort(
+    (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+  );
+  const future = sorted.find((s) => new Date(s.startsAt).getTime() >= now);
+  return future ?? sorted[0];
+}

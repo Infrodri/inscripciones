@@ -20,10 +20,16 @@ const config = tseslint.config(
     },
   },
   {
-    // Scripts CLI (smoke, create-admin): la consola es la salida.
-    files: ['scripts/**/*.ts', 'packages/api/scripts/**/*.ts', 'packages/api/prisma/**/*.ts'],
+    // Scripts CLI (smoke, seed, capture): la consola es la salida y se permite tooling JS/TS.
+    files: [
+      'scripts/**/*',
+      'packages/api/scripts/**/*',
+      'packages/web/scripts/**/*',
+      'packages/api/prisma/**/*',
+    ],
     rules: {
       'no-console': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
     },
   }
 );

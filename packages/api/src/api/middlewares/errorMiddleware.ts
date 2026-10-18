@@ -59,6 +59,7 @@ function statusFor(code: string): number {
     case 'TEMPLATE_INVALID':
     case 'TEMPLATE_ROLE_MISMATCH':
     case 'NO_DEFAULT_TEMPLATE':
+    case 'NO_PARTICIPANTS':
       return 422;
     case 'RATE_LIMITED':
       return 429;
