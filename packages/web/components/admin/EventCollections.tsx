@@ -107,7 +107,9 @@ export function EventCollections({ eventId }: { eventId: string }) {
   });
 
   async function downloadPdf(url: string, filename: string, key = filename): Promise<void> {
+    if (downloading) return;
     setDownloading(key);
+    const toastId = toast.loading('Generando documento PDF…', { id: key });
     try {
       const res = await fetch(apiUrl(url), {
         headers: { Authorization: `Bearer ${getToken() ?? ''}` },
@@ -127,9 +129,9 @@ export function EventCollections({ eventId }: { eventId: string }) {
       a.download = filename;
       a.click();
       URL.revokeObjectURL(objectUrl);
-      toast.success('Credencial descargada correctamente');
+      toast.success('Credencial descargada correctamente', { id: toastId });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : apiErrorMessage(err));
+      toast.error(err instanceof Error ? err.message : apiErrorMessage(err), { id: toastId });
     } finally {
       setDownloading(null);
     }

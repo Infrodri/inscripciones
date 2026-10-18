@@ -26,26 +26,37 @@ interface Recipient {
   certificateEmailError: string | null;
 }
 
+const downloadingOrganizerUrls = new Set<string>();
+
 async function downloadPdf(url: string, filename: string): Promise<void> {
-  const res = await fetch(apiUrl(url), {
-    headers: { Authorization: `Bearer ${getToken() ?? ''}` },
-  });
-  if (!res.ok) {
-    if (res.status === 404) {
-      toast.error('El servicio de credenciales devolvió 404. La API en Render todavía está desplegando la última versión.');
+  if (downloadingOrganizerUrls.has(url)) return;
+  downloadingOrganizerUrls.add(url);
+  const toastId = toast.loading('Generando documento PDF…', { id: filename });
+  try {
+    const res = await fetch(apiUrl(url), {
+      headers: { Authorization: `Bearer ${getToken() ?? ''}` },
+    });
+    if (!res.ok) {
+      if (res.status === 404) {
+        toast.error('El servicio devolvió 404. La API en Render todavía está desplegando la última versión.', { id: toastId });
+        return;
+      }
+      const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+      toast.error(body?.error?.message ?? `Error al generar el documento (HTTP ${res.status})`, { id: toastId });
       return;
     }
-    const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-    toast.error(body?.error?.message ?? `Error al generar el documento (HTTP ${res.status})`);
-    return;
+    const objectUrl = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(objectUrl);
+    toast.success('PDF generado exitosamente', { id: toastId });
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : 'Error de conexión al generar PDF', { id: toastId });
+  } finally {
+    downloadingOrganizerUrls.delete(url);
   }
-  const objectUrl = URL.createObjectURL(await res.blob());
-  const a = document.createElement('a');
-  a.href = objectUrl;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(objectUrl);
-  toast.success('PDF generado');
 }
 
 export function OrganizadoresTab({ eventId }: { eventId: string }) {

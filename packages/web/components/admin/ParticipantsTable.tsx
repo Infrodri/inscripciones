@@ -169,15 +169,30 @@ export function ParticipantsTable({
     enabled: sessionList.length > 0,
   });
 
+  const templates = useQuery({
+    queryKey: ['certificate-templates', eventId, 'ASISTENTE'],
+    queryFn: async (): Promise<{
+      data: Array<{ id: string; name: string; isDefault: boolean; roleKind: string }>;
+    }> => (await api.get(`/events/${eventId}/certificate-templates?roleKind=ASISTENTE`)).data,
+  });
+  const hasAssistantTemplate = Boolean(
+    templates.data?.data && templates.data.data.some((t) => t.isDefault || t.roleKind === 'ASISTENTE')
+  );
+
   async function printDiplomas(kind: 'all' | 'eligible' | 'selected'): Promise<void> {
+    if (busy) return;
     setBusy(true);
+    const toastId = toast.loading('Generando diplomas en PDF… (esto puede tardar unos segundos)', {
+      id: 'print-diplomas',
+    });
     try {
       let url = `/events/${eventId}/exports/certificates.pdf?roleKind=ASISTENTE&scope=`;
       if (kind === 'all') url += 'all';
       else if (kind === 'eligible') url += 'eligible';
       else {
         if (selected.length === 0) {
-          toast.error('Seleccione al menos un inscrito');
+          toast.error('Seleccione al menos un inscrito', { id: toastId });
+          setBusy(false);
           return;
         }
         url += `selected&ids=${selected.join(',')}`;
@@ -189,18 +204,19 @@ export function ParticipantsTable({
             ? 'diplomas-todos.pdf'
             : 'diplomas-seleccionados.pdf';
       await download(url, filename);
-      toast.success('PDF generado');
+      toast.success('PDF generado y descargado correctamente', { id: toastId });
+      setConfirmPrint(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo exportar';
-      if (message.includes('predeterminada')) {
-        toast.error(message);
+      if (message.includes('predeterminada') || message.includes('NO_DEFAULT_TEMPLATE')) {
+        toast.error('Este evento no tiene plantilla para Asistentes', { id: toastId });
+        setConfirmPrint(null);
         onGoCertificados();
       } else {
-        toast.error(message);
+        toast.error(message, { id: toastId });
       }
     } finally {
       setBusy(false);
-      setConfirmPrint(null);
     }
   }
 
@@ -221,49 +237,53 @@ export function ParticipantsTable({
   }
 
   async function exportFile(kind: string, format: string, filename: string): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    const toastId = toast.loading(`Generando archivo ${format.toUpperCase()}…`, {
+      id: `export-${kind}`,
+    });
     try {
       const params = new URLSearchParams({ format });
       if (q.trim() !== '') params.set('q', q.trim());
       if (type !== '') params.set('type', type);
       await download(`/events/${eventId}/exports/${kind}?${params.toString()}`, filename);
+      toast.success('Archivo descargado correctamente', { id: toastId });
     } catch {
-      toast.error('No se pudo exportar');
+      toast.error('No se pudo exportar', { id: toastId });
+    } finally {
+      setBusy(false);
     }
   }
 
   async function exportAttendanceList(): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    const toastId = toast.loading('Generando lista de asistencia en PDF…', {
+      id: 'attendance-list',
+    });
     try {
-      const res = await fetch(apiUrl(`/events/${eventId}/exports/attendance-list.pdf`), {
-        headers: { Authorization: `Bearer ${getToken() ?? ''}` },
-      });
-      if (!res.ok) throw new Error('No se pudo exportar');
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = `lista-asistencia-${slug}.pdf`;
-      a.click();
-      URL.revokeObjectURL(objectUrl);
+      await download(`/events/${eventId}/exports/attendance-list.pdf`, `lista-asistencia-${slug}.pdf`);
+      toast.success('Lista de asistencia descargada', { id: toastId });
     } catch {
-      toast.error('No se pudo exportar');
+      toast.error('No se pudo exportar', { id: toastId });
+    } finally {
+      setBusy(false);
     }
   }
 
   async function exportBadges(): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    const toastId = toast.loading('Generando credenciales en PDF…', { id: 'badges' });
     try {
-      const res = await fetch(apiUrl(`/events/${eventId}/exports/badges.pdf`), {
-        headers: { Authorization: `Bearer ${getToken() ?? ''}` },
+      await download(`/events/${eventId}/exports/badges.pdf`, `credenciales-${slug}.pdf`);
+      toast.success('Credenciales descargadas correctamente', { id: toastId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo exportar credenciales', {
+        id: toastId,
       });
-      if (!res.ok) throw new Error('No se pudo exportar');
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = `credenciales-${slug}.pdf`;
-      a.click();
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      toast.error('No se pudo exportar credenciales');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -389,16 +409,8 @@ export function ParticipantsTable({
         </Button>
         <Button
           variant="secundario"
-          onClick={() => {
-            toast.loading('Generando credenciales en PDF…', { id: 'badges' });
-            download(`/events/${eventId}/exports/badges.pdf`, `credenciales-${slug}.pdf`)
-              .then(() => toast.success('Credenciales descargadas', { id: 'badges' }))
-              .catch((err) =>
-                toast.error(err instanceof Error ? err.message : 'Error al generar credenciales', {
-                  id: 'badges',
-                })
-              );
-          }}
+          disabled={busy}
+          onClick={() => void exportBadges()}
         >
           Exportar credenciales (PDF)
         </Button>
@@ -581,16 +593,54 @@ export function ParticipantsTable({
         <ConfirmDialog
           open={Boolean(confirmPrint)}
           titulo="Imprimir diplomas"
-          mensaje={
-            confirmPrint === 'all'
-              ? `Se generará un PDF con TODOS los inscritos (${total}). Quienes no estén aptos también saldrán. Genere antes la vista previa de una página en la pestaña Asistentes.`
-              : confirmPrint === 'eligible'
-                ? 'Se generará un PDF solo con los aptos.'
-                : `Se generará un PDF con ${selected.length} seleccionado(s).`
+          cargando={busy}
+          deshabilitado={busy || (templates.isSuccess && !hasAssistantTemplate)}
+          varianteConfirmar="primario"
+          confirmar={
+            templates.isSuccess && !hasAssistantTemplate
+              ? 'Configurar plantilla'
+              : busy
+                ? 'Generando PDF…'
+                : 'Imprimir'
           }
-          confirmar="Imprimir"
-          onConfirmar={() => void printDiplomas(confirmPrint)}
-          onCerrar={() => setConfirmPrint(null)}
+          mensaje={
+            templates.isSuccess && !hasAssistantTemplate ? (
+              <div className="space-y-2">
+                <div className="rounded-lg border border-warn-border bg-warn-bg p-3 text-sm text-ink">
+                  <p className="font-semibold text-warn">⚠️ Sin plantilla configurada</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Este evento aún no tiene una plantilla de certificado asignada para <strong>ASISTENTES</strong>. Debe subir una plantilla o asignar una predeterminada en la pestaña Certificados.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p>
+                  {confirmPrint === 'all'
+                    ? `Se generará un PDF con TODOS los inscritos (${total}). Quienes no estén aptos también saldrán.`
+                    : confirmPrint === 'eligible'
+                      ? 'Se generará un PDF solo con los aptos según porcentaje de asistencia.'
+                      : `Se generará un PDF con ${selected.length} inscrito(s) seleccionado(s).`}
+                </p>
+                {busy && (
+                  <p className="text-xs text-muted animate-pulse">
+                    Procesando documentos y ensamblando PDF, por favor espere...
+                  </p>
+                )}
+              </div>
+            )
+          }
+          onConfirmar={() => {
+            if (templates.isSuccess && !hasAssistantTemplate) {
+              setConfirmPrint(null);
+              onGoCertificados();
+            } else {
+              void printDiplomas(confirmPrint);
+            }
+          }}
+          onCerrar={() => {
+            if (!busy) setConfirmPrint(null);
+          }}
         />
       ) : null}
       {previewId ? (

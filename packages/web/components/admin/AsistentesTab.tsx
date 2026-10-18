@@ -94,13 +94,16 @@ export function AsistentesTab({
   const defaultTemplate = templates.data?.data.find((t) => t.isDefault);
 
   async function download(filename: string): Promise<void> {
+    if (busy) return;
     setBusy(true);
+    const toastId = toast.loading('Generando certificados en PDF…', { id: 'asistentes-pdf' });
     try {
       let url = `/events/${eventId}/exports/certificates.pdf?roleKind=ASISTENTE&scope=${effectiveScope}`;
       if (templateId) url += `&templateId=${templateId}`;
       if (effectiveScope === 'selected') {
         if (selected.length === 0) {
-          toast.error('Seleccione al menos un inscrito');
+          toast.error('Seleccione al menos un inscrito', { id: toastId });
+          setBusy(false);
           return;
         }
         url += `&ids=${selected.join(',')}`;
@@ -111,9 +114,9 @@ export function AsistentesTab({
       a.download = filename;
       a.click();
       URL.revokeObjectURL(objectUrl);
-      toast.success('PDF generado');
+      toast.success('PDF generado y descargado correctamente', { id: toastId });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'No se pudo exportar');
+      toast.error(error instanceof Error ? error.message : 'No se pudo exportar', { id: toastId });
     } finally {
       setBusy(false);
     }

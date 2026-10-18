@@ -11,6 +11,9 @@ export interface ConfirmDialogProps {
   onConfirmar: () => void;
   onCerrar: () => void;
   children?: React.ReactNode;
+  cargando?: boolean;
+  deshabilitado?: boolean;
+  varianteConfirmar?: 'peligro' | 'primario' | 'secundario';
 }
 
 export function ConfirmDialog(props: ConfirmDialogProps) {
@@ -26,6 +29,9 @@ function ConfirmDialogInner({
   onConfirmar,
   onCerrar,
   children,
+  cargando = false,
+  deshabilitado = false,
+  varianteConfirmar = 'peligro',
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -47,6 +53,7 @@ function ConfirmDialogInner({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (cargando) return;
         e.preventDefault();
         onCerrar();
       }
@@ -95,7 +102,7 @@ function ConfirmDialogInner({
         previousActiveElement.current.focus();
       }
     };
-  }, [open, onCerrar]);
+  }, [open, onCerrar, cargando]);
 
   return (
     <div
@@ -103,7 +110,9 @@ function ConfirmDialogInner({
       aria-modal="true"
       aria-label={titulo}
       className="fixed inset-0 z-50 flex items-center justify-center bg-navy/60 backdrop-blur-xs p-4"
-      onClick={onCerrar}
+      onClick={() => {
+        if (!cargando) onCerrar();
+      }}
       tabIndex={-1}
       ref={dialogRef}
     >
@@ -114,13 +123,18 @@ function ConfirmDialogInner({
         <h2 className="font-serif text-xl text-ink">{titulo}</h2>
         <div className="mt-2 text-ink">{mensaje}</div>
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secundario" onClick={onCerrar}>
+          <Button variant="secundario" onClick={onCerrar} disabled={cargando}>
             Cancelar
           </Button>
           {children ? (
             children
           ) : (
-            <Button variant="peligro" onClick={onConfirmar}>
+            <Button
+              variant={varianteConfirmar}
+              onClick={onConfirmar}
+              cargando={cargando}
+              disabled={deshabilitado || cargando}
+            >
               {confirmar}
             </Button>
           )}

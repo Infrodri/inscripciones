@@ -112,16 +112,20 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
           }
           const image = await imageFor(template.filePath);
           const nameBox = template.nameBox as unknown as NameBox;
+          const unassignedParticipants = participants.filter((p) => !p.certificateCode);
+          if (unassignedParticipants.length > 0) {
+            await Promise.all(
+              unassignedParticipants.map(async (p) => {
+                const code = lazyCode();
+                await prisma.participant.update({
+                  where: { id: p.id },
+                  data: { certificateCode: code },
+                });
+                p.certificateCode = code;
+              })
+            );
+          }
           for (const participant of participants) {
-            let code = participant.certificateCode;
-            if (!code) {
-              code = lazyCode();
-              await prisma.participant.update({
-                where: { id: participant.id },
-                data: { certificateCode: code },
-              });
-              participant.certificateCode = code;
-            }
             jobs.push({
               image,
               widthPx: template.widthPx,
@@ -132,7 +136,7 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
                 nameBox.nameCase
               ),
               nameBox,
-              code,
+              code: participant.certificateCode ?? undefined,
               printBackground: query.printBackground,
             });
           }
@@ -148,16 +152,20 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
             const ids = new Set((query.ids ?? '').split(',').filter(Boolean));
             recipients = recipients.filter((r) => ids.has(r.id));
           }
+          const unassignedRecipients = recipients.filter((r) => !r.certificateCode);
+          if (unassignedRecipients.length > 0) {
+            await Promise.all(
+              unassignedRecipients.map(async (r) => {
+                const code = lazyCode();
+                await prisma.certificateRecipient.update({
+                  where: { id: r.id },
+                  data: { certificateCode: code },
+                });
+                r.certificateCode = code;
+              })
+            );
+          }
           for (const recipient of recipients) {
-            let code = recipient.certificateCode;
-            if (!code) {
-              code = lazyCode();
-              await prisma.certificateRecipient.update({
-                where: { id: recipient.id },
-                data: { certificateCode: code },
-              });
-              recipient.certificateCode = code;
-            }
             const template = recipient.template;
             const nameBox = template.nameBox as unknown as NameBox;
             jobs.push({
@@ -167,7 +175,7 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
               pageHeightMm: template.pageHeightMm,
               name: formatPrintedName(recipient.fullName, nameBox.nameCase),
               nameBox,
-              code,
+              code: recipient.certificateCode ?? undefined,
               printBackground: query.printBackground,
             });
           }
