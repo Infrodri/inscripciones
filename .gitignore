@@ -44,3 +44,4 @@ coverage/
 Thumbs.db
 .idea/
 .vscode/
+load-log.json
