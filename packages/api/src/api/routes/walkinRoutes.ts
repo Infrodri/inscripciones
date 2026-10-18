@@ -69,47 +69,51 @@ export function walkinRoutes(): Router {
   );
 
   // Estadísticas del evento con porcentaje y aptos (ADMIN o STAFF con acceso).
-  router.get('/events/:id/stats', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const event = await assertEventAccess(prisma, req.user, req.params.id, 'OPERATOR');
-      const sessions = await prisma.session.findMany({
-        where: { eventId: event.id },
-        orderBy: { startsAt: 'asc' },
-      });
-      const [participantIds, perSession] = await Promise.all([
-        prisma.participant.findMany({ where: { eventId: event.id }, select: { id: true } }),
-        Promise.all(
-          sessions.map(async (session) => ({
-            id: session.id,
-            label: session.label,
-            startsAt: session.startsAt,
-            checkedIn: await prisma.attendance.count({
-              where: { sessionId: session.id, voidedAt: null },
-            }),
-          }))
-        ),
-      ]);
-      const totalSessions = sessions.length;
-      let eligible = 0;
-      for (const participant of participantIds) {
-        const attended = await prisma.attendance.count({
-          where: { participantId: participant.id, voidedAt: null },
+  router.get(
+    '/events/:id/stats',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const event = await assertEventAccess(prisma, req.user, req.params.id, 'OPERATOR');
+        const sessions = await prisma.session.findMany({
+          where: { eventId: event.id },
+          orderBy: { startsAt: 'asc' },
         });
-        if (attendancePercentage(attended, totalSessions) >= event.minAttendancePercent)
-          eligible += 1;
+        const [participantIds, perSession] = await Promise.all([
+          prisma.participant.findMany({ where: { eventId: event.id }, select: { id: true } }),
+          Promise.all(
+            sessions.map(async (session) => ({
+              id: session.id,
+              label: session.label,
+              startsAt: session.startsAt,
+              checkedIn: await prisma.attendance.count({
+                where: { sessionId: session.id, voidedAt: null },
+              }),
+            }))
+          ),
+        ]);
+        const totalSessions = sessions.length;
+        let eligible = 0;
+        for (const participant of participantIds) {
+          const attended = await prisma.attendance.count({
+            where: { participantId: participant.id, voidedAt: null },
+          });
+          if (attendancePercentage(attended, totalSessions) >= event.minAttendancePercent)
+            eligible += 1;
+        }
+        res.json({
+          participants: participantIds.length,
+          sessions: totalSessions,
+          perSession,
+          eligible,
+          minAttendancePercent: event.minAttendancePercent,
+        });
+      } catch (err) {
+        next(err);
       }
-      res.json({
-        participants: participantIds.length,
-        sessions: totalSessions,
-        perSession,
-        eligible,
-        minAttendancePercent: event.minAttendancePercent,
-      });
-    } catch (err) {
-      next(err);
     }
-  });
+  );
 
   // Lista de asistencia imprimible como respaldo sin internet (ADMIN o STAFF con acceso).
   router.get(

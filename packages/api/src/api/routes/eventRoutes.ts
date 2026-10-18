@@ -13,12 +13,7 @@ import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { parsePagination, paginatedResponse } from '../../shared/pagination.js';
 import type { FileStorage } from '@inscripciones/infrastructure/fileStorage.js';
 import { filePublicUrl, type PublicUrlEnv } from '../../shared/urls.js';
-import {
-  assertEventAccess,
-  canAccessEvent,
-  getEventUserAccess,
-  type EventStaffRole,
-} from '../../application/accessControl.js';
+import { assertEventAccess, getEventUserAccess } from '../../application/accessControl.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -94,10 +89,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
       const whereClause =
         isStaff && userId
           ? {
-              OR: [
-                { createdBy: userId },
-                { staffAssignments: { some: { userId } } },
-              ],
+              OR: [{ createdBy: userId }, { staffAssignments: { some: { userId } } }],
             }
           : {};
       const [items, total] = await Promise.all([
@@ -159,7 +151,11 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
       const { staffAssignments, ...eventData } = req.body;
 
       // Validate staff assignments if provided by ADMIN
-      if (req.user?.role === 'ADMIN' && Array.isArray(staffAssignments) && staffAssignments.length > 0) {
+      if (
+        req.user?.role === 'ADMIN' &&
+        Array.isArray(staffAssignments) &&
+        staffAssignments.length > 0
+      ) {
         const userIds = staffAssignments.map((a: { userId: string }) => a.userId);
         const validUsers = await prisma.user.findMany({
           where: { id: { in: userIds }, role: 'STAFF', active: true },
@@ -186,14 +182,20 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           },
         });
 
-        if (req.user?.role === 'ADMIN' && Array.isArray(staffAssignments) && staffAssignments.length > 0) {
+        if (
+          req.user?.role === 'ADMIN' &&
+          Array.isArray(staffAssignments) &&
+          staffAssignments.length > 0
+        ) {
           await tx.eventStaff.createMany({
-            data: staffAssignments.map((a: { userId: string; accessLevel?: 'OPERATOR' | 'MANAGER' }) => ({
-              eventId: ev.id,
-              userId: a.userId,
-              accessLevel: a.accessLevel ?? 'OPERATOR',
-              assignedBy: req.user?.id,
-            })),
+            data: staffAssignments.map(
+              (a: { userId: string; accessLevel?: 'OPERATOR' | 'MANAGER' }) => ({
+                eventId: ev.id,
+                userId: a.userId,
+                accessLevel: a.accessLevel ?? 'OPERATOR',
+                assignedBy: req.user?.id,
+              })
+            ),
           });
         }
         return ev;
@@ -314,28 +316,32 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
     }
   );
 
-  router.post('/:id/publish', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
-      const updated = await prisma.event.update({
-        where: { id: event.id },
-        data: { status: 'ABIERTO' },
-      });
-      await prisma.auditLog.create({
-        data: {
-          userId: req.user?.id,
-          action: 'event.publish',
-          entity: 'event',
-          entityId: event.id,
-          metadata: { from: event.status, to: 'ABIERTO' },
-        },
-      });
-      res.json(updated);
-    } catch (err) {
-      next(err);
+  router.post(
+    '/:id/publish',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
+        const updated = await prisma.event.update({
+          where: { id: event.id },
+          data: { status: 'ABIERTO' },
+        });
+        await prisma.auditLog.create({
+          data: {
+            userId: req.user?.id,
+            action: 'event.publish',
+            entity: 'event',
+            entityId: event.id,
+            metadata: { from: event.status, to: 'ABIERTO' },
+          },
+        });
+        res.json(updated);
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   // Cerrar inscripciones (solo desde ABIERTO) y reabrir (solo desde CERRADO).
   // No tocan BORRADOR ni FINALIZADO.
@@ -427,35 +433,39 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
 
   // Finalizar (MANAGER o ADMIN): cierra inscripciones y todos los registros de sala.
   // Conserva todo para certificados.
-  router.post('/:id/finalize', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
-      if (event.status === 'FINALIZADO') {
-        throw new DomainError('VALIDATION_ERROR', 'El evento ya está finalizado');
+  router.post(
+    '/:id/finalize',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const event = await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
+        if (event.status === 'FINALIZADO') {
+          throw new DomainError('VALIDATION_ERROR', 'El evento ya está finalizado');
+        }
+        const updated = await prisma.event.update({
+          where: { id: event.id },
+          data: { status: 'FINALIZADO' },
+        });
+        await prisma.session.updateMany({
+          where: { eventId: event.id },
+          data: { selfCheckinOpen: false },
+        });
+        await prisma.auditLog.create({
+          data: {
+            userId: req.user?.id,
+            action: 'event.finalize',
+            entity: 'event',
+            entityId: event.id,
+            metadata: { from: event.status, to: 'FINALIZADO' },
+          },
+        });
+        res.json(updated);
+      } catch (err) {
+        next(err);
       }
-      const updated = await prisma.event.update({
-        where: { id: event.id },
-        data: { status: 'FINALIZADO' },
-      });
-      await prisma.session.updateMany({
-        where: { eventId: event.id },
-        data: { selfCheckinOpen: false },
-      });
-      await prisma.auditLog.create({
-        data: {
-          userId: req.user?.id,
-          action: 'event.finalize',
-          entity: 'event',
-          entityId: event.id,
-          metadata: { from: event.status, to: 'FINALIZADO' },
-        },
-      });
-      res.json(updated);
-    } catch (err) {
-      next(err);
     }
-  });
+  );
 
   router.patch(
     '/:id',
@@ -502,7 +512,8 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           }
         }
 
-        const { staffAssignments: _staff, ...fieldsToUpdate } = req.body;
+        const fieldsToUpdate = { ...req.body };
+        delete fieldsToUpdate.staffAssignments;
         const updated = await prisma.event.update({
           where: { id: req.params.id },
           data: {
@@ -520,92 +531,96 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
     }
   );
 
-  router.post('/:id/duplicate', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
-    try {
-      const body = z
-        .object({
-          title: z.string().min(1),
-          slug: z.string().min(1),
-          daysShift: z.number().default(1),
-        })
-        .parse(req.body);
-      const prisma = getPrisma();
-      await assertEventAccess(prisma, req.user, req.params.id, 'OPERATOR');
-      const source = await prisma.event.findUnique({
-        where: { id: req.params.id },
-        include: { speakers: true, sponsors: true, sessions: true, certificateTemplates: true },
-      });
-      if (!source) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-      const shiftMs = body.daysShift * 24 * 3_600_000;
-      const created = await prisma.event.create({
-        data: {
-          slug: body.slug,
-          title: body.title,
-          eventKind: source.eventKind,
-          institution: source.institution,
-          commemoration: source.commemoration,
-          organizer: source.organizer,
-          audienceNote: source.audienceNote,
-          description: source.description,
-          location: source.location,
-          modality: source.modality,
-          capacity: source.capacity,
-          status: 'BORRADOR',
-          isFree: source.isFree,
-          contactWhatsapp: source.contactWhatsapp,
-          issuesCertificate: source.issuesCertificate,
-          minAttendancePercent: source.minAttendancePercent,
-          checkinWindowMinutes: source.checkinWindowMinutes,
-          requireCareer: source.requireCareer,
-          requireSemester: source.requireSemester,
-          requireInstitution: source.requireInstitution,
-          requirePhone: source.requirePhone,
-          emailCertificates: source.emailCertificates,
-          certificateEmailSubject: source.certificateEmailSubject,
-          certificateEmailBody: source.certificateEmailBody,
-          createdBy: req.user?.id,
-          speakers: {
-            create: source.speakers.map((s) => ({
-              fullName: s.fullName,
-              titleProfession: s.titleProfession,
-              role: s.role,
-              institution: s.institution,
-              position: s.position,
-            })),
+  router.post(
+    '/:id/duplicate',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const body = z
+          .object({
+            title: z.string().min(1),
+            slug: z.string().min(1),
+            daysShift: z.number().default(1),
+          })
+          .parse(req.body);
+        const prisma = getPrisma();
+        await assertEventAccess(prisma, req.user, req.params.id, 'OPERATOR');
+        const source = await prisma.event.findUnique({
+          where: { id: req.params.id },
+          include: { speakers: true, sponsors: true, sessions: true, certificateTemplates: true },
+        });
+        if (!source) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        const shiftMs = body.daysShift * 24 * 3_600_000;
+        const created = await prisma.event.create({
+          data: {
+            slug: body.slug,
+            title: body.title,
+            eventKind: source.eventKind,
+            institution: source.institution,
+            commemoration: source.commemoration,
+            organizer: source.organizer,
+            audienceNote: source.audienceNote,
+            description: source.description,
+            location: source.location,
+            modality: source.modality,
+            capacity: source.capacity,
+            status: 'BORRADOR',
+            isFree: source.isFree,
+            contactWhatsapp: source.contactWhatsapp,
+            issuesCertificate: source.issuesCertificate,
+            minAttendancePercent: source.minAttendancePercent,
+            checkinWindowMinutes: source.checkinWindowMinutes,
+            requireCareer: source.requireCareer,
+            requireSemester: source.requireSemester,
+            requireInstitution: source.requireInstitution,
+            requirePhone: source.requirePhone,
+            emailCertificates: source.emailCertificates,
+            certificateEmailSubject: source.certificateEmailSubject,
+            certificateEmailBody: source.certificateEmailBody,
+            createdBy: req.user?.id,
+            speakers: {
+              create: source.speakers.map((s) => ({
+                fullName: s.fullName,
+                titleProfession: s.titleProfession,
+                role: s.role,
+                institution: s.institution,
+                position: s.position,
+              })),
+            },
+            sponsors: {
+              create: source.sponsors.map((s) => ({ name: s.name, position: s.position })),
+            },
+            sessions: {
+              create: source.sessions.map((s) => ({
+                startsAt: new Date(s.startsAt.getTime() + shiftMs),
+                endsAt: s.endsAt ? new Date(s.endsAt.getTime() + shiftMs) : null,
+                location: s.location,
+                label: s.label,
+              })),
+            },
+            // Plantillas: se copian las filas (comparten el archivo privado).
+            // No se copian inscritos, asistencias ni receptores manuales.
+            certificateTemplates: {
+              create: source.certificateTemplates.map((t) => ({
+                roleKind: t.roleKind,
+                name: t.name,
+                filePath: t.filePath,
+                widthPx: t.widthPx,
+                heightPx: t.heightPx,
+                pageWidthMm: t.pageWidthMm,
+                pageHeightMm: t.pageHeightMm,
+                nameBox: t.nameBox ?? {},
+                isDefault: t.isDefault,
+              })),
+            },
           },
-          sponsors: {
-            create: source.sponsors.map((s) => ({ name: s.name, position: s.position })),
-          },
-          sessions: {
-            create: source.sessions.map((s) => ({
-              startsAt: new Date(s.startsAt.getTime() + shiftMs),
-              endsAt: s.endsAt ? new Date(s.endsAt.getTime() + shiftMs) : null,
-              location: s.location,
-              label: s.label,
-            })),
-          },
-          // Plantillas: se copian las filas (comparten el archivo privado).
-          // No se copian inscritos, asistencias ni receptores manuales.
-          certificateTemplates: {
-            create: source.certificateTemplates.map((t) => ({
-              roleKind: t.roleKind,
-              name: t.name,
-              filePath: t.filePath,
-              widthPx: t.widthPx,
-              heightPx: t.heightPx,
-              pageWidthMm: t.pageWidthMm,
-              pageHeightMm: t.pageHeightMm,
-              nameBox: t.nameBox ?? {},
-              isDefault: t.isDefault,
-            })),
-          },
-        },
-      });
-      res.status(201).json(created);
-    } catch (err) {
-      next(err);
+        });
+        res.status(201).json(created);
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   // Endpoints de asignación de STAFF a eventos (Solo ADMIN)
   router.get('/:id/staff', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {

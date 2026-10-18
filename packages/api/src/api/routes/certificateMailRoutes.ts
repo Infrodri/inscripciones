@@ -194,44 +194,48 @@ export function certificateMailRoutes(
   });
 
   // Envío individual a un receptor manual (usa el correo guardado).
-  router.post('/certificate-recipients/:id/send-certificate', admin, async (req: AuthRequest, res, next) => {
-    try {
-      requireSmtp();
-      const prisma = getPrisma();
-      const recipient = await prisma.certificateRecipient.findUnique({
-        where: { id: req.params.id },
-        include: { template: true, event: { include: { sessions: true } } },
-      });
-      if (!recipient) throw new DomainError('NOT_FOUND', 'Receptor no encontrado');
-      await assertEventAccess(prisma, req.user, recipient.eventId, 'MANAGER');
-      if (!recipient.email) throw new DomainError('VALIDATION_ERROR', 'Sin correo');
-      const pdf = await renderOnePdf(privateStorage, recipient.template, recipient.fullName);
-      const texts = mailTexts(recipient.event, recipient.template.name, recipient.fullName);
+  router.post(
+    '/certificate-recipients/:id/send-certificate',
+    admin,
+    async (req: AuthRequest, res, next) => {
       try {
-        await sendCertificateMail(env, {
-          to: recipient.email,
-          subject: texts.subject,
-          text: texts.text,
-          pdf,
-          filename: 'certificado.pdf',
+        requireSmtp();
+        const prisma = getPrisma();
+        const recipient = await prisma.certificateRecipient.findUnique({
+          where: { id: req.params.id },
+          include: { template: true, event: { include: { sessions: true } } },
         });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Fallo el envío';
+        if (!recipient) throw new DomainError('NOT_FOUND', 'Receptor no encontrado');
+        await assertEventAccess(prisma, req.user, recipient.eventId, 'MANAGER');
+        if (!recipient.email) throw new DomainError('VALIDATION_ERROR', 'Sin correo');
+        const pdf = await renderOnePdf(privateStorage, recipient.template, recipient.fullName);
+        const texts = mailTexts(recipient.event, recipient.template.name, recipient.fullName);
+        try {
+          await sendCertificateMail(env, {
+            to: recipient.email,
+            subject: texts.subject,
+            text: texts.text,
+            pdf,
+            filename: 'certificado.pdf',
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Fallo el envío';
+          await prisma.certificateRecipient.update({
+            where: { id: recipient.id },
+            data: { certificateEmailError: message.slice(0, 200) },
+          });
+          throw new DomainError('VALIDATION_ERROR', `Falló: ${message.slice(0, 120)}`);
+        }
         await prisma.certificateRecipient.update({
           where: { id: recipient.id },
-          data: { certificateEmailError: message.slice(0, 200) },
+          data: { certificateEmailedAt: new Date(), certificateEmailError: null },
         });
-        throw new DomainError('VALIDATION_ERROR', `Falló: ${message.slice(0, 120)}`);
+        res.json({ sent: recipient.email });
+      } catch (err) {
+        next(err);
       }
-      await prisma.certificateRecipient.update({
-        where: { id: recipient.id },
-        data: { certificateEmailedAt: new Date(), certificateEmailError: null },
-      });
-      res.json({ sent: recipient.email });
-    } catch (err) {
-      next(err);
     }
-  });
+  );
 
   // Envío masivo por lotes de 20. La pantalla encadena con offset.
   router.post(

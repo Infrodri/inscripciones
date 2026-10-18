@@ -154,9 +154,7 @@ export function CertificateLookup() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-ok/20 text-xs sm:text-sm text-ink">
               <div>
                 <span className="block text-muted text-xs font-medium">Evento Académico</span>
-                <span className="font-semibold text-navy">
-                  {result.certificate.eventTitle}
-                </span>
+                <span className="font-semibold text-navy">{result.certificate.eventTitle}</span>
               </div>
 
               <div>

@@ -5,10 +5,7 @@ import { DomainError } from '../../domain/errors.js';
 import { validateBody } from '../middlewares/validateMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
-import {
-  assertEventAccess,
-  assertSessionAccess,
-} from '../../application/accessControl.js';
+import { assertEventAccess, assertSessionAccess } from '../../application/accessControl.js';
 
 const sessionSchema = z.object({
   eventId: z.string().uuid(),

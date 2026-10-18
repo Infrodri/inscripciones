@@ -29,7 +29,7 @@ export function participantRoutes(): Router {
     async (req: AuthRequest, res, next) => {
       try {
         const prisma = getPrisma();
-        const event = await assertEventAccess(prisma, req.user, req.params.eventId, 'OPERATOR');
+        await assertEventAccess(prisma, req.user, req.params.eventId, 'OPERATOR');
         const params = parsePagination(req.query);
         const query =
           typeof req.query.q === 'string' && req.query.q.trim() !== '' ? req.query.q.trim() : null;
@@ -111,22 +111,26 @@ export function participantRoutes(): Router {
     }
   );
 
-  router.get('/:id/attendances', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const participant = await prisma.participant.findUnique({ where: { id: req.params.id } });
-      if (!participant) throw new DomainError('NOT_FOUND', 'Inscrito no encontrado');
-      await assertEventAccess(prisma, req.user, participant.eventId, 'OPERATOR');
-      const items = await prisma.attendance.findMany({
-        where: { participantId: participant.id },
-        include: { session: { select: { id: true, label: true, startsAt: true } } },
-        orderBy: { scannedAt: 'asc' },
-      });
-      res.json({ data: items });
-    } catch (err) {
-      next(err);
+  router.get(
+    '/:id/attendances',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const participant = await prisma.participant.findUnique({ where: { id: req.params.id } });
+        if (!participant) throw new DomainError('NOT_FOUND', 'Inscrito no encontrado');
+        await assertEventAccess(prisma, req.user, participant.eventId, 'OPERATOR');
+        const items = await prisma.attendance.findMany({
+          where: { participantId: participant.id },
+          include: { session: { select: { id: true, label: true, startsAt: true } } },
+          orderBy: { scannedAt: 'asc' },
+        });
+        res.json({ data: items });
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   const participantUpdateSchema = personSchema
     .partial()
@@ -253,54 +257,58 @@ export function participantRoutes(): Router {
   });
 
   // Reenviar QR por correo (OPERATOR o ADMIN). Mismo manejo de fallo que certificados.
-  router.post('/:id/resend-qr', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const participant = await prisma.participant.findUnique({
-        where: { id: req.params.id },
-        include: { event: { include: { sessions: { orderBy: { startsAt: 'asc' } } } } },
-      });
-      if (!participant) throw new DomainError('NOT_FOUND', 'Inscrito no encontrado');
-      await assertEventAccess(prisma, req.user, participant.eventId, 'OPERATOR');
-      if (!participant.email) throw new DomainError('VALIDATION_ERROR', 'Sin correo');
-      const env = parseEnv(process.env);
-      if (!env.SMTP_HOST)
-        throw new DomainError('VALIDATION_ERROR', 'Correo no configurado en el servidor');
-      const mail = buildConfirmationMail(
-        {
-          firstName: participant.firstName,
-          lastName: participant.lastName,
-          email: participant.email,
-        },
-        {
-          title: participant.event.title,
-          institution: participant.event.institution,
-          location: participant.event.location,
-          contactWhatsapp: participant.event.contactWhatsapp,
-          sessions: participant.event.sessions.map((s) => ({
-            startsAt: s.startsAt,
-            location: s.location,
-          })),
-        }
-      );
-      const qrPng = await qrPngBuffer(participant.qrToken);
+  router.post(
+    '/:id/resend-qr',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
       try {
-        await createMailer({
-          host: env.SMTP_HOST,
-          port: env.SMTP_PORT,
-          user: env.SMTP_USER ?? '',
-          pass: env.SMTP_PASS ?? '',
-          from: env.MAIL_FROM,
-        }).sendMail({ ...mail, qrPng });
+        const prisma = getPrisma();
+        const participant = await prisma.participant.findUnique({
+          where: { id: req.params.id },
+          include: { event: { include: { sessions: { orderBy: { startsAt: 'asc' } } } } },
+        });
+        if (!participant) throw new DomainError('NOT_FOUND', 'Inscrito no encontrado');
+        await assertEventAccess(prisma, req.user, participant.eventId, 'OPERATOR');
+        if (!participant.email) throw new DomainError('VALIDATION_ERROR', 'Sin correo');
+        const env = parseEnv(process.env);
+        if (!env.SMTP_HOST)
+          throw new DomainError('VALIDATION_ERROR', 'Correo no configurado en el servidor');
+        const mail = buildConfirmationMail(
+          {
+            firstName: participant.firstName,
+            lastName: participant.lastName,
+            email: participant.email,
+          },
+          {
+            title: participant.event.title,
+            institution: participant.event.institution,
+            location: participant.event.location,
+            contactWhatsapp: participant.event.contactWhatsapp,
+            sessions: participant.event.sessions.map((s) => ({
+              startsAt: s.startsAt,
+              location: s.location,
+            })),
+          }
+        );
+        const qrPng = await qrPngBuffer(participant.qrToken);
+        try {
+          await createMailer({
+            host: env.SMTP_HOST,
+            port: env.SMTP_PORT,
+            user: env.SMTP_USER ?? '',
+            pass: env.SMTP_PASS ?? '',
+            from: env.MAIL_FROM,
+          }).sendMail({ ...mail, qrPng });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Fallo el envío';
+          throw new DomainError('VALIDATION_ERROR', `Falló: ${message.slice(0, 120)}`);
+        }
+        res.json({ sent: participant.email });
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Fallo el envío';
-        throw new DomainError('VALIDATION_ERROR', `Falló: ${message.slice(0, 120)}`);
+        next(err);
       }
-      res.json({ sent: participant.email });
-    } catch (err) {
-      next(err);
     }
-  });
+  );
 
   return router;
 }

@@ -278,7 +278,9 @@ describe('Bloque B QR de sala', () => {
 
   it('porcentaje mezcla SELF_QR y QR', async () => {
     const prisma = getPrisma();
-    const staffUser = await prisma.user.findFirst({ where: { email: `sc-staff-${stamp}@test.com` } });
+    const staffUser = await prisma.user.findFirst({
+      where: { email: `sc-staff-${stamp}@test.com` },
+    });
     const event = await prisma.event.create({
       data: {
         slug: `sc-mix-${stamp}`,

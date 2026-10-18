@@ -113,20 +113,24 @@ export function certificateRecipientRoutes(): Router {
     }
   );
 
-  router.delete('/certificate-recipients/:id', staffOrAdmin, async (req: AuthRequest, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const recipient = await prisma.certificateRecipient.findUnique({
-        where: { id: req.params.id },
-      });
-      if (!recipient) throw new DomainError('NOT_FOUND', 'Receptor no encontrado');
-      await assertEventAccess(prisma, req.user, recipient.eventId, 'MANAGER');
-      await prisma.certificateRecipient.delete({ where: { id: req.params.id } });
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+  router.delete(
+    '/certificate-recipients/:id',
+    staffOrAdmin,
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const recipient = await prisma.certificateRecipient.findUnique({
+          where: { id: req.params.id },
+        });
+        if (!recipient) throw new DomainError('NOT_FOUND', 'Receptor no encontrado');
+        await assertEventAccess(prisma, req.user, recipient.eventId, 'MANAGER');
+        await prisma.certificateRecipient.delete({ where: { id: req.params.id } });
+        res.status(204).send();
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   // Alta masiva: un nombre por línea conceptual; reporta creados y duplicados.
   router.post(

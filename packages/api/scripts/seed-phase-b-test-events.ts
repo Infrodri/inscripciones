@@ -1,4 +1,10 @@
-import { PrismaClient, ParticipantType, SpeakerRole, RoleKind, StaffAccessLevel } from '@prisma/client';
+import {
+  PrismaClient,
+  ParticipantType,
+  SpeakerRole,
+  RoleKind,
+  StaffAccessLevel,
+} from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 
@@ -94,7 +100,11 @@ async function main() {
       staffAssignments: {
         create: [
           { userId: staffManager.id, accessLevel: StaffAccessLevel.MANAGER, assignedBy: admin.id },
-          { userId: staffOperator.id, accessLevel: StaffAccessLevel.OPERATOR, assignedBy: admin.id },
+          {
+            userId: staffOperator.id,
+            accessLevel: StaffAccessLevel.OPERATOR,
+            assignedBy: admin.id,
+          },
         ],
       },
     },
@@ -115,7 +125,8 @@ async function main() {
   const sesMesa1 = await prisma.session.create({
     data: {
       eventId: sectorial.id,
-      label: 'Mesa N.º 1: Seguimiento y evaluación del cumplimiento de resoluciones y acuerdos de la Sectorial 2023',
+      label:
+        'Mesa N.º 1: Seguimiento y evaluación del cumplimiento de resoluciones y acuerdos de la Sectorial 2023',
       location: 'Sala de Defensas, 2.º piso, Facultad de Derecho',
       startsAt: new Date('2026-10-19T11:00:00-04:00'),
       endsAt: new Date('2026-10-19T13:00:00-04:00'),
@@ -126,7 +137,8 @@ async function main() {
   const sesMesa2 = await prisma.session.create({
     data: {
       eventId: sectorial.id,
-      label: 'Mesa N.º 2: Seguimiento y evaluación del cumplimiento de resoluciones y acuerdos de la Sectorial 2023',
+      label:
+        'Mesa N.º 2: Seguimiento y evaluación del cumplimiento de resoluciones y acuerdos de la Sectorial 2023',
       location: 'Aula A-201, Facultad de Derecho',
       startsAt: new Date('2026-10-19T11:00:00-04:00'),
       endsAt: new Date('2026-10-19T13:00:00-04:00'),
@@ -169,12 +181,36 @@ async function main() {
 
   // Expositores (6) — Nota: SpeakerRole en schema.prisma solo soporta EXPOSITOR | MODERADOR
   const speakersData = [
-    { name: 'Dr. César Suárez Saavedra', role: SpeakerRole.MODERADOR, title: 'Abogado y docente universitario' },
-    { name: 'Dr. Wilfredo Cervantes Ortiz', role: SpeakerRole.MODERADOR, title: 'Relator Mesa N.º 1' },
-    { name: 'Dr. Ramiro Ibáñez Ferrufino', role: SpeakerRole.MODERADOR, title: 'Moderador Mesa N.º 2' },
-    { name: 'Dr. Luis Fernando Gorena Belling', role: SpeakerRole.MODERADOR, title: 'Relator Mesa N.º 2 / Coordinación' },
-    { name: 'Dr. Marco Antonio Barroso Mendizábal', role: SpeakerRole.MODERADOR, title: 'Moderador Sesión Plenaria / Coordinación' },
-    { name: 'Dra. Ma. Tania Álvarez Gantier', role: SpeakerRole.MODERADOR, title: 'Relator Sesión Plenaria' },
+    {
+      name: 'Dr. César Suárez Saavedra',
+      role: SpeakerRole.MODERADOR,
+      title: 'Abogado y docente universitario',
+    },
+    {
+      name: 'Dr. Wilfredo Cervantes Ortiz',
+      role: SpeakerRole.MODERADOR,
+      title: 'Relator Mesa N.º 1',
+    },
+    {
+      name: 'Dr. Ramiro Ibáñez Ferrufino',
+      role: SpeakerRole.MODERADOR,
+      title: 'Moderador Mesa N.º 2',
+    },
+    {
+      name: 'Dr. Luis Fernando Gorena Belling',
+      role: SpeakerRole.MODERADOR,
+      title: 'Relator Mesa N.º 2 / Coordinación',
+    },
+    {
+      name: 'Dr. Marco Antonio Barroso Mendizábal',
+      role: SpeakerRole.MODERADOR,
+      title: 'Moderador Sesión Plenaria / Coordinación',
+    },
+    {
+      name: 'Dra. Ma. Tania Álvarez Gantier',
+      role: SpeakerRole.MODERADOR,
+      title: 'Relator Sesión Plenaria',
+    },
   ];
 
   for (const s of speakersData) {
@@ -211,7 +247,7 @@ async function main() {
   ];
 
   // Plantillas de certificado por defecto para el evento
-  const templateAsistente = await prisma.certificateTemplate.create({
+  await prisma.certificateTemplate.create({
     data: {
       eventId: sectorial.id,
       name: 'Plantilla Delegados / Asistentes',
@@ -226,7 +262,7 @@ async function main() {
     },
   });
 
-  const templateExpositor = await prisma.certificateTemplate.create({
+  await prisma.certificateTemplate.create({
     data: {
       eventId: sectorial.id,
       name: 'Plantilla Expositores y Relatores',
@@ -271,15 +307,63 @@ async function main() {
 
   // Delegados de prueba (9 ficticios según tabla)
   const delegados = [
-    { nombre: 'Ana', apellido: 'Quispe', ci: '10000001', univ: 'UMSA', email: 'ana.prueba@example.com' },
-    { nombre: 'Bruno', apellido: 'Mamani', ci: '10000002', univ: 'UMSS', email: 'bruno.prueba@example.com' },
-    { nombre: 'Carla', apellido: 'Flores', ci: '10000003', univ: 'UAGRM', email: 'carla.prueba@example.com' },
-    { nombre: 'Diego', apellido: 'Rojas', ci: '10000004', univ: 'UTO', email: 'diego.prueba@example.com' },
-    { nombre: 'Elena', apellido: 'Vargas', ci: '10000005', univ: 'UAJMS', email: 'elena.prueba@example.com' },
-    { nombre: 'Fabio', apellido: 'Choque', ci: '10000006', univ: 'UAP', email: 'fabio.prueba@example.com' },
-    { nombre: 'Gabriela', apellido: 'Cruz', ci: '00123456', univ: 'UMSA', email: 'gabriela.prueba@example.com' },
+    {
+      nombre: 'Ana',
+      apellido: 'Quispe',
+      ci: '10000001',
+      univ: 'UMSA',
+      email: 'ana.prueba@example.com',
+    },
+    {
+      nombre: 'Bruno',
+      apellido: 'Mamani',
+      ci: '10000002',
+      univ: 'UMSS',
+      email: 'bruno.prueba@example.com',
+    },
+    {
+      nombre: 'Carla',
+      apellido: 'Flores',
+      ci: '10000003',
+      univ: 'UAGRM',
+      email: 'carla.prueba@example.com',
+    },
+    {
+      nombre: 'Diego',
+      apellido: 'Rojas',
+      ci: '10000004',
+      univ: 'UTO',
+      email: 'diego.prueba@example.com',
+    },
+    {
+      nombre: 'Elena',
+      apellido: 'Vargas',
+      ci: '10000005',
+      univ: 'UAJMS',
+      email: 'elena.prueba@example.com',
+    },
+    {
+      nombre: 'Fabio',
+      apellido: 'Choque',
+      ci: '10000006',
+      univ: 'UAP',
+      email: 'fabio.prueba@example.com',
+    },
+    {
+      nombre: 'Gabriela',
+      apellido: 'Cruz',
+      ci: '00123456',
+      univ: 'UMSA',
+      email: 'gabriela.prueba@example.com',
+    },
     { nombre: 'Héctor', apellido: 'Peña', ci: '10000008', univ: 'UPSA', email: null },
-    { nombre: 'Íñigo', apellido: 'Núñez', ci: '10000009', univ: 'UMSS', email: 'inigo.prueba@example.com' },
+    {
+      nombre: 'Íñigo',
+      apellido: 'Núñez',
+      ci: '10000009',
+      univ: 'UMSS',
+      email: 'inigo.prueba@example.com',
+    },
   ];
 
   const partMap = new Map<string, string>();
@@ -306,37 +390,49 @@ async function main() {
   // Ana Quispe: Inauguración, Mesa 1, Plenaria, Conclusiones, Clausura (5 sesiones de 6)
   const anaId = partMap.get('10000001')!;
   for (const ses of [sesInauguracion, sesMesa1, sesPlenaria, sesConclusiones, sesClausura]) {
-    await prisma.attendance.create({ data: { participantId: anaId, sessionId: ses.id, method: 'QR' } });
+    await prisma.attendance.create({
+      data: { participantId: anaId, sessionId: ses.id, method: 'QR' },
+    });
   }
 
   // Bruno Mamani: Inauguración, Mesa 1, Conclusiones, Clausura (faltó a plenaria) -> 4 de 6
   const brunoId = partMap.get('10000002')!;
   for (const ses of [sesInauguracion, sesMesa1, sesConclusiones, sesClausura]) {
-    await prisma.attendance.create({ data: { participantId: brunoId, sessionId: ses.id, method: 'QR' } });
+    await prisma.attendance.create({
+      data: { participantId: brunoId, sessionId: ses.id, method: 'QR' },
+    });
   }
 
   // Carla Flores: Inauguración, Mesa 2, Plenaria, Conclusiones, Clausura -> 5 de 6
   const carlaId = partMap.get('10000003')!;
   for (const ses of [sesInauguracion, sesMesa2, sesPlenaria, sesConclusiones, sesClausura]) {
-    await prisma.attendance.create({ data: { participantId: carlaId, sessionId: ses.id, method: 'QR' } });
+    await prisma.attendance.create({
+      data: { participantId: carlaId, sessionId: ses.id, method: 'QR' },
+    });
   }
 
   // Diego Rojas: Inauguración, Mesa 1 (error de mesa), Plenaria, Conclusiones, Clausura -> 5 de 6
   const diegoId = partMap.get('10000004')!;
   for (const ses of [sesInauguracion, sesMesa1, sesPlenaria, sesConclusiones, sesClausura]) {
-    await prisma.attendance.create({ data: { participantId: diegoId, sessionId: ses.id, method: 'QR' } });
+    await prisma.attendance.create({
+      data: { participantId: diegoId, sessionId: ses.id, method: 'QR' },
+    });
   }
 
   // Elena Vargas: Inauguración, Plenaria, Conclusiones, Clausura (4 sesiones comunes) -> 4 de 6
   const elenaId = partMap.get('10000005')!;
   for (const ses of [sesInauguracion, sesPlenaria, sesConclusiones, sesClausura]) {
-    await prisma.attendance.create({ data: { participantId: elenaId, sessionId: ses.id, method: 'QR' } });
+    await prisma.attendance.create({
+      data: { participantId: elenaId, sessionId: ses.id, method: 'QR' },
+    });
   }
 
   // Fabio Choque: 0 asistencias
   // Gabriela Cruz: C.I. 00123456 conserva ceros
 
-  console.log(`Evento Sectorial creado: ${sectorial.id} con 6 sesiones, 6 expositores, 18 organizadores, 9 delegados.`);
+  console.log(
+    `Evento Sectorial creado: ${sectorial.id} con 6 sesiones, 6 expositores, 18 organizadores, 9 delegados.`
+  );
 
   // =========================================================================
   // EVENTO E1 (16 oct 2026 - Retroactivo)
@@ -348,7 +444,8 @@ async function main() {
       title: '[PRUEBA] Transformación o fin del multilateralismo en la ONU',
       eventKind: 'Conferencia',
       institution: 'Universidad Mayor, Real y Pontificia de San Francisco Xavier de Chuquisaca',
-      commemoration: 'En conmemoración del CCCXLV aniversario de la fundación de la Facultad de Derecho',
+      commemoration:
+        'En conmemoración del CCCXLV aniversario de la fundación de la Facultad de Derecho',
       organizer: 'Facultad de Derecho, Ciencias Políticas y Sociales',
       location: 'Salón de Honor de la Facultad de Derecho, Ciencias Políticas y Sociales',
       modality: 'PRESENCIAL',
@@ -372,7 +469,8 @@ async function main() {
           {
             fullName: 'Marco Antonio Barroso Mendizábal',
             role: SpeakerRole.EXPOSITOR,
-            titleProfession: 'Abogado, Diplomático de Carrera del Ministerio de Relaciones Exteriores y docente universitario',
+            titleProfession:
+              'Abogado, Diplomático de Carrera del Ministerio de Relaciones Exteriores y docente universitario',
           },
         ],
       },
@@ -387,11 +485,14 @@ async function main() {
   const e2 = await prisma.event.create({
     data: {
       slug: 'prueba-analisis-proyecto-ley-denuncias-falsas-2026',
-      title: '[PRUEBA] Análisis del proyecto de ley de protección jurídica contra las denuncias o acusaciones falsas y la instrumentalización de la justicia',
+      title:
+        '[PRUEBA] Análisis del proyecto de ley de protección jurídica contra las denuncias o acusaciones falsas y la instrumentalización de la justicia',
       eventKind: 'Conversatorio',
       institution: 'Universidad Mayor, Real y Pontificia de San Francisco Xavier de Chuquisaca',
-      commemoration: 'En conmemoración del CCCXLV aniversario de la fundación de la Facultad de Derecho',
-      organizer: 'Facultad de Derecho, Ciencias Políticas y Sociales · Carrera de Derecho · Promociones 2026 · Cursos 5-3, 5-4 y 5-5',
+      commemoration:
+        'En conmemoración del CCCXLV aniversario de la fundación de la Facultad de Derecho',
+      organizer:
+        'Facultad de Derecho, Ciencias Políticas y Sociales · Carrera de Derecho · Promociones 2026 · Cursos 5-3, 5-4 y 5-5',
       audienceNote: 'Dirigido a Promociones 2026 · Cursos 5-3, 5-4 y 5-5',
       location: 'Salón de Honor de la Facultad de Derecho, Ciencias Políticas y Sociales',
       modality: 'PRESENCIAL',
@@ -425,7 +526,8 @@ async function main() {
           {
             fullName: 'Dr. Marco Antonio Barroso Mendizábal',
             role: SpeakerRole.MODERADOR,
-            titleProfession: 'Abogado, diplomático del Ministerio de Relaciones Exteriores y docente',
+            titleProfession:
+              'Abogado, diplomático del Ministerio de Relaciones Exteriores y docente',
           },
         ],
       },
@@ -444,7 +546,8 @@ async function main() {
       eventKind: 'Seminario',
       institution: 'Universidad Mayor, Real y Pontificia de San Francisco Xavier de Chuquisaca',
       commemoration: 'CCCXLV años de fundación de la Facultad de Derecho',
-      organizer: 'Sociedad Científica de Estudiantes de Derecho (SCED) · Carrera de Derecho · Facultad de Derecho, Cs. Políticas y Sociales',
+      organizer:
+        'Sociedad Científica de Estudiantes de Derecho (SCED) · Carrera de Derecho · Facultad de Derecho, Cs. Políticas y Sociales',
       location: 'Salón de Honor de la Facultad de Derecho, Ciencias Políticas y Sociales',
       modality: 'PRESENCIAL',
       status: 'FINALIZADO',
@@ -473,7 +576,8 @@ async function main() {
           {
             fullName: 'Dr. Carlos Eduardo Ortega Sivila',
             role: SpeakerRole.EXPOSITOR,
-            titleProfession: 'Abogado, Magistrado del Tribunal Supremo de Justicia y docente universitario',
+            titleProfession:
+              'Abogado, Magistrado del Tribunal Supremo de Justicia y docente universitario',
           },
           {
             fullName: 'Dr. Jaime René Conde Andrade',

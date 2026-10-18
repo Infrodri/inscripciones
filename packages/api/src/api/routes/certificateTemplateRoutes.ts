@@ -170,29 +170,33 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
     }
   );
 
-  router.post('/certificate-templates/:id/set-default', staffOrAdmin, async (req: AuthRequest, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const template = await prisma.certificateTemplate.findUnique({
-        where: { id: req.params.id },
-      });
-      if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
-      await assertEventAccess(prisma, req.user, template.eventId, 'MANAGER');
-      await prisma.$transaction([
-        prisma.certificateTemplate.updateMany({
-          where: { eventId: template.eventId, roleKind: template.roleKind, isDefault: true },
-          data: { isDefault: false },
-        }),
-        prisma.certificateTemplate.update({
-          where: { id: template.id },
-          data: { isDefault: true },
-        }),
-      ]);
-      res.json({ id: template.id, isDefault: true });
-    } catch (err) {
-      next(err);
+  router.post(
+    '/certificate-templates/:id/set-default',
+    staffOrAdmin,
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const template = await prisma.certificateTemplate.findUnique({
+          where: { id: req.params.id },
+        });
+        if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
+        await assertEventAccess(prisma, req.user, template.eventId, 'MANAGER');
+        await prisma.$transaction([
+          prisma.certificateTemplate.updateMany({
+            where: { eventId: template.eventId, roleKind: template.roleKind, isDefault: true },
+            data: { isDefault: false },
+          }),
+          prisma.certificateTemplate.update({
+            where: { id: template.id },
+            data: { isDefault: true },
+          }),
+        ]);
+        res.json({ id: template.id, isDefault: true });
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   router.post(
     '/certificate-templates/:id/duplicate',

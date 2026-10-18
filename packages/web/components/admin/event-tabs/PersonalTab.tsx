@@ -50,8 +50,7 @@ export function PersonalTab({ eventId }: { eventId: string }) {
   // 2. Obtener lista de todos los usuarios para el selector
   const usersQuery = useQuery({
     queryKey: ['admin-users'],
-    queryFn: async (): Promise<{ data: StaffUser[] }> =>
-      (await api.get('/users')).data,
+    queryFn: async (): Promise<{ data: StaffUser[] }> => (await api.get('/users')).data,
     enabled: isAssignModalOpen,
   });
 
@@ -132,7 +131,8 @@ export function PersonalTab({ eventId }: { eventId: string }) {
           <h3 className="text-base font-semibold text-ink">Personal Asignado (Staff)</h3>
           <p className="mt-1 text-sm text-muted">
             Delegue el evento a operadores de sala o administradores auxiliares. Los operadores
-            pueden escanear QR y registrar walk-ins; los managers pueden editar datos y emitir certificados.
+            pueden escanear QR y registrar walk-ins; los managers pueden editar datos y emitir
+            certificados.
           </p>
         </div>
         <Button variant="primario" onClick={() => setIsAssignModalOpen(true)}>
@@ -203,15 +203,9 @@ export function PersonalTab({ eventId }: { eventId: string }) {
                       </select>
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-muted text-xs">
-                    {formatFecha(item.createdAt)}
-                  </td>
+                  <td className="py-3 px-4 text-muted text-xs">{formatFecha(item.createdAt)}</td>
                   <td className="py-3 px-4 text-right">
-                    <Button
-                      variant="peligro"
-                      size="sm"
-                      onClick={() => setDeleteTarget(item)}
-                    >
+                    <Button variant="peligro" size="sm" onClick={() => setDeleteTarget(item)}>
                       Remover
                     </Button>
                   </td>
@@ -244,7 +238,8 @@ export function PersonalTab({ eventId }: { eventId: string }) {
                   <p className="text-sm text-muted">Cargando usuarios…</p>
                 ) : availableStaff.length === 0 ? (
                   <p className="text-sm text-muted italic">
-                    No hay otros usuarios de rol STAFF disponibles para asignar. Cree nuevos usuarios en el panel de Usuarios.
+                    No hay otros usuarios de rol STAFF disponibles para asignar. Cree nuevos
+                    usuarios en el panel de Usuarios.
                   </p>
                 ) : (
                   <select
@@ -281,7 +276,8 @@ export function PersonalTab({ eventId }: { eventId: string }) {
                         Operador (Recomendado para sala)
                       </span>
                       <span className="block text-xs text-muted">
-                        Acceso a escaneo de QR, búsqueda de CI, walk-in y vista del evento. No puede editar ni exportar certificados.
+                        Acceso a escaneo de QR, búsqueda de CI, walk-in y vista del evento. No puede
+                        editar ni exportar certificados.
                       </span>
                     </div>
                   </label>
@@ -300,7 +296,8 @@ export function PersonalTab({ eventId }: { eventId: string }) {
                         Manager (Gestor completo)
                       </span>
                       <span className="block text-xs text-muted">
-                        Capacidad de editar evento, sesiones, plantillas, destinatarios y exportar certificados y credenciales.
+                        Capacidad de editar evento, sesiones, plantillas, destinatarios y exportar
+                        certificados y credenciales.
                       </span>
                     </div>
                   </label>
@@ -337,7 +334,8 @@ export function PersonalTab({ eventId }: { eventId: string }) {
           titulo="Remover Acceso de Personal"
           mensaje={
             <span>
-              ¿Está seguro de que desea remover el acceso de <strong>{deleteTarget.user.name}</strong> ({deleteTarget.user.email}) a este evento?
+              ¿Está seguro de que desea remover el acceso de{' '}
+              <strong>{deleteTarget.user.name}</strong> ({deleteTarget.user.email}) a este evento?
               El usuario ya no podrá visualizarlo ni operarlo.
             </span>
           }

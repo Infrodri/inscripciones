@@ -109,22 +109,26 @@ export function attendanceRoutes(): Router {
   );
 
   // Quienes marcaron en una sesión (ADMIN o STAFF con acceso), con hora y método.
-  router.get('/sessions/:id/attendances', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const session = await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
-      const items = await prisma.attendance.findMany({
-        where: { sessionId: session.id, voidedAt: null },
-        include: {
-          participant: { select: { id: true, firstName: true, lastName: true, ci: true } },
-        },
-        orderBy: { scannedAt: 'asc' },
-      });
-      res.json({ data: items });
-    } catch (err) {
-      next(err);
+  router.get(
+    '/sessions/:id/attendances',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const session = await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
+        const items = await prisma.attendance.findMany({
+          where: { sessionId: session.id, voidedAt: null },
+          include: {
+            participant: { select: { id: true, firstName: true, lastName: true, ci: true } },
+          },
+          orderBy: { scannedAt: 'asc' },
+        });
+        res.json({ data: items });
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   // Anulación con motivo y auditoría (ADMIN o STAFF con MANAGER). No borra la fila.
   router.post(
@@ -151,7 +155,10 @@ export function attendanceRoutes(): Router {
         });
         if (!attendance) throw new DomainError('NOT_FOUND', 'Asistencia no encontrada');
         if (!canAccessEvent(req.user, attendance.session.event, 'MANAGER')) {
-          throw new DomainError('FORBIDDEN', 'No tiene permisos para anular asistencias en este evento');
+          throw new DomainError(
+            'FORBIDDEN',
+            'No tiene permisos para anular asistencias en este evento'
+          );
         }
         const updated = await prisma.attendance.update({
           where: { id: attendance.id },

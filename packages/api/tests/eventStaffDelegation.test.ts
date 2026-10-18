@@ -60,7 +60,10 @@ describe('Matriz de Permisos: Delegación de Eventos a STAFF (EventStaff)', () =
       },
     });
     adminId = adminUser.id;
-    adminToken = jwt.sign({ sub: adminUser.id, role: 'ADMIN', email: adminUser.email }, env.JWT_SECRET);
+    adminToken = jwt.sign(
+      { sub: adminUser.id, role: 'ADMIN', email: adminUser.email },
+      env.JWT_SECRET
+    );
 
     const ownerUser = await prisma.user.create({
       data: {
@@ -71,7 +74,10 @@ describe('Matriz de Permisos: Delegación de Eventos a STAFF (EventStaff)', () =
       },
     });
     ownerStaffId = ownerUser.id;
-    ownerToken = jwt.sign({ sub: ownerUser.id, role: 'STAFF', email: ownerUser.email }, env.JWT_SECRET);
+    ownerToken = jwt.sign(
+      { sub: ownerUser.id, role: 'STAFF', email: ownerUser.email },
+      env.JWT_SECRET
+    );
 
     const managerUser = await prisma.user.create({
       data: {
@@ -82,7 +88,10 @@ describe('Matriz de Permisos: Delegación de Eventos a STAFF (EventStaff)', () =
       },
     });
     managerStaffId = managerUser.id;
-    managerToken = jwt.sign({ sub: managerUser.id, role: 'STAFF', email: managerUser.email }, env.JWT_SECRET);
+    managerToken = jwt.sign(
+      { sub: managerUser.id, role: 'STAFF', email: managerUser.email },
+      env.JWT_SECRET
+    );
 
     const operatorUser = await prisma.user.create({
       data: {
@@ -93,7 +102,10 @@ describe('Matriz de Permisos: Delegación de Eventos a STAFF (EventStaff)', () =
       },
     });
     operatorStaffId = operatorUser.id;
-    operatorToken = jwt.sign({ sub: operatorUser.id, role: 'STAFF', email: operatorUser.email }, env.JWT_SECRET);
+    operatorToken = jwt.sign(
+      { sub: operatorUser.id, role: 'STAFF', email: operatorUser.email },
+      env.JWT_SECRET
+    );
 
     const unrelatedUser = await prisma.user.create({
       data: {
@@ -104,7 +116,10 @@ describe('Matriz de Permisos: Delegación de Eventos a STAFF (EventStaff)', () =
       },
     });
     unrelatedStaffId = unrelatedUser.id;
-    unrelatedToken = jwt.sign({ sub: unrelatedUser.id, role: 'STAFF', email: unrelatedUser.email }, env.JWT_SECRET);
+    unrelatedToken = jwt.sign(
+      { sub: unrelatedUser.id, role: 'STAFF', email: unrelatedUser.email },
+      env.JWT_SECRET
+    );
 
     // 2. Crear Evento de Admin con asignaciones iniciales
     const adminEvent = await prisma.event.create({
@@ -290,18 +305,26 @@ describe('Matriz de Permisos: Delegación de Eventos a STAFF (EventStaff)', () =
       expect((await api(`/api/v1/events/${adminEventId}`, unrelatedToken)).status).toBe(200);
 
       // Modificar rol a MANAGER
-      const patchRes = await api(`/api/v1/events/${adminEventId}/staff/${unrelatedStaffId}`, adminToken, {
-        method: 'PATCH',
-        body: JSON.stringify({ accessLevel: 'MANAGER' }),
-      });
+      const patchRes = await api(
+        `/api/v1/events/${adminEventId}/staff/${unrelatedStaffId}`,
+        adminToken,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ accessLevel: 'MANAGER' }),
+        }
+      );
       expect(patchRes.status).toBe(200);
       const updated = (await patchRes.json()) as { accessLevel: string };
       expect(updated.accessLevel).toBe('MANAGER');
 
       // Eliminar asignación
-      const delRes = await api(`/api/v1/events/${adminEventId}/staff/${unrelatedStaffId}`, adminToken, {
-        method: 'DELETE',
-      });
+      const delRes = await api(
+        `/api/v1/events/${adminEventId}/staff/${unrelatedStaffId}`,
+        adminToken,
+        {
+          method: 'DELETE',
+        }
+      );
       expect(delRes.status).toBe(200);
 
       // Ya no tiene acceso
@@ -312,7 +335,9 @@ describe('Matriz de Permisos: Delegación de Eventos a STAFF (EventStaff)', () =
   describe('4. Operación vs Gestión: Sesiones, Participantes y Exportaciones', () => {
     it('GET /sessions/event/:eventId permite OPERATOR pero rechaza UNRELATED', async () => {
       expect((await api(`/api/v1/sessions/event/${adminEventId}`, operatorToken)).status).toBe(200);
-      expect((await api(`/api/v1/sessions/event/${adminEventId}`, unrelatedToken)).status).toBe(403);
+      expect((await api(`/api/v1/sessions/event/${adminEventId}`, unrelatedToken)).status).toBe(
+        403
+      );
     });
 
     it('POST /sessions permite MANAGER pero rechaza OPERATOR (403)', async () => {
@@ -340,14 +365,39 @@ describe('Matriz de Permisos: Delegación de Eventos a STAFF (EventStaff)', () =
     });
 
     it('GET /events/:id/exports/participants permite MANAGER pero rechaza OPERATOR (403)', async () => {
-      expect((await api(`/api/v1/events/${adminEventId}/exports/participants`, managerToken)).status).toBe(200);
-      expect((await api(`/api/v1/events/${adminEventId}/exports/participants`, operatorToken)).status).toBe(403);
-      expect((await api(`/api/v1/events/${adminEventId}/exports/participants`, unrelatedToken)).status).toBe(403);
+      expect(
+        (await api(`/api/v1/events/${adminEventId}/exports/participants`, managerToken)).status
+      ).toBe(200);
+      expect(
+        (await api(`/api/v1/events/${adminEventId}/exports/participants`, operatorToken)).status
+      ).toBe(403);
+      expect(
+        (await api(`/api/v1/events/${adminEventId}/exports/participants`, unrelatedToken)).status
+      ).toBe(403);
     });
 
     it('GET /events/:id/stats permite OPERATOR', async () => {
       expect((await api(`/api/v1/events/${adminEventId}/stats`, operatorToken)).status).toBe(200);
       expect((await api(`/api/v1/events/${adminEventId}/stats`, unrelatedToken)).status).toBe(403);
+    });
+
+    it('OPERATOR puede acceder a token y QR de auto-asistencia (proyección)', async () => {
+      const tokenRes = await api(`/api/v1/sessions/${sessionId}/self-checkin/token`, operatorToken);
+      expect(tokenRes.status).toBe(200);
+      const json = (await tokenRes.json()) as { url: string; qrPngUrl: string };
+      expect(json.url).toContain('/a/');
+
+      const pngRes = await api(`/api/v1/sessions/${sessionId}/self-checkin/qr.png`, operatorToken);
+      expect(pngRes.status).toBe(200);
+      expect(pngRes.headers.get('content-type')).toBe('image/png');
+
+      // UNRELATED no puede acceder al token ni QR
+      expect(
+        (await api(`/api/v1/sessions/${sessionId}/self-checkin/token`, unrelatedToken)).status
+      ).toBe(403);
+      expect(
+        (await api(`/api/v1/sessions/${sessionId}/self-checkin/qr.png`, unrelatedToken)).status
+      ).toBe(403);
     });
   });
 
