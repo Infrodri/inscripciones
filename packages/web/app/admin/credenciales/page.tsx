@@ -35,6 +35,7 @@ interface Participant {
 export default function CredencialesPage() {
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
 
   // 1. Fetch accessible events
@@ -55,15 +56,16 @@ export default function CredencialesPage() {
 
   // 2. Fetch participants of selected event
   const participantsQuery = useQuery({
-    queryKey: ['admin-participants', selectedEventId, search],
+    queryKey: ['admin-participants', selectedEventId, search, page],
     queryFn: async () => {
-      if (!selectedEventId) return { data: [], total: 0 };
+      if (!selectedEventId) return { data: [], total: 0, totalPages: 1 };
       const res = await api.get(`/participants/event/${selectedEventId}`, {
-        params: { q: search.trim() || undefined, pageSize: 100 },
+        params: { q: search.trim() || undefined, pageSize: 500, page },
       });
       return {
         data: (res.data?.data ?? []) as Participant[],
         total: Number(res.data?.pagination?.total ?? 0),
+        totalPages: Number(res.data?.pagination?.totalPages ?? 1),
       };
     },
     enabled: Boolean(selectedEventId),
@@ -71,6 +73,7 @@ export default function CredencialesPage() {
 
   const participants = participantsQuery.data?.data ?? [];
   const totalParticipants = participantsQuery.data?.total ?? 0;
+  const totalPages = participantsQuery.data?.totalPages ?? 1;
 
   // Batch download A4 sheets
   async function downloadBatchBadges() {
@@ -129,7 +132,10 @@ export default function CredencialesPage() {
               etiqueta="Seleccionar Evento Académico"
               desplegable
               value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
+              onChange={(e) => {
+                setSelectedEventId(e.target.value);
+                setPage(1);
+              }}
             >
               {events.map((ev) => (
                 <option key={ev.id} value={ev.id}>
@@ -179,7 +185,10 @@ export default function CredencialesPage() {
               etiqueta="Buscar inscrito"
               placeholder="Nombre, apellido o CI…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
           <p className="text-xs text-muted self-end sm:self-center">
@@ -233,6 +242,32 @@ export default function CredencialesPage() {
                 </div>
               </Card>
             ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between border-t border-line pt-3 text-sm">
+            <span className="text-muted">
+              Página {page} de {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="secundario"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Anterior
+              </Button>
+              <Button
+                variant="secundario"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
           </div>
         )}
       </div>

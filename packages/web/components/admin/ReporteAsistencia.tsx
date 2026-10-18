@@ -47,7 +47,7 @@ export function ReporteAsistencia({ eventId, slug }: { eventId: string; slug: st
   const participants = useQuery({
     queryKey: ['report-participants', eventId],
     queryFn: async (): Promise<{ data: Participant[] }> =>
-      (await api.get(`/participants/event/${eventId}`, { params: { stats: '1', pageSize: 200 } }))
+      (await api.get(`/participants/event/${eventId}`, { params: { stats: '1', pageSize: 500 } }))
         .data,
   });
   const sessions = useQuery({

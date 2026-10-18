@@ -61,7 +61,7 @@ export default function CertificadosGlobalPage() {
       if (!selectedEventId) return [];
       if (roleKind === 'ASISTENTE') {
         const res = await api.get(`/participants/event/${selectedEventId}`, {
-          params: { pageSize: 150 },
+          params: { pageSize: 500 },
         });
         return (res.data?.data ?? []) as CertificatePerson[];
       }

@@ -75,7 +75,7 @@ export function AsistentesTab({
   const participants = useQuery({
     queryKey: ['participants-list', eventId],
     queryFn: async (): Promise<{ data: Participant[] }> =>
-      (await api.get(`/participants/event/${eventId}`, { params: { pageSize: 100 } })).data,
+      (await api.get(`/participants/event/${eventId}`, { params: { pageSize: 500 } })).data,
     enabled: scope === 'selected',
   });
 
@@ -272,7 +272,7 @@ export function AsistentesTab({
           contar={async () => {
             const res = (
               await api.get(`/participants/event/${eventId}`, {
-                params: { stats: '1', pageSize: 200 },
+                params: { stats: '1', pageSize: 500 },
               })
             ).data as {
               data: Array<{

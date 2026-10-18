@@ -5,7 +5,7 @@ export interface PaginationParams {
 
 export function parsePagination(query: { page?: unknown; pageSize?: unknown }): PaginationParams {
   const page = Math.max(1, Number(query.page ?? 1) || 1);
-  const pageSize = Math.min(100, Math.max(1, Number(query.pageSize ?? 20) || 20));
+  const pageSize = Math.min(1000, Math.max(1, Number(query.pageSize ?? 20) || 20));
   return { page, pageSize };
 }
 

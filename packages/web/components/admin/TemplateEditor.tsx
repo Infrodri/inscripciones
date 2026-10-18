@@ -247,7 +247,7 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
 
   async function longestName(): Promise<void> {
     try {
-      const res = await api.get(`/participants/event/${eventId}`, { params: { pageSize: 100 } });
+      const res = await api.get(`/participants/event/${eventId}`, { params: { pageSize: 500 } });
       const items =
         (res.data as { data: Array<{ firstName: string; lastName: string }> }).data ?? [];
       let best = '';

@@ -123,11 +123,12 @@ export function ParticipantsTable({
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Participant | null>(null);
   const [deleting, setDeleting] = useState<Participant | null>(null);
+  const [pageSize, setPageSize] = useState<number>(100);
   const user = getSessionUser();
   const isAdmin = user?.role === 'ADMIN';
 
   const list = useQuery({
-    queryKey: ['participants', eventId, q, type, eligible, page],
+    queryKey: ['participants', eventId, q, type, eligible, page, pageSize],
     queryFn: async (): Promise<{
       data: Participant[];
       pagination: { total: number; totalPages: number; page: number };
@@ -141,6 +142,7 @@ export function ParticipantsTable({
             eligible: eligible === '' ? undefined : eligible,
             stats: '1',
             page,
+            pageSize,
           },
         })
       ).data,
@@ -308,7 +310,7 @@ export function ParticipantsTable({
           Credenciales PDF
         </Button>
       </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
+      <div className="mt-3 grid gap-2 md:grid-cols-4">
         <Input
           id="insc-q"
           etiqueta="Buscar"
@@ -348,6 +350,22 @@ export function ParticipantsTable({
           <option value="">Todos</option>
           <option value="true">Aptos</option>
           <option value="false">No aptos</option>
+        </Input>
+        <Input
+          id="insc-tamano"
+          etiqueta="Mostrar por página"
+          desplegable
+          value={String(pageSize)}
+          onChange={(e) => {
+            setPageSize(Number(e.target.value));
+            setPage(1);
+          }}
+        >
+          <option value="25">25 por página</option>
+          <option value="50">50 por página</option>
+          <option value="100">100 por página</option>
+          <option value="200">200 por página</option>
+          <option value="500">500 por página</option>
         </Input>
       </div>
       <p className="mt-2 text-sm">
