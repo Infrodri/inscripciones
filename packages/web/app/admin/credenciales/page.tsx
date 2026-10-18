@@ -36,6 +36,7 @@ export default function CredencialesPage() {
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(20);
   const [exporting, setExporting] = useState(false);
 
   // 1. Fetch accessible events
@@ -56,11 +57,11 @@ export default function CredencialesPage() {
 
   // 2. Fetch participants of selected event
   const participantsQuery = useQuery({
-    queryKey: ['admin-participants', selectedEventId, search, page],
+    queryKey: ['admin-participants', selectedEventId, search, page, pageSize],
     queryFn: async () => {
       if (!selectedEventId) return { data: [], total: 0, totalPages: 1 };
       const res = await api.get(`/participants/event/${selectedEventId}`, {
-        params: { q: search.trim() || undefined, pageSize: 500, page },
+        params: { q: search.trim() || undefined, pageSize, page },
       });
       return {
         data: (res.data?.data ?? []) as Participant[],
@@ -179,20 +180,38 @@ export default function CredencialesPage() {
       {/* Participants Filter and List */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="w-full sm:max-w-sm">
-            <Input
-              id="search-att"
-              etiqueta="Buscar inscrito"
-              placeholder="Nombre, apellido o CI…"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
+          <div className="flex flex-wrap items-center gap-2 w-full sm:max-w-md">
+            <div className="flex-1 min-w-[200px]">
+              <Input
+                id="search-att"
+                etiqueta="Buscar inscrito"
+                placeholder="Nombre, apellido o CI…"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <div className="w-32">
+              <Input
+                id="cred-page-size"
+                etiqueta="Por página"
+                desplegable
+                value={String(pageSize)}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+              >
+                <option value="10">10 por pág.</option>
+                <option value="20">20 por pág.</option>
+                <option value="50">50 por pág.</option>
+              </Input>
+            </div>
           </div>
           <p className="text-xs text-muted self-end sm:self-center">
-            Mostrando {participants.length} de {totalParticipants} inscritos
+            Pág. {page} ({participants.length} de {totalParticipants} inscritos)
           </p>
         </div>
 

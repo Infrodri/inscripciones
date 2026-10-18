@@ -123,7 +123,7 @@ export function ParticipantsTable({
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Participant | null>(null);
   const [deleting, setDeleting] = useState<Participant | null>(null);
-  const [pageSize, setPageSize] = useState<number>(100);
+  const [pageSize, setPageSize] = useState<number>(20);
   const user = getSessionUser();
   const isAdmin = user?.role === 'ADMIN';
 
@@ -167,6 +167,7 @@ export function ParticipantsTable({
       return Object.fromEntries(entries);
     },
     enabled: sessionList.length > 0,
+    staleTime: 60_000,
   });
 
   const templates = useQuery({
@@ -363,6 +364,8 @@ export function ParticipantsTable({
           <option value="DOCENTE">Docente</option>
           <option value="PROFESIONAL">Profesional</option>
           <option value="PUBLICO">Público</option>
+          <option value="EXPOSITOR">Expositor</option>
+          <option value="MODERADOR">Moderador</option>
         </Input>
         <Input
           id="insc-apto"
@@ -388,11 +391,10 @@ export function ParticipantsTable({
             setPage(1);
           }}
         >
-          <option value="25">25 por página</option>
+          <option value="10">10 por página</option>
+          <option value="20">20 por página</option>
           <option value="50">50 por página</option>
           <option value="100">100 por página</option>
-          <option value="200">200 por página</option>
-          <option value="500">500 por página</option>
         </Input>
       </div>
       <p className="mt-2 text-sm">
@@ -496,7 +498,7 @@ export function ParticipantsTable({
                     </td>
                     <td className="font-mono text-xs whitespace-nowrap">{p.ci}</td>
                     <td className="font-medium text-ink">
-                      {p.lastName}, {p.firstName}
+                      {p.lastName ? `${p.lastName}, ${p.firstName}` : p.firstName}
                       {p.certificateEmailedAt ? (
                         <span className="block text-xs font-normal text-ok">
                           Enviado {formatFechaHora(p.certificateEmailedAt)}
@@ -514,7 +516,13 @@ export function ParticipantsTable({
                       {p.phone ?? '—'}
                     </td>
                     <td>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-canvas text-ink border border-line">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                          p.type === 'EXPOSITOR' || p.type === 'MODERADOR'
+                            ? 'bg-gold/15 text-navy border-gold/40 font-bold'
+                            : 'bg-canvas text-ink border-line'
+                        }`}
+                      >
                         {p.type}
                       </span>
                     </td>

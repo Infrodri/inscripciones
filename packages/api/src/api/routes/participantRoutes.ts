@@ -35,6 +35,54 @@ export function participantRoutes(): Router {
           typeof req.query.q === 'string' && req.query.q.trim() !== '' ? req.query.q.trim() : null;
         const typeFilter =
           typeof req.query.type === 'string' && req.query.type !== '' ? req.query.type : null;
+
+        if (typeFilter === 'EXPOSITOR' || typeFilter === 'MODERADOR') {
+          const speakerWhere = {
+            eventId: req.params.eventId,
+            role: typeFilter as 'EXPOSITOR' | 'MODERADOR',
+            ...(query
+              ? {
+                  OR: [
+                    { fullName: { contains: query } },
+                    { institution: { contains: query } },
+                    { titleProfession: { contains: query } },
+                  ],
+                }
+              : {}),
+          };
+          const [speakers, total] = await Promise.all([
+            prisma.speaker.findMany({
+              where: speakerWhere,
+              skip: (params.page - 1) * params.pageSize,
+              take: params.pageSize,
+              orderBy: [{ position: 'asc' }, { fullName: 'asc' }],
+            }),
+            prisma.speaker.count({ where: speakerWhere }),
+          ]);
+
+          const items = speakers.map((s) => ({
+            id: s.id,
+            firstName: s.fullName,
+            lastName: '',
+            ci: '—',
+            email: null,
+            phone: null,
+            type: s.role,
+            source: 'SPEAKER',
+            institution: s.institution,
+            career: s.titleProfession,
+            createdAt: s.createdAt.toISOString(),
+            attended: 1,
+            pct: 100,
+            eligible: true,
+          }));
+
+          return res.json({
+            ...paginatedResponse(items, total, params),
+            totalSessions: 1,
+          });
+        }
+
         const where = {
           eventId: req.params.eventId,
           ...(typeFilter ? { type: typeFilter as never } : {}),
@@ -101,6 +149,43 @@ export function participantRoutes(): Router {
               : onlyEligible === 'false'
                 ? withStats.filter((p) => !p.eligible)
                 : withStats;
+          if (filtered.length === 0 && query && !typeFilter) {
+            const matchingSpeakers = await prisma.speaker.findMany({
+              where: {
+                eventId: req.params.eventId,
+                OR: [
+                  { fullName: { contains: query } },
+                  { institution: { contains: query } },
+                  { titleProfession: { contains: query } },
+                ],
+              },
+              take: params.pageSize,
+              orderBy: [{ position: 'asc' }, { fullName: 'asc' }],
+            });
+            if (matchingSpeakers.length > 0) {
+              const speakerItems = matchingSpeakers.map((s) => ({
+                id: s.id,
+                firstName: s.fullName,
+                lastName: '',
+                ci: '—',
+                email: null,
+                phone: null,
+                type: s.role,
+                source: 'SPEAKER',
+                institution: s.institution,
+                career: s.titleProfession,
+                createdAt: s.createdAt.toISOString(),
+                attended: totalSessions,
+                pct: 100,
+                eligible: true,
+              }));
+              res.json({
+                ...paginatedResponse(speakerItems, matchingSpeakers.length, params),
+                totalSessions,
+              });
+              return;
+            }
+          }
           const page = onlyEligible
             ? filtered.slice((params.page - 1) * params.pageSize, params.page * params.pageSize)
             : filtered;
@@ -109,6 +194,39 @@ export function participantRoutes(): Router {
             totalSessions,
           });
           return;
+        }
+        if (items.length === 0 && query && !typeFilter) {
+          const matchingSpeakers = await prisma.speaker.findMany({
+            where: {
+              eventId: req.params.eventId,
+              OR: [
+                { fullName: { contains: query } },
+                { institution: { contains: query } },
+                { titleProfession: { contains: query } },
+              ],
+            },
+            take: params.pageSize,
+            orderBy: [{ position: 'asc' }, { fullName: 'asc' }],
+          });
+          if (matchingSpeakers.length > 0) {
+            const speakerItems = matchingSpeakers.map((s) => ({
+              id: s.id,
+              firstName: s.fullName,
+              lastName: '',
+              ci: '—',
+              email: null,
+              phone: null,
+              type: s.role,
+              source: 'SPEAKER',
+              institution: s.institution,
+              career: s.titleProfession,
+              createdAt: s.createdAt.toISOString(),
+              attended: 1,
+              pct: 100,
+              eligible: true,
+            }));
+            return res.json(paginatedResponse(speakerItems, matchingSpeakers.length, params));
+          }
         }
         res.json(paginatedResponse(items, total, params));
       } catch (err) {
