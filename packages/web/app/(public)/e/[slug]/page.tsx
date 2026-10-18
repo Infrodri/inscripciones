@@ -147,9 +147,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           ) : (
             <Badge tono="ok">Ingreso Gratuito</Badge>
           )}
-          {event.issuesCertificate ? (
-            <Badge tono="ok">Emite Certificado Académico</Badge>
-          ) : null}
+          {event.issuesCertificate ? <Badge tono="ok">Emite Certificado Académico</Badge> : null}
           {event.spotsLeft !== null ? (
             <Badge tono={event.spotsLeft > 0 ? 'neutro' : 'error'}>
               {event.spotsLeft > 0 ? `${event.spotsLeft} cupos disponibles` : 'Cupo agotado'}
@@ -166,8 +164,18 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         <div className="grid gap-6 sm:grid-cols-2 text-sm border-t border-line pt-5">
           <div className="space-y-2">
             <p className="font-semibold text-navy flex items-center gap-2">
-              <svg className="w-4 h-4 text-gold shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <svg
+                className="w-4 h-4 text-gold shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
               </svg>
               <span>Fechas y Horarios</span>
             </p>
@@ -182,11 +190,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                     ) : null}
                     <p className="text-sm font-medium">
                       {formatFechaHora(s.startsAt)}
-                      {s.endsAt ? ` — ${formatFechaHora(s.endsAt).split(' · ')[1] ?? formatFechaHora(s.endsAt)}` : ''}
+                      {s.endsAt
+                        ? ` — ${formatFechaHora(s.endsAt).split(' · ')[1] ?? formatFechaHora(s.endsAt)}`
+                        : ''}
                     </p>
-                    {s.location ? (
-                      <p className="text-xs text-muted mt-0.5">{s.location}</p>
-                    ) : null}
+                    {s.location ? <p className="text-xs text-muted mt-0.5">{s.location}</p> : null}
                   </li>
                 ))}
               </ul>
@@ -197,9 +205,24 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
           <div className="space-y-2">
             <p className="font-semibold text-navy flex items-center gap-2">
-              <svg className="w-4 h-4 text-gold shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              <svg
+                className="w-4 h-4 text-gold shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
               </svg>
               <span>Ubicación y Salón</span>
             </p>
@@ -214,7 +237,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 >
                   Ver en Google Maps
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                    />
                   </svg>
                 </a>
               ) : null}
@@ -225,8 +253,18 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         {event.speakers && event.speakers.length > 0 ? (
           <div className="border-t border-line pt-5 space-y-3">
             <h2 className="font-serif text-lg font-bold text-navy flex items-center gap-2">
-              <svg className="w-4 h-4 text-gold shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              <svg
+                className="w-4 h-4 text-gold shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
               </svg>
               <span>Expositores y Ponentes</span>
             </h2>
@@ -308,7 +346,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         <Card className="rounded-xl border border-line bg-surface p-6 sm:p-8 shadow-soft text-center space-y-3">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-warn-bg text-warn">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
           </div>
           <p className="font-serif text-lg font-bold text-navy">
@@ -321,7 +364,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                   : 'Las inscripciones no están disponibles por el momento.'}
           </p>
           <p className="text-sm text-muted max-w-md mx-auto">
-            Los detalles y programa del evento continúan visibles arriba. Si ya completó su registro previo, conserve su comprobante y código QR para el ingreso.
+            Los detalles y programa del evento continúan visibles arriba. Si ya completó su registro
+            previo, conserve su comprobante y código QR para el ingreso.
           </p>
         </Card>
       )}
@@ -332,4 +376,3 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     </main>
   );
 }
-

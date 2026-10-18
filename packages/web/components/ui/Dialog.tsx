@@ -33,18 +33,14 @@ export function Dialog({
     // Solo enfocar inicialmente si el foco actual no está ya dentro del diálogo
     if (!panel.contains(document.activeElement)) {
       const inputs = Array.from(
-        panel.querySelectorAll<HTMLElement>(
-          'input:not([type="hidden"]), select, textarea'
-        )
+        panel.querySelectorAll<HTMLElement>('input:not([type="hidden"]), select, textarea')
       ).filter((el) => !el.hasAttribute('disabled'));
 
       if (inputs.length > 0) {
         inputs[0].focus();
       } else {
         const otherFocusables = Array.from(
-          panel.querySelectorAll<HTMLElement>(
-            'button, [href], [tabindex]:not([tabindex="-1"])'
-          )
+          panel.querySelectorAll<HTMLElement>('button, [href], [tabindex]:not([tabindex="-1"])')
         ).filter((el) => !el.hasAttribute('disabled'));
         otherFocusables[0]?.focus();
       }

@@ -158,7 +158,10 @@ export function RegistrationForm({
         <div className="space-y-1">
           <h2 className="font-serif text-2xl font-bold text-navy">¡Inscripción confirmada!</h2>
           <p className="text-ink text-sm sm:text-base">
-            <strong>{success.firstName} {success.lastName}</strong>: presente este código QR al ingresar al evento.
+            <strong>
+              {success.firstName} {success.lastName}
+            </strong>
+            : presente este código QR al ingresar al evento.
           </p>
           <p className="text-xs text-muted">
             Guarde o descargue el código QR en su dispositivo móvil para el control de asistencia.
@@ -202,8 +205,12 @@ export function RegistrationForm({
     <Card className="border border-line bg-surface p-6 sm:p-8 rounded-xl shadow-soft">
       <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-6">
         <div className="border-b border-line pb-4">
-          <h2 className="font-serif text-xl sm:text-2xl font-bold text-navy">Formulario de inscripción</h2>
-          <p className="text-sm text-muted mt-0.5">Complete sus datos para registrarse al evento académico.</p>
+          <h2 className="font-serif text-xl sm:text-2xl font-bold text-navy">
+            Formulario de inscripción
+          </h2>
+          <p className="text-sm text-muted mt-0.5">
+            Complete sus datos para registrarse al evento académico.
+          </p>
         </div>
 
         {/* Personal Details */}
@@ -229,7 +236,13 @@ export function RegistrationForm({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input id="ci" etiqueta="CI" obligatorio {...register('ci')} error={errors.ci?.message} />
+            <Input
+              id="ci"
+              etiqueta="CI"
+              obligatorio
+              {...register('ci')}
+              error={errors.ci?.message}
+            />
             <Input
               id="phone"
               etiqueta="Celular"
@@ -324,7 +337,10 @@ export function RegistrationForm({
                   <p className="font-semibold text-navy">Instrucciones para transferencia:</p>
                   <ol className="list-decimal list-inside space-y-1 text-xs text-muted">
                     <li>Abra su aplicación bancaria o billetera móvil.</li>
-                    <li>Escanee el código QR institucional por el monto de {event.cost != null ? `${event.cost} Bs` : 'la matrícula'}.</li>
+                    <li>
+                      Escanee el código QR institucional por el monto de{' '}
+                      {event.cost != null ? `${event.cost} Bs` : 'la matrícula'}.
+                    </li>
                     <li>Guarde el comprobante o captura de pantalla de la transferencia.</li>
                     <li>Adjunte el archivo del comprobante en el campo inferior.</li>
                   </ol>
@@ -347,12 +363,11 @@ export function RegistrationForm({
               />
               {proofFile ? (
                 <p className="text-xs text-ok font-medium">
-                  ✓ Comprobante seleccionado: {proofFile.name} ({(proofFile.size / 1024).toFixed(1)} KB)
+                  ✓ Comprobante seleccionado: {proofFile.name} ({(proofFile.size / 1024).toFixed(1)}{' '}
+                  KB)
                 </p>
               ) : (
-                <p className="text-xs text-muted">
-                  Archivos permitidos: PNG, JPG, WEBP o PDF.
-                </p>
+                <p className="text-xs text-muted">Archivos permitidos: PNG, JPG, WEBP o PDF.</p>
               )}
             </div>
           </div>
@@ -360,7 +375,10 @@ export function RegistrationForm({
 
         {/* Data Consent */}
         <div className="pt-2">
-          <label htmlFor="dataConsent" className="flex items-start gap-3 cursor-pointer text-sm text-ink select-none min-h-[44px]">
+          <label
+            htmlFor="dataConsent"
+            className="flex items-start gap-3 cursor-pointer text-sm text-ink select-none min-h-[44px]"
+          >
             <input
               id="dataConsent"
               type="checkbox"
@@ -370,12 +388,17 @@ export function RegistrationForm({
             <span>Acepto el tratamiento de mis datos para este evento</span>
           </label>
           {errors.dataConsent ? (
-            <p role="alert" className="mt-1 text-sm text-danger">{errors.dataConsent.message}</p>
+            <p role="alert" className="mt-1 text-sm text-danger">
+              {errors.dataConsent.message}
+            </p>
           ) : null}
         </div>
 
         {serverError ? (
-          <div className="rounded-lg bg-danger-bg p-3 text-sm text-danger border border-line" role="alert">
+          <div
+            className="rounded-lg bg-danger-bg p-3 text-sm text-danger border border-line"
+            role="alert"
+          >
             {serverError}
           </div>
         ) : null}
@@ -385,6 +408,7 @@ export function RegistrationForm({
           variant="primario"
           size="lg"
           cargando={isSubmitting}
+          textoCargando="Enviando…"
           className="w-full !text-white text-base font-semibold min-h-[48px] shadow-soft"
         >
           Confirmar inscripción

@@ -10,12 +10,10 @@ import {
 } from 'react';
 import { DateTimeInput } from './DateTimeInput';
 
-const field =
-  'mt-1 block w-full min-h-[44px] rounded-[var(--radius-md)] border border-line bg-surface p-2.5 text-ink shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:opacity-50 transition-colors';
-
 interface Base {
   id: string;
-  etiqueta: string;
+  etiqueta?: string;
+  label?: string;
   error?: string;
   opcional?: string;
   obligatorio?: boolean;
@@ -33,10 +31,14 @@ type SelectProps = Base &
     children?: ReactNode;
   };
 
-function ErrorText({ message }: { message?: string }): ReactElement | null {
+function ErrorText({ id, message }: { id?: string; message?: string }): ReactElement | null {
   if (!message) return null;
   return (
-    <p role="alert" className="mt-1 text-xs font-semibold text-danger flex items-center gap-1.5 animate-fadeIn">
+    <p
+      id={id}
+      role="alert"
+      className="mt-1 text-xs font-semibold text-danger flex items-center gap-1.5 animate-fadeIn"
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
@@ -57,19 +59,25 @@ function ErrorText({ message }: { message?: string }): ReactElement | null {
 function Label({
   id,
   etiqueta,
+  label,
   opcional,
   isRequired,
 }: {
   id: string;
-  etiqueta: string;
+  etiqueta?: string;
+  label?: string;
   opcional?: string;
   isRequired?: boolean;
 }): ReactElement {
+  const text = etiqueta ?? label ?? '';
+  if (!text) return <></>;
   return (
     <div className="flex items-center gap-0.5">
       <label htmlFor={id} className="block text-sm font-medium text-ink">
-        {etiqueta}
-        {opcional ? <span className="font-normal text-muted text-xs"> {opcional.trim()}</span> : null}
+        {text}
+        {opcional ? (
+          <span className="font-normal text-muted text-xs"> {opcional.trim()}</span>
+        ) : null}
       </label>
       {isRequired ? (
         <span
@@ -159,38 +167,95 @@ export function Input(props: AreaProps): ReactElement;
 export function Input(props: SelectProps): ReactElement;
 export function Input(props: InputProps | AreaProps | SelectProps): ReactElement {
   if ('type' in props && props.type === 'datetime-local') {
-    return <DateTimeInput {...(props as any)} />;
+    return <DateTimeInput {...(props as unknown as React.ComponentProps<typeof DateTimeInput>)} />;
   }
 
   const isRequired = Boolean(props.obligatorio || ('required' in props && props.required));
 
   if ('desplegable' in props && props.desplegable) {
-    const { id, etiqueta, error, opcional, obligatorio: _ob, desplegable: _d, children, ...rest } = props;
+    const {
+      id,
+      etiqueta,
+      label,
+      error,
+      opcional,
+      obligatorio: _ob,
+      desplegable: _d,
+      children,
+      ...rest
+    } = props;
     void _ob;
     void _d;
     return (
       <div>
-        <Label id={id} etiqueta={etiqueta} opcional={opcional} isRequired={isRequired} />
-        <ErrorText message={error} />
-        <select id={id} {...rest} className={getFieldClass(Boolean(error))}>
+        <Label
+          id={id}
+          etiqueta={etiqueta}
+          label={label}
+          opcional={opcional}
+          isRequired={isRequired}
+        />
+        <ErrorText id={`${id}-error`} message={error} />
+        <select
+          id={id}
+          aria-describedby={
+            error ? `${id}-error` : (rest['aria-describedby'] as string | undefined)
+          }
+          aria-invalid={Boolean(error)}
+          {...rest}
+          className={getFieldClass(Boolean(error))}
+        >
           {children}
         </select>
       </div>
     );
   }
   if ('multiline' in props && props.multiline) {
-    const { id, etiqueta, error, opcional, obligatorio: _ob, multiline: _m, ...rest } = props;
+    const {
+      id,
+      etiqueta,
+      label,
+      error,
+      opcional,
+      obligatorio: _ob,
+      multiline: _m,
+      ...rest
+    } = props;
     void _ob;
     void _m;
     return (
       <div>
-        <Label id={id} etiqueta={etiqueta} opcional={opcional} isRequired={isRequired} />
-        <ErrorText message={error} />
-        <textarea id={id} {...rest} className={getFieldClass(Boolean(error))} />
+        <Label
+          id={id}
+          etiqueta={etiqueta}
+          label={label}
+          opcional={opcional}
+          isRequired={isRequired}
+        />
+        <ErrorText id={`${id}-error`} message={error} />
+        <textarea
+          id={id}
+          aria-describedby={
+            error ? `${id}-error` : (rest['aria-describedby'] as string | undefined)
+          }
+          aria-invalid={Boolean(error)}
+          {...rest}
+          className={getFieldClass(Boolean(error))}
+        />
       </div>
     );
   }
-  const { id, etiqueta, error, opcional, obligatorio: _ob, multiline: _m2, desplegable: _d2, ...rest } = props;
+  const {
+    id,
+    etiqueta,
+    label,
+    error,
+    opcional,
+    obligatorio: _ob,
+    multiline: _m2,
+    desplegable: _d2,
+    ...rest
+  } = props;
   void _ob;
   void _m2;
   void _d2;
@@ -198,18 +263,44 @@ export function Input(props: InputProps | AreaProps | SelectProps): ReactElement
   if (rest.type === 'password') {
     return (
       <div>
-        <Label id={id} etiqueta={etiqueta} opcional={opcional} isRequired={isRequired} />
-        <ErrorText message={error} />
-        <PasswordInputField id={id} fieldClass={getFieldClass(Boolean(error))} {...rest} />
+        <Label
+          id={id}
+          etiqueta={etiqueta}
+          label={label}
+          opcional={opcional}
+          isRequired={isRequired}
+        />
+        <ErrorText id={`${id}-error`} message={error} />
+        <PasswordInputField
+          id={id}
+          fieldClass={getFieldClass(Boolean(error))}
+          aria-describedby={
+            error ? `${id}-error` : (rest['aria-describedby'] as string | undefined)
+          }
+          aria-invalid={Boolean(error)}
+          {...rest}
+        />
       </div>
     );
   }
 
   return (
     <div>
-      <Label id={id} etiqueta={etiqueta} opcional={opcional} isRequired={isRequired} />
-      <ErrorText message={error} />
-      <input id={id} {...rest} className={getFieldClass(Boolean(error))} />
+      <Label
+        id={id}
+        etiqueta={etiqueta}
+        label={label}
+        opcional={opcional}
+        isRequired={isRequired}
+      />
+      <ErrorText id={`${id}-error`} message={error} />
+      <input
+        id={id}
+        aria-describedby={error ? `${id}-error` : (rest['aria-describedby'] as string | undefined)}
+        aria-invalid={Boolean(error)}
+        {...rest}
+        className={getFieldClass(Boolean(error))}
+      />
     </div>
   );
 }
