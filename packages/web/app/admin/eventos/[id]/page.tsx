@@ -184,9 +184,12 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
         {tab === 'certificados' ? (
           <div className="rounded-xl border border-line bg-surface p-6 shadow-sm">
             <div className="max-w-2xl">
-              <h3 className="text-base font-semibold text-ink">Emisión y Plantillas de Certificados</h3>
+              <h3 className="text-base font-semibold text-ink">
+                Emisión y Plantillas de Certificados
+              </h3>
               <p className="mt-1 text-sm text-muted">
-                Administre el diseño gráfico de las acreditaciones, configure las coordenadas de impresión para asistentes y genere certificados individuales o en lote.
+                Administre el diseño gráfico de las acreditaciones, configure las coordenadas de
+                impresión para asistentes y genere certificados individuales o en lote.
               </p>
               <div className="mt-4">
                 <Button onClick={() => router.push(`/admin/eventos/${id}/certificados`)}>

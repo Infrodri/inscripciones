@@ -62,10 +62,11 @@ export function EventCollections({ eventId }: { eventId: string }) {
         <h2 className="font-serif text-lg text-[#0A2A5E]">Sesiones / Salas / Mesas</h2>
         <ul className="mt-2 space-y-2">
           {(sessions.data?.data ?? []).map((s) => (
-            <li key={s.id} className="text-sm rounded-[var(--radius-md)] border border-line bg-canvas p-2.5">
-              <div className="font-semibold text-navy">
-                {s.label ? s.label : 'Sesión'}
-              </div>
+            <li
+              key={s.id}
+              className="text-sm rounded-[var(--radius-md)] border border-line bg-canvas p-2.5"
+            >
+              <div className="font-semibold text-navy">{s.label ? s.label : 'Sesión'}</div>
               <div className="text-xs text-muted mt-0.5">
                 {formatFechaHora(s.startsAt)}
                 {s.location ? ` · Salón/Mesa: ${s.location}` : ''}

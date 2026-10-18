@@ -9,7 +9,6 @@ const stamp = Date.now();
 let baseUrl = '';
 let server: Server | null = null;
 let eventId = '';
-let participantId = '';
 const testCi = `1234567-${stamp}`;
 const testCode = `cert-${stamp}-abc`;
 
@@ -43,7 +42,7 @@ describe('POST /api/v1/public/certificates/verify', () => {
       },
     });
 
-    const participant = await prisma.participant.create({
+    await prisma.participant.create({
       data: {
         eventId,
         firstName: 'Carlos Alberto',
@@ -56,7 +55,6 @@ describe('POST /api/v1/public/certificates/verify', () => {
         dataConsentAt: new Date(),
       },
     });
-    participantId = participant.id;
   });
 
   afterAll(async () => {

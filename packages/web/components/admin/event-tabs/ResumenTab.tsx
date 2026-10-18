@@ -42,25 +42,46 @@ export function ResumenTab({ eventId }: { eventId: string }) {
   });
 
   if (stats.isLoading) return <p className="text-muted">Cargando métricas del evento…</p>;
-  if (stats.isError) return <p className="text-danger">No se pudieron cargar los datos: {apiErrorMessage(stats.error)}</p>;
+  if (stats.isError)
+    return (
+      <p className="text-danger">No se pudieron cargar los datos: {apiErrorMessage(stats.error)}</p>
+    );
 
   const last = stats.data?.perSession[stats.data.perSession.length - 1];
   const pendientes: Array<{ texto: string; tab: string; accion: string }> = [];
   if (!event.data?.bannerPath)
-    pendientes.push({ texto: 'Subir el afiche oficial del evento', tab: 'datos', accion: 'Subir afiche' });
+    pendientes.push({
+      texto: 'Subir el afiche oficial del evento',
+      tab: 'datos',
+      accion: 'Subir afiche',
+    });
   if ((sessions.data?.data.length ?? 0) === 0)
-    pendientes.push({ texto: 'Configurar al menos una sesión con fecha y hora', tab: 'datos', accion: 'Agregar sesión' });
+    pendientes.push({
+      texto: 'Configurar al menos una sesión con fecha y hora',
+      tab: 'datos',
+      accion: 'Agregar sesión',
+    });
   if (!(templates.data?.data ?? []).some((t) => t.isDefault))
-    pendientes.push({ texto: 'Cargar plantilla de certificado para asistentes', tab: 'certificados', accion: 'Gestionar plantillas' });
+    pendientes.push({
+      texto: 'Cargar plantilla de certificado para asistentes',
+      tab: 'certificados',
+      accion: 'Gestionar plantillas',
+    });
   if (event.data?.status === 'BORRADOR')
-    pendientes.push({ texto: 'Publicar el evento para habilitar inscripciones', tab: 'inscripcion', accion: 'Ir a publicación' });
+    pendientes.push({
+      texto: 'Publicar el evento para habilitar inscripciones',
+      tab: 'inscripcion',
+      accion: 'Ir a publicación',
+    });
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Total Inscritos</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+              Total Inscritos
+            </span>
             <span className="h-8 w-8 rounded-full bg-blue-bg flex items-center justify-center text-navy font-bold text-sm">
               👥
             </span>
@@ -73,7 +94,9 @@ export function ResumenTab({ eventId }: { eventId: string }) {
 
         <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Asistentes</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+              Asistentes
+            </span>
             <span className="h-8 w-8 rounded-full bg-ok-bg flex items-center justify-center text-ok font-bold text-sm">
               ✓
             </span>
@@ -86,7 +109,9 @@ export function ResumenTab({ eventId }: { eventId: string }) {
 
         <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Aptos Certificado</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+              Aptos Certificado
+            </span>
             <span className="h-8 w-8 rounded-full bg-warn-bg flex items-center justify-center text-warn font-bold text-sm">
               ★
             </span>
@@ -105,20 +130,24 @@ export function ResumenTab({ eventId }: { eventId: string }) {
         {pendientes.length === 0 ? (
           <div className="mt-4 flex items-center gap-3 p-3 rounded-[var(--radius-md)] bg-ok-bg text-ok">
             <span className="text-xl">✓</span>
-            <p className="text-sm font-medium">Todo listo: el evento cuenta con afiche, sesiones, plantilla de certificados e inscripciones activas.</p>
+            <p className="text-sm font-medium">
+              Todo listo: el evento cuenta con afiche, sesiones, plantilla de certificados e
+              inscripciones activas.
+            </p>
           </div>
         ) : (
           <div className="mt-4 divide-y divide-line">
             {pendientes.map((p) => (
-              <div key={p.texto} className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div
+                key={p.texto}
+                className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+              >
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-warn inline-block"></span>
                   <span className="text-sm text-ink">{p.texto}</span>
                 </div>
                 <Button asChild variant="secundario" size="sm">
-                  <Link href={`/admin/eventos/${eventId}?tab=${p.tab}`}>
-                    {p.accion}
-                  </Link>
+                  <Link href={`/admin/eventos/${eventId}?tab=${p.tab}`}>{p.accion}</Link>
                 </Button>
               </div>
             ))}

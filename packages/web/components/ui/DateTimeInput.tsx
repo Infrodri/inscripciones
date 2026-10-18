@@ -9,17 +9,28 @@ export interface DateTimeInputProps {
   etiqueta?: string;
   error?: string;
   opcional?: string;
-  obligatorio?: boolean;
-  value?: any;
-  onChange?: (e: any) => void;
+  value?: string | number | readonly string[];
+  onChange?: (
+    e: React.ChangeEvent<HTMLInputElement> | { target: { value: string; name?: string } }
+  ) => void;
   required?: boolean;
   disabled?: boolean;
   className?: string;
 }
 
 const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ];
 
 const DAY_LABELS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
@@ -194,7 +205,10 @@ export function DateTimeInput({
       )}
 
       {error ? (
-        <p role="alert" className="text-xs font-semibold text-danger flex items-center gap-1.5 animate-fadeIn">
+        <p
+          role="alert"
+          className="text-xs font-semibold text-danger flex items-center gap-1.5 animate-fadeIn"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"
@@ -235,12 +249,7 @@ export function DateTimeInput({
             title="Abrir calendario boliviano"
             aria-label="Abrir calendario"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -339,9 +348,7 @@ export function DateTimeInput({
                   type="button"
                   onClick={() => selectDay(day)}
                   className={`h-7 w-7 mx-auto rounded-full transition-colors flex items-center justify-center font-medium ${
-                    isSelected
-                      ? 'bg-navy text-white font-bold'
-                      : 'hover:bg-gold/20 text-ink'
+                    isSelected ? 'bg-navy text-white font-bold' : 'hover:bg-gold/20 text-ink'
                   }`}
                 >
                   {day}

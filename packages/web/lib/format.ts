@@ -90,7 +90,7 @@ export function formatCosto(isFree: boolean, cost?: number | null): string {
  * Normaliza texto eliminando tildes y diacríticos para búsquedas insensibles.
  * Ej: "tecnología" -> "tecnologia"
  */
-export function normalizeText(text: string): string {
+export function normalizeText(text?: string | null): string {
   if (!text) return '';
   return text
     .normalize('NFD')
@@ -111,7 +111,9 @@ export function formatModality(modality?: string | null): string {
     case 'HIBRIDO':
       return 'Híbrido';
     default:
-      return modality ? modality.charAt(0).toUpperCase() + modality.slice(1).toLowerCase() : 'Presencial';
+      return modality
+        ? modality.charAt(0).toUpperCase() + modality.slice(1).toLowerCase()
+        : 'Presencial';
   }
 }
 

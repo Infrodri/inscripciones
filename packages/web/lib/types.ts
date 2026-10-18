@@ -73,9 +73,10 @@ export interface CertificateVerificationRequest {
 export interface CertificateVerificationResponse {
   valid: boolean;
   message?: string;
-  eventTitle?: string;
-  recipientName?: string;
-  roleKind?: RoleKind | string;
-  issueDate?: string;
-  institution?: string;
+  certificate?: {
+    eventTitle: string;
+    eventDate: string | null;
+    recipientName: string;
+    role: string;
+  };
 }

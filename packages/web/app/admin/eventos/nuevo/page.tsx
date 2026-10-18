@@ -71,8 +71,9 @@ export default function NuevoEventoPage() {
 
   const { data: events } = useQuery({
     queryKey: ['events'],
-    queryFn: async (): Promise<{ data: Array<{ id: string; title: string; eventKind?: string }> }> =>
-      (await api.get('/events')).data,
+    queryFn: async (): Promise<{
+      data: Array<{ id: string; title: string; eventKind?: string }>;
+    }> => (await api.get('/events')).data,
   });
 
   const availableKinds = Array.from(
@@ -330,7 +331,10 @@ export default function NuevoEventoPage() {
                 onChange={(e) => setIssuesCertificate(e.target.checked)}
                 className="h-5 w-5 accent-navy cursor-pointer"
               />
-              <label htmlFor="issuesCertificate" className="cursor-pointer text-sm font-medium text-ink">
+              <label
+                htmlFor="issuesCertificate"
+                className="cursor-pointer text-sm font-medium text-ink"
+              >
                 Emite certificados de asistencia
               </label>
             </div>
@@ -405,16 +409,16 @@ export default function NuevoEventoPage() {
                     onChange={(e) => set(e.target.checked)}
                     className="h-5 w-5 accent-navy cursor-pointer"
                   />
-                  <label htmlFor={id} className="cursor-pointer text-sm text-ink">{label}</label>
+                  <label htmlFor={id} className="cursor-pointer text-sm text-ink">
+                    {label}
+                  </label>
                 </div>
               ))}
             </div>
           </Card>
         ) : null}
 
-        {!duplicateFrom ? (
-          <PaymentFields value={payment} onChange={setPayment} />
-        ) : null}
+        {!duplicateFrom ? <PaymentFields value={payment} onChange={setPayment} /> : null}
 
         <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft">
           <h2 className="font-serif text-lg font-semibold text-navy mb-4 border-b border-line pb-2">
@@ -430,7 +434,13 @@ export default function NuevoEventoPage() {
         </Card>
 
         <div className="flex justify-end">
-          <Button type="submit" variant="primario" size="lg" cargando={busy} className="!text-white min-w-[160px]">
+          <Button
+            type="submit"
+            variant="primario"
+            size="lg"
+            cargando={busy}
+            className="!text-white min-w-[160px]"
+          >
             Crear evento
           </Button>
         </div>

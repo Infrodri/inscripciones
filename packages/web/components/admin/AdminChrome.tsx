@@ -13,8 +13,6 @@ import {
   LogOut,
   Menu,
   PlusCircle,
-  ShieldCheck,
-  Building2,
 } from 'lucide-react';
 import { clearSession, getSessionUser } from '@/lib/auth';
 
@@ -49,9 +47,7 @@ const navSections: Array<{ title: string; items: NavItem[] }> = [
   },
   {
     title: 'PORTAL',
-    items: [
-      { href: '/', etiqueta: 'Ver Portal Público', Icono: ExternalLink, external: true },
-    ],
+    items: [{ href: '/', etiqueta: 'Ver Portal Público', Icono: ExternalLink, external: true }],
   },
 ];
 
@@ -106,7 +102,10 @@ export function AdminChrome({ children }: { children: ReactNode }) {
       >
         {/* University Crest & Title */}
         <div className="p-4 border-b border-white/10 bg-navy-light/40">
-          <Link href="/admin/eventos" className="flex items-center gap-2.5 !text-white hover:opacity-95 transition-opacity">
+          <Link
+            href="/admin/eventos"
+            className="flex items-center gap-2.5 !text-white hover:opacity-95 transition-opacity"
+          >
             <div className="h-9 w-9 rounded-lg border border-gold/40 overflow-hidden shrink-0 shadow-soft">
               <img
                 src="/facultad-derecho-usfx.jpg"
@@ -121,9 +120,7 @@ export function AdminChrome({ children }: { children: ReactNode }) {
               <h1 className="font-serif text-sm font-bold text-white leading-tight truncate">
                 San Francisco Xavier
               </h1>
-              <p className="text-[10px] text-white/70 truncate">
-                Derecho y Cs. Políticas
-              </p>
+              <p className="text-[10px] text-white/70 truncate">Derecho y Cs. Políticas</p>
             </div>
           </Link>
         </div>
@@ -219,8 +216,7 @@ export function AdminChrome({ children }: { children: ReactNode }) {
               href="/admin/eventos/nuevo"
               className="inline-flex items-center gap-1.5 bg-navy hover:bg-navy-hover !text-white text-xs font-semibold px-3 py-1.5 rounded-[var(--radius-md)] transition-colors shadow-soft"
             >
-              <PlusCircle size={15} />
-              + Nuevo Evento
+              <PlusCircle size={15} />+ Nuevo Evento
             </Link>
 
             {user ? (
@@ -229,7 +225,9 @@ export function AdminChrome({ children }: { children: ReactNode }) {
                   {user.name.slice(0, 1).toUpperCase()}
                 </div>
                 <div className="hidden lg:block leading-tight text-right">
-                  <p className="font-semibold text-navy text-xs truncate max-w-[140px]">{user.name}</p>
+                  <p className="font-semibold text-navy text-xs truncate max-w-[140px]">
+                    {user.name}
+                  </p>
                   <p className="text-[10px] text-muted">{user.role}</p>
                 </div>
               </div>

@@ -247,5 +247,7 @@ function TemplateThumb({ templateId, name }: { templateId: string; name: string 
     };
   }, [templateId]);
   if (!url) return <p className="text-sm text-muted">Cargando miniatura…</p>;
-  return <img src={url} alt={`Miniatura de ${name}`} className="max-h-32 rounded border border-line" />;
+  return (
+    <img src={url} alt={`Miniatura de ${name}`} className="max-h-32 rounded border border-line" />
+  );
 }

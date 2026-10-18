@@ -343,14 +343,22 @@ function EditForm({ event }: { event: EventFull }) {
                 onChange={(e) => onToggle(e.target.checked)}
                 className="h-5 w-5 accent-navy cursor-pointer"
               />
-              <label htmlFor={`d-${id}`} className="cursor-pointer text-sm text-ink">{label}</label>
+              <label htmlFor={`d-${id}`} className="cursor-pointer text-sm text-ink">
+                {label}
+              </label>
             </div>
           ))}
         </div>
       </div>
 
       <div className="flex justify-end">
-        <Button type="submit" variant="primario" size="lg" cargando={busy} className="!text-white min-w-[160px]">
+        <Button
+          type="submit"
+          variant="primario"
+          size="lg"
+          cargando={busy}
+          className="!text-white min-w-[160px]"
+        >
           Guardar cambios
         </Button>
       </div>

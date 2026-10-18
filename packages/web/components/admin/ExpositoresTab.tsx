@@ -88,6 +88,10 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
 
   async function submit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
+    if (!effectiveTemplate) {
+      toast.error('Seleccione una plantilla o configure una predeterminada para EXPOSITOR');
+      return;
+    }
     try {
       await api.post(`/events/${eventId}/certificate-recipients`, {
         roleKind: 'EXPOSITOR',
@@ -110,6 +114,12 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
   }
 
   async function fromSpeakers(): Promise<void> {
+    if (!defaultId) {
+      toast.error(
+        'No hay una plantilla predeterminada para EXPOSITOR. Configure una en la pestaña Plantillas antes de importar.'
+      );
+      return;
+    }
     try {
       const res = await api.post(`/events/${eventId}/certificate-recipients/from-speakers`);
       const body = res.data as { created: unknown[]; skipped: string[] };
@@ -122,9 +132,22 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
 
   return (
     <div>
-      <Button variant="secundario" onClick={() => void fromSpeakers()}>
-        Cargar desde expositores del evento
-      </Button>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <Button
+          variant="secundario"
+          onClick={() => void fromSpeakers()}
+          disabled={!defaultId}
+          title={!defaultId ? 'Configure una plantilla predeterminada para EXPOSITOR' : undefined}
+        >
+          Cargar desde expositores del evento
+        </Button>
+        {!defaultId && (
+          <p className="text-xs text-muted">
+            ⚠️ Para importar expositores automáticamente, configure primero una plantilla
+            predeterminada en la pestaña <span className="font-medium text-ink">Plantillas</span>.
+          </p>
+        )}
+      </div>
       <form onSubmit={(e) => void submit(e)} className="mt-3 grid max-w-xl gap-3">
         <Input
           id="exp-nombre"

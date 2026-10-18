@@ -28,7 +28,10 @@ function resolveDbUrl() {
     void err;
   }
 
-  return process.env.DATABASE_URL || 'postgresql://inscripciones:inscripciones@localhost:5434/inscripciones';
+  return (
+    process.env.DATABASE_URL ||
+    'postgresql://inscripciones:inscripciones@localhost:5434/inscripciones'
+  );
 }
 
 const targetUrl = resolveDbUrl();
@@ -86,7 +89,8 @@ async function main() {
       institution: 'Universidad Mayor, Real y Pontificia de San Francisco Xavier de Chuquisaca',
       commemoration: 'Homenaje al Bicentenario de Bolivia y CCCXLV Aniversario Facultativo',
       organizer: 'Facultad de Derecho, Ciencias Políticas y Sociales',
-      audienceNote: 'Abierto a estudiantes de pregrado, docentes, abogados del foro e investigadores.',
+      audienceNote:
+        'Abierto a estudiantes de pregrado, docentes, abogados del foro e investigadores.',
       description:
         'Magno encuentro de juristas y académicos de Bolivia, Argentina y España. Se abordarán reformas al código procesal, garantismo judicial, oralidad y عصر digital.',
       location: 'Paraninfo Universitario - Calle Junín esq. Estudiantes',

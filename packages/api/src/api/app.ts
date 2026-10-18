@@ -88,7 +88,11 @@ export function buildApp(env: AppEnv): express.Express {
   const storage = createStorage(env);
   app.use('/api/v1/auth', authRoutes(env.JWT_SECRET, env.JWT_EXPIRES_IN));
   app.use('/api/v1/public', publicRoutes(env, storage.publicStorage));
-  app.use('/api/v1/events', authMiddleware(env.JWT_SECRET), eventRoutes(storage.publicStorage, env));
+  app.use(
+    '/api/v1/events',
+    authMiddleware(env.JWT_SECRET),
+    eventRoutes(storage.publicStorage, env)
+  );
   app.use('/api/v1/participants', authMiddleware(env.JWT_SECRET), participantRoutes());
   app.use('/api/v1', authMiddleware(env.JWT_SECRET), attendanceRoutes());
   app.use('/api/v1', authMiddleware(env.JWT_SECRET), selfCheckinAdminRoutes(env));

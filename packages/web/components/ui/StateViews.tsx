@@ -34,13 +34,17 @@ export function EventCardSkeleton() {
 
 export function ErrorState({
   title = 'No se pudo cargar la información',
-  message = 'Ocurrió un problema de conexión al consultar el servidor.',
+  message,
+  description,
   onRetry,
 }: {
   title?: string;
   message?: string;
+  description?: string;
   onRetry?: () => void;
 }) {
+  const text =
+    description || message || 'Ocurrió un problema de conexión al consultar el servidor.';
   return (
     <div
       role="alert"
@@ -51,7 +55,7 @@ export function ErrorState({
       </div>
       <div className="space-y-1">
         <h3 className="font-serif text-base font-bold text-danger">{title}</h3>
-        <p className="text-xs text-muted max-w-md mx-auto">{message}</p>
+        <p className="text-xs text-muted max-w-md mx-auto">{text}</p>
       </div>
       {onRetry && (
         <div className="pt-2">
@@ -66,13 +70,21 @@ export function ErrorState({
 
 export function EmptyState({
   title = 'No se encontraron resultados',
-  message = 'No hay registros disponibles que coincidan con la búsqueda.',
+  message,
+  description,
   action,
+  actionLabel,
+  onAction,
 }: {
   title?: string;
   message?: string;
+  description?: string;
   action?: ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
 }) {
+  const text =
+    description || message || 'No hay registros disponibles que coincidan con la búsqueda.';
   return (
     <div className="rounded-xl border border-dashed border-line bg-surface p-8 text-center space-y-3 my-4">
       <div className="h-10 w-10 mx-auto rounded-full bg-canvas text-muted flex items-center justify-center">
@@ -80,9 +92,17 @@ export function EmptyState({
       </div>
       <div className="space-y-1">
         <h3 className="font-serif text-base font-bold text-ink">{title}</h3>
-        <p className="text-xs text-muted max-w-md mx-auto">{message}</p>
+        <p className="text-xs text-muted max-w-md mx-auto">{text}</p>
       </div>
-      {action && <div className="pt-2">{action}</div>}
+      {action ? (
+        <div className="pt-2">{action}</div>
+      ) : actionLabel && onAction ? (
+        <div className="pt-2">
+          <Button variant="secundario" size="sm" onClick={onAction}>
+            {actionLabel}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -92,7 +92,9 @@ describe('Contraste de variantes de Button (ratio ≥ 4.5:1)', () => {
     for (const variant of buttonVariants) {
       const ratio = contrastRatio(variant.text, variant.bg);
       if (ratio < 4.5) {
-        failures.push(`${variant.name}: ratio ${ratio.toFixed(2)}:1 (texto ${variant.text} sobre fondo ${variant.bg}) < 4.5:1`);
+        failures.push(
+          `${variant.name}: ratio ${ratio.toFixed(2)}:1 (texto ${variant.text} sobre fondo ${variant.bg}) < 4.5:1`
+        );
       }
 
       // Verificar estado hover si tiene hoverBg

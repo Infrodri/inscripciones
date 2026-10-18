@@ -173,9 +173,7 @@ describe('UsuariosPage & Button institutional redesign and regression guards', (
   });
 
   it('Button variant="primario" strictly enforces !text-white in standard, hover, and asChild modes', () => {
-    const { container: standardBtn } = render(
-      <Button variant="primario">Guardar</Button>
-    );
+    const { container: standardBtn } = render(<Button variant="primario">Guardar</Button>);
     const btnEl = standardBtn.querySelector('button');
     expect(btnEl?.className).toContain('!text-white');
     expect(btnEl?.className).toContain('hover:!text-white');

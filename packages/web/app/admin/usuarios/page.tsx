@@ -296,18 +296,10 @@ export default function UsuariosPage() {
                       </td>
                       <td className="px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="secundario"
-                            size="sm"
-                            onClick={() => handleOpenEdit(u)}
-                          >
+                          <Button variant="secundario" size="sm" onClick={() => handleOpenEdit(u)}>
                             Editar / Cambiar rol
                           </Button>
-                          <Button
-                            variant="peligro"
-                            size="sm"
-                            onClick={() => setDeleteTarget(u)}
-                          >
+                          <Button variant="peligro" size="sm" onClick={() => setDeleteTarget(u)}>
                             Eliminar
                           </Button>
                         </div>
@@ -341,11 +333,7 @@ export default function UsuariosPage() {
                     >
                       Editar / Cambiar rol
                     </Button>
-                    <Button
-                      variant="peligro"
-                      size="sm"
-                      onClick={() => setDeleteTarget(u)}
-                    >
+                    <Button variant="peligro" size="sm" onClick={() => setDeleteTarget(u)}>
                       Eliminar
                     </Button>
                   </div>
@@ -419,11 +407,7 @@ export default function UsuariosPage() {
                 <option value="ADMIN">ADMIN (Acceso total al sistema)</option>
               </Input>
               <div className="mt-6 flex justify-end gap-2 border-t border-line pt-4">
-                <Button
-                  variant="secundario"
-                  type="button"
-                  onClick={() => setIsCreateOpen(false)}
-                >
+                <Button variant="secundario" type="button" onClick={() => setIsCreateOpen(false)}>
                   Cancelar
                 </Button>
                 <Button variant="primario" type="submit" cargando={isCreating}>
@@ -449,7 +433,9 @@ export default function UsuariosPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-2 border-b border-line pb-3">
-              <h2 className="font-serif text-xl font-bold text-navy">Editar usuario / Cambiar contraseña</h2>
+              <h2 className="font-serif text-xl font-bold text-navy">
+                Editar usuario / Cambiar contraseña
+              </h2>
               <button
                 type="button"
                 onClick={() => setEditTarget(null)}
@@ -492,11 +478,7 @@ export default function UsuariosPage() {
                 minLength={8}
               />
               <div className="mt-6 flex justify-end gap-2 border-t border-line pt-4">
-                <Button
-                  variant="secundario"
-                  type="button"
-                  onClick={() => setEditTarget(null)}
-                >
+                <Button variant="secundario" type="button" onClick={() => setEditTarget(null)}>
                   Cancelar
                 </Button>
                 <Button variant="primario" type="submit" cargando={isEditing}>

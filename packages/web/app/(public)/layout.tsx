@@ -10,7 +10,10 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         <header className="bg-navy border-b-2 border-gold text-white shadow-soft sticky top-0 z-30">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
             {/* University Identity */}
-            <Link href="/" className="!text-white hover:opacity-95 transition-opacity flex items-center gap-3">
+            <Link
+              href="/"
+              className="!text-white hover:opacity-95 transition-opacity flex items-center gap-3"
+            >
               <div className="h-11 w-11 rounded-full border-2 border-gold overflow-hidden shrink-0 shadow-soft bg-white/10">
                 <img
                   src="/facultad-derecho-usfx.jpg"
@@ -33,7 +36,10 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
 
             {/* Navigation & Access Button */}
             <div className="flex items-center gap-3 sm:gap-6">
-              <nav aria-label="Navegación pública" className="hidden md:flex items-center gap-5 text-sm font-medium">
+              <nav
+                aria-label="Navegación pública"
+                className="hidden md:flex items-center gap-5 text-sm font-medium"
+              >
                 <Link href="/" className="text-white hover:text-gold transition-colors">
                   Inicio
                 </Link>

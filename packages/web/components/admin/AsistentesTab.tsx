@@ -20,6 +20,7 @@ interface Stats {
   eligible: number;
   sessions: number;
   perSession: Array<{ checkedIn: number }>;
+  minAttendancePercent?: number;
 }
 
 interface Participant {
@@ -78,12 +79,14 @@ export function AsistentesTab({
     enabled: scope === 'selected',
   });
 
-  if (stats.isLoading) return <p>Cargando…</p>;
-  if (stats.isError) return <p>No se pudo cargar: {apiErrorMessage(stats.error)}</p>;
+  if (stats.isLoading) return <p className="text-sm text-muted">Cargando…</p>;
+  if (stats.isError)
+    return <p className="text-sm text-danger">No se pudo cargar: {apiErrorMessage(stats.error)}</p>;
 
   const total = stats.data?.participants ?? 0;
   const eligible = stats.data?.eligible ?? 0;
   const sessions = stats.data?.sessions ?? 0;
+  const minPercent = stats.data?.minAttendancePercent ?? 80;
   const checkins = (stats.data?.perSession ?? []).reduce((a, s) => a + s.checkedIn, 0);
   // Sin control de asistencia (una sola sesión sin escaneos): "todos" primero.
   const effectiveScope: Scope = scope ?? (sessions <= 1 && checkins === 0 ? 'all' : 'eligible');
@@ -139,30 +142,47 @@ export function AsistentesTab({
 
   if (templates.isSuccess && !defaultTemplate && !templateId) {
     return (
-      <div>
-        <p>
-          Inscritos: <strong>{total}</strong> — Aptos: <strong>{eligible}</strong>
-        </p>
-        <p className="mt-3 rounded border border-[#C9A227] p-3 text-sm">
-          No hay plantilla predeterminada para ASISTENTE. Súbala y márquela como predeterminada en
-          la pestaña Plantillas.
-        </p>
-        <button
-          type="button"
-          onClick={onGoTemplates}
-          className="mt-2 min-h-[44px] rounded border px-3 py-2"
-        >
-          Ir a Plantillas
-        </button>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-semibold text-ink">Inscritos: {total}</span>
+          <span className="text-muted">•</span>
+          <span className="font-semibold text-ink">Aptos: {eligible}</span>
+          <span className="text-xs text-muted">
+            (Asistencia mínima requerida: {minPercent}% — {sessions}{' '}
+            {sessions === 1 ? 'sesión' : 'sesiones'})
+          </span>
+        </div>
+        <div className="rounded-lg border border-warn-border bg-warn-bg p-4 text-sm text-ink">
+          <p className="font-medium text-warn">No hay plantilla predeterminada para ASISTENTE</p>
+          <p className="mt-1 text-xs text-muted">
+            Para generar y exportar certificados de asistentes, suba una plantilla y márquela como
+            predeterminada en la pestaña Plantillas.
+          </p>
+          <div className="mt-3">
+            <Button variant="secundario" onClick={onGoTemplates}>
+              Ir a Plantillas
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      <p>
-        Inscritos: <strong>{total}</strong> — Aptos: <strong>{eligible}</strong>
-      </p>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-semibold text-ink">Inscritos: {total}</span>
+        <span className="text-muted">•</span>
+        <span className="font-semibold text-ink">Aptos: {eligible}</span>
+        <span className="text-xs text-muted">(Asistencia mínima requerida: {minPercent}%)</span>
+      </div>
+      {eligible === 0 && total > 0 && (
+        <p className="mt-1.5 text-xs text-muted">
+          💡 Nota: Ningún inscrito cumple aún el {minPercent}% de asistencia requerido. Puede
+          cambiar el alcance a &quot;Todos los inscritos&quot; para generar certificados sin validar
+          asistencia.
+        </p>
+      )}
       <div className="mt-3 max-w-md">
         <Input
           id="tpl"
@@ -202,8 +222,9 @@ export function AsistentesTab({
         ))}
       </fieldset>
       {effectiveScope === 'all' && nonEligible > 0 ? (
-        <p className="mt-2 rounded border border-[#C9A227] p-2 text-sm">
-          Advertencia: {nonEligible} inscrito(s) no están aptos y también saldrán en el PDF.
+        <p className="mt-2 rounded-lg border border-warn-border bg-warn-bg p-3 text-xs text-ink">
+          ⚠️ Advertencia: {nonEligible} inscrito(s) no cumplen la asistencia mínima ({minPercent}%)
+          y también se incluirán en el PDF.
         </p>
       ) : null}
       {effectiveScope === 'selected' ? (

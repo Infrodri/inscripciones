@@ -104,11 +104,7 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
     try {
       const cap = capacity !== null ? (capacity === '' ? null : Number(capacity)) : undefined;
       const dl =
-        deadline !== null
-          ? deadline === ''
-            ? null
-            : new Date(deadline).toISOString()
-          : undefined;
+        deadline !== null ? (deadline === '' ? null : new Date(deadline).toISOString()) : undefined;
       await api.patch(`/events/${eventId}`, {
         capacity: cap,
         registrationDeadline: dl,
@@ -129,7 +125,9 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line pb-4">
           <div>
             <h2 className="font-serif text-lg font-bold text-navy">Estado de inscripciones</h2>
-            <p className="text-xs text-muted">Controle si el público puede registrarse al evento en este momento.</p>
+            <p className="text-xs text-muted">
+              Controle si el público puede registrarse al evento en este momento.
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Badge tono={data.status}>{data.status}</Badge>
@@ -141,7 +139,8 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
 
         {data.registrationReason === 'CERRADA_FECHA' && data.registrationDeadline ? (
           <p className="text-sm text-warn">
-            ⚠ Las inscripciones cerraron por fecha límite ({formatFechaHora(data.registrationDeadline)}).
+            ⚠ Las inscripciones cerraron por fecha límite (
+            {formatFechaHora(data.registrationDeadline)}).
           </p>
         ) : null}
 
@@ -159,7 +158,8 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
             />
           ) : (
             <div className="p-3 bg-canvas rounded-[var(--radius-md)] border border-line text-sm text-muted">
-              Estado actual: <strong className="text-ink">{data.status}</strong>. Debe publicar el evento para poder abrir las inscripciones.
+              Estado actual: <strong className="text-ink">{data.status}</strong>. Debe publicar el
+              evento para poder abrir las inscripciones.
             </div>
           )}
         </div>
@@ -171,7 +171,8 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
             Reabrir inscripciones (fecha vencida)
           </h2>
           <p className="text-sm text-muted">
-            La fecha límite anterior ya expiró. Configure una nueva fecha y hora para la recepción de inscripciones o deshabilite el límite de tiempo.
+            La fecha límite anterior ya expiró. Configure una nueva fecha y hora para la recepción
+            de inscripciones o deshabilite el límite de tiempo.
           </p>
           <form onSubmit={(e) => void confirmReopen(e)} className="space-y-4">
             <Input
@@ -189,7 +190,10 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
                 onChange={(e) => setNoDeadline(e.target.checked)}
                 className="h-5 w-5 accent-navy cursor-pointer"
               />
-              <label htmlFor="reopen-nodeadline" className="cursor-pointer text-sm font-medium text-ink">
+              <label
+                htmlFor="reopen-nodeadline"
+                className="cursor-pointer text-sm font-medium text-ink"
+              >
                 Sin fecha límite (abierto hasta que se cierre manualmente)
               </label>
             </div>
@@ -209,7 +213,8 @@ export function InscripcionTab({ eventId }: { eventId: string }) {
 
       {data.status === 'BORRADOR' ? (
         <div className="p-3 bg-warn-bg border border-warn rounded-[var(--radius-md)] text-sm text-warn">
-          ℹ Aviso: el evento se encuentra en estado borrador. El enlace público mostrará el evento pero las inscripciones estarán inactivas hasta su publicación.
+          ℹ Aviso: el evento se encuentra en estado borrador. El enlace público mostrará el evento
+          pero las inscripciones estarán inactivas hasta su publicación.
         </div>
       ) : null}
 

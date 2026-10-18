@@ -31,27 +31,36 @@ export function EnrollmentLinkCard({ slug }: { slug: string }) {
       <div className="grid gap-6 md:grid-cols-3 md:items-center">
         <div className="md:col-span-2 space-y-3">
           <div className="border-b border-line pb-2">
-            <h2 className="font-serif text-lg font-bold text-navy">Enlace público de inscripción</h2>
-            <p className="text-xs text-muted">Comparta este enlace o proyéctelo para que los participantes se registren.</p>
+            <h2 className="font-serif text-lg font-bold text-navy">
+              Enlace público de inscripción
+            </h2>
+            <p className="text-xs text-muted">
+              Comparta este enlace o proyéctelo para que los participantes se registren.
+            </p>
           </div>
           <div className="p-3 bg-canvas rounded-[var(--radius-md)] border border-line text-sm break-all font-mono text-ink select-all">
             {url}
           </div>
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button variant="primario" size="sm" onClick={() => void copy()} className="!text-white">
+            <Button
+              variant="primario"
+              size="sm"
+              onClick={() => void copy()}
+              className="!text-white"
+            >
               {copied ? 'Copiado' : 'Copiar'}
             </Button>
             <Button asChild variant="secundario" size="sm">
-              <a href={url}>
-                Abrir
-              </a>
+              <a href={url}>Abrir</a>
             </Button>
             <CopyBroadcastButton slug={slug} />
           </div>
         </div>
 
         <div className="flex flex-col items-center justify-center p-4 bg-canvas rounded-[var(--radius-md)] border border-line text-center space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted">QR del enlace</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+            QR del enlace
+          </span>
           <img
             src={qrPng}
             alt="QR del enlace de inscripción"

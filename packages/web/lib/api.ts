@@ -55,8 +55,7 @@ export function handleUnauthorized(
   clearSession();
   if (typeof window !== 'undefined') {
     // NUNCA redirigir al login si el usuario está en el portal público (/ o /e/...)
-    const isPublic =
-      window.location.pathname === '/' || window.location.pathname.startsWith('/e/');
+    const isPublic = window.location.pathname === '/' || window.location.pathname.startsWith('/e/');
     if (isPublic) {
       return;
     }
@@ -77,8 +76,7 @@ api.interceptors.request.use((config) => {
   const token = getToken();
   // No enviar Bearer token a endpoints públicos para evitar 401 por sesión expirada
   const isPublicUrl =
-    config.url &&
-    (config.url.startsWith('/public') || config.url.includes('/public/'));
+    config.url && (config.url.startsWith('/public') || config.url.includes('/public/'));
   if (token && !isPublicUrl) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -97,7 +95,18 @@ export function apiErrorMessage(error: unknown): string {
   const configMessage = configErrorMessage(error);
   if (configMessage) return configMessage;
   if (axios.isAxiosError(error)) {
+    const code = error.response?.data?.error?.code;
     const message = error.response?.data?.error?.message;
+    if (code === 'NO_DEFAULT_TEMPLATE') {
+      return typeof message === 'string' && message !== ''
+        ? message
+        : 'No hay una plantilla predeterminada configurada para este rol. Súbala o configúrela en la pestaña Plantillas.';
+    }
+    if (code === 'NO_PARTICIPANTS') {
+      return typeof message === 'string' && message !== ''
+        ? message
+        : 'No hay participantes registrados para generar este documento.';
+    }
     if (typeof message === 'string' && message !== '') return message;
     if (error.code === 'ERR_NETWORK') return 'No se pudo conectar con el servidor';
   }

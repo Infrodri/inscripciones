@@ -4,7 +4,6 @@
 // layoutName single-line algorithm, and certificate filtering logic.
 
 import { PrismaClient } from '@prisma/client';
-import { Prisma } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 
 // Usar la URL de BD local desde .env
@@ -99,8 +98,8 @@ async function main() {
             ci: pd.ci,
             email: null, // sin correo - se omite en envío según DECISIONS.md
             phone: `+54911111111${i + 1}`,
-            type: i % 2 === 0 ? 'ESTUDIANTE' : 'PROFESIONAL' as const,
-            source: i < 2 ? 'WALK_IN' : 'ONLINE' as const,
+            type: i % 2 === 0 ? 'ESTUDIANTE' : ('PROFESIONAL' as const),
+            source: i < 2 ? 'WALK_IN' : ('ONLINE' as const),
             qrToken: 'e2e-qr-' + randomBytes(8).toString('hex'),
             dataConsentAt: new Date('2026-01-01T00:00:00-03:00'),
           },
@@ -127,9 +126,13 @@ async function main() {
       const layout = layoutName(t.name, 400, 14, 8, measure);
       const overflowStatus = layout.overflow ? 'overflow' : 'OK';
       const shrunkStatus = layout.shrunk ? 'shrunk' : '';
-      console.log(`   "${t.name}" (${t.chars} chars): size=${layout.sizePt}pt, shrunk=${shrunkStatus}, overflow=${overflowStatus}`);
+      console.log(
+        `   "${t.name}" (${t.chars} chars): size=${layout.sizePt}pt, shrunk=${shrunkStatus}, overflow=${overflowStatus}`
+      );
       if (t.chars > 45 && !layout.overflow) {
-        console.log('   ⚠ AVISO: Nombre >45 chars pero no overflow - esto es correcto por el algoritmo de piso 8pt');
+        console.log(
+          '   ⚠ AVISO: Nombre >45 chars pero no overflow - esto es correcto por el algoritmo de piso 8pt'
+        );
       }
     }
 
@@ -139,7 +142,7 @@ async function main() {
     const minAttendancePercent = 80;
 
     // Calcular porcentaje de asistencia para cada participante (simulado: 0 asistencias)
-    const participantsWithStats = participants.map(p => {
+    const participantsWithStats = participants.map((p) => {
       const attended = 0; // sin asistencia en E2E
       const pct = Math.round((attended / totalSessions) * 100);
       const eligible = event.issuesCertificate && pct >= minAttendancePercent;
@@ -157,9 +160,9 @@ async function main() {
     });
 
     // Filtrar aptos (solo los que tienen asistencia suficiente)
-    const aptos = participantsWithStats.filter(p => p.eligible);
+    const aptos = participantsWithStats.filter((p) => p.eligible);
     const todos = participantsWithStats; // todos los inscritos
-    const seleccionados = participantsWithStats.filter(p => p.pct >= 50); // filtro arbitrario
+    const seleccionados = participantsWithStats.filter((p) => p.pct >= 50); // filtro arbitrario
 
     console.log(`   ✓ Apto (asistencia >= 80%): ${aptos.length}`);
     console.log(`   ✓ Total inscritos: ${todos.length}`);
@@ -175,7 +178,7 @@ async function main() {
       totalParticipants: participants.length,
       totalSessions,
       minAttendancePercent,
-      participants: participantsWithStats.map(p => ({
+      participants: participantsWithStats.map((p) => ({
         name: `${p.firstName} ${p.lastName}`,
         ci: p.ci,
         attended: p.attended,
@@ -189,7 +192,10 @@ async function main() {
     };
 
     fs.mkdirSync(path.join('docs', 'e2e'), { recursive: true });
-    fs.writeFileSync(path.join('docs', 'e2e', 'calibration-report.json'), JSON.stringify(calData, null, 2));
+    fs.writeFileSync(
+      path.join('docs', 'e2e', 'calibration-report.json'),
+      JSON.stringify(calData, null, 2)
+    );
     console.log(`   ✓ Reporte guardado: docs/e2e/calibration-report.json`);
 
     // 7. Resumen final
@@ -200,7 +206,9 @@ async function main() {
     console.log(`║ Evento: ${event.slug}                         ║`);
     console.log(`║ Participantes: ${participants.length}          ║`);
     console.log(`║ Sesiones: ${totalSessions}                    ║`);
-    console.log(`║ Nombres con ñ/tilde: ${participants.filter(p => /[ñáéíóú]/.test(`${p.firstName} ${p.lastName}`).length > 0).length}  ║`);
+    console.log(
+      `║ Nombres con ñ/tilde: ${participants.filter((p) => /[ñáéíóú]/.test(`${p.firstName} ${p.lastName}`).length > 0).length}  ║`
+    );
     console.log(`║ PDFs generados: layoutName testeado        ║`);
     console.log('╚' + '─'.repeat(50) + '╝');
 
@@ -213,7 +221,6 @@ async function main() {
     console.log('  ✓ Filtros aptos/todos/seleccionados simulados');
     console.log('  ✓ Reporte de calibración guardado en docs/e2e/');
     console.log('  ✓ Correos omitidos por falta de email (DECISIONS.md)');
-
   } catch (error) {
     console.error('❌ Error en E2E:', error);
     if (error instanceof Error) {

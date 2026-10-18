@@ -120,51 +120,47 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
     limits: { fileSize: 5 * 1024 * 1024 },
   });
 
-  router.post(
-    '/events/:slug/payment-proof',
-    proofUpload.any(),
-    async (req, res, next) => {
-      try {
-        const file = req.file || (Array.isArray(req.files) ? req.files[0] : undefined);
-        if (!file) throw new DomainError('VALIDATION_ERROR', 'Debe adjuntar el comprobante');
+  router.post('/events/:slug/payment-proof', proofUpload.any(), async (req, res, next) => {
+    try {
+      const file = req.file || (Array.isArray(req.files) ? req.files[0] : undefined);
+      if (!file) throw new DomainError('VALIDATION_ERROR', 'Debe adjuntar el comprobante');
 
-        const allowedMimes = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
-        if (!allowedMimes.includes(file.mimetype)) {
-          throw new DomainError(
-            'UNSUPPORTED_FILE',
-            'El comprobante debe ser imagen (PNG, JPG, WebP) o PDF'
-          );
-        }
-
-        const prisma = getPrisma();
-        const event = await prisma.event.findUnique({ where: { slug: req.params.slug } });
-        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        if (event.isFree) {
-          throw new DomainError('VALIDATION_ERROR', 'El evento no requiere comprobante de pago');
-        }
-
-        const extMap: Record<string, string> = {
-          'image/png': 'png',
-          'image/jpeg': 'jpg',
-          'image/webp': 'webp',
-          'application/pdf': 'pdf',
-        };
-        const ext = extMap[file.mimetype] ?? 'bin';
-        const key = `payment-proofs/${event.id}/${randomUUID()}.${ext}`;
-        const stored = await publicStorage.save(file.buffer, key, file.mimetype);
-        const url = stored.url ?? filePublicUrl(env, key);
-
-        res.json({ url });
-      } catch (err) {
-        const fileErr = err as { code?: string };
-        if (fileErr?.code === 'LIMIT_FILE_SIZE') {
-          next(new DomainError('FILE_TOO_LARGE', 'El comprobante supera los 5 MB'));
-          return;
-        }
-        next(err);
+      const allowedMimes = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
+      if (!allowedMimes.includes(file.mimetype)) {
+        throw new DomainError(
+          'UNSUPPORTED_FILE',
+          'El comprobante debe ser imagen (PNG, JPG, WebP) o PDF'
+        );
       }
+
+      const prisma = getPrisma();
+      const event = await prisma.event.findUnique({ where: { slug: req.params.slug } });
+      if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      if (event.isFree) {
+        throw new DomainError('VALIDATION_ERROR', 'El evento no requiere comprobante de pago');
+      }
+
+      const extMap: Record<string, string> = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/webp': 'webp',
+        'application/pdf': 'pdf',
+      };
+      const ext = extMap[file.mimetype] ?? 'bin';
+      const key = `payment-proofs/${event.id}/${randomUUID()}.${ext}`;
+      const stored = await publicStorage.save(file.buffer, key, file.mimetype);
+      const url = stored.url ?? filePublicUrl(env, key);
+
+      res.json({ url });
+    } catch (err) {
+      const fileErr = err as { code?: string };
+      if (fileErr?.code === 'LIMIT_FILE_SIZE') {
+        next(new DomainError('FILE_TOO_LARGE', 'El comprobante supera los 5 MB'));
+        return;
+      }
+      next(err);
     }
-  );
+  });
 
   router.get('/events', async (req, res, next) => {
     try {
@@ -182,11 +178,7 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
         },
       });
       const items = events.map((event) =>
-        publicEventView(
-          event as unknown as Record<string, unknown>,
-          env,
-          event._count.participants
-        )
+        publicEventView(event as unknown as Record<string, unknown>, env, event._count.participants)
       );
       res.json({ data: items });
     } catch (err) {
@@ -331,9 +323,10 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
       });
       if (!participant) throw new DomainError('INVALID_QR', 'El código QR no es válido');
       const sessions = participant.event.sessions;
-      const datesStr = sessions.length > 0
-        ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
-        : null;
+      const datesStr =
+        sessions.length > 0
+          ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
+          : null;
       const badgeData: BadgeParticipant = {
         fullName: `${participant.firstName} ${participant.lastName}`.trim(),
         ci: participant.ci,
@@ -347,10 +340,7 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
         qrPngBuffer: await qrPngBuffer(participant.qrToken),
       };
       res.header('Content-Type', 'application/pdf');
-      res.header(
-        'Content-Disposition',
-        `attachment; filename="credencial-${participant.ci}.pdf"`
-      );
+      res.header('Content-Disposition', `attachment; filename="credencial-${participant.ci}.pdf"`);
       await renderSingleBadge(badgeData, res);
     } catch (err) {
       next(err);
@@ -411,11 +401,17 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
         if (participant && participant.ci.trim().toLowerCase() === cleanCi) {
           const sessions = participant.event.sessions;
           const dateStr = sessions.length > 0 ? sessions[0].startsAt.toISOString() : null;
-          const parts = `${participant.firstName} ${participant.lastName}`.trim().split(/\s+/).filter(Boolean);
+          const parts = `${participant.firstName} ${participant.lastName}`
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
           const maskedName =
             parts.length <= 1
-              ? parts[0] ?? ''
-              : `${parts[0]} ${parts.slice(1).map((p) => `${p[0].toUpperCase()}.`).join(' ')}`;
+              ? (parts[0] ?? '')
+              : `${parts[0]} ${parts
+                  .slice(1)
+                  .map((p) => `${p[0].toUpperCase()}.`)
+                  .join(' ')}`;
           matched = {
             eventTitle: participant.event.title,
             eventDate: dateStr,
@@ -442,8 +438,11 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
               const parts = recipient.fullName.trim().split(/\s+/).filter(Boolean);
               const maskedName =
                 parts.length <= 1
-                  ? parts[0] ?? ''
-                  : `${parts[0]} ${parts.slice(1).map((p) => `${p[0].toUpperCase()}.`).join(' ')}`;
+                  ? (parts[0] ?? '')
+                  : `${parts[0]} ${parts
+                      .slice(1)
+                      .map((p) => `${p[0].toUpperCase()}.`)
+                      .join(' ')}`;
               matched = {
                 eventTitle: recipient.event.title,
                 eventDate: dateStr,

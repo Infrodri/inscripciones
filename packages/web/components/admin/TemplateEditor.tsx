@@ -260,7 +260,7 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
         setDirty(false);
       }
       setShowPdfPreview(true);
-    } catch (error) {
+    } catch {
       toast.error('No se pudo guardar la caja para la vista previa');
     }
   }
@@ -282,7 +282,8 @@ export function TemplateEditor({ templateId, eventId }: { templateId: string; ev
         <div>
           <h3 className="font-serif text-lg font-bold text-navy">Editor visual del certificado</h3>
           <p className="text-xs text-muted">
-            Arrastre o redimensione la caja del nombre. También puede calibrar las coordenadas y la tipografía en tiempo real.
+            Arrastre o redimensione la caja del nombre. También puede calibrar las coordenadas y la
+            tipografía en tiempo real.
           </p>
         </div>
         <div className="flex items-center gap-2">
