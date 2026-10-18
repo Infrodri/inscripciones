@@ -57,8 +57,21 @@ export function buildApp(env: AppEnv): express.Express {
   });
 
   const publicLimiter = rateLimit({ windowMs: 60_000, max: 30 });
+  const verifyLimiter = rateLimit({
+    windowMs: 60_000,
+    max: 10,
+    message: {
+      error: {
+        code: 'TOO_MANY_REQUESTS',
+        message: 'Demasiadas consultas de verificación. Por favor intente más tarde.',
+      },
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
   // QR de sala ANTES del limitador general: tiene su propio límite de 60/min.
   app.use('/api/v1', selfCheckinPublicRoutes(env));
+  app.use('/api/v1/public/certificates/verify', verifyLimiter);
   app.use('/api/v1/public/', publicLimiter);
 
   // Sin auth: prueba la BD con una consulta trivial.

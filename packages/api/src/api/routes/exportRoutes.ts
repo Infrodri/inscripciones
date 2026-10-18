@@ -5,6 +5,7 @@ import { qrPngBuffer } from '@inscripciones/infrastructure/qr.js';
 import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
+import type { AuthRequest } from '../middlewares/authMiddleware.js';
 
 const PARTICIPANT_COLUMNS = [
   'first_name',
@@ -33,12 +34,15 @@ function toCsv(rows: Array<Record<string, unknown>>): string {
 
 export function exportRoutes(): Router {
   const router = Router();
-  router.get('/events/:id/exports/:kind', requireRole('ADMIN'), async (req, res, next) => {
+  router.get('/events/:id/exports/:kind', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
       const format = req.query.format === 'csv' ? 'csv' : 'xlsx';
       const event = await prisma.event.findUnique({ where: { id: req.params.id } });
       if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+      if (req.user?.role === 'STAFF' && event.createdBy !== req.user.id) {
+        throw new DomainError('FORBIDDEN', 'No tiene permiso para exportar de este evento');
+      }
       // Filtros de la vista previa (q, type) para que lo exportado coincida.
       const query =
         typeof req.query.q === 'string' && req.query.q.trim() !== '' ? req.query.q.trim() : null;
@@ -144,6 +148,9 @@ export function exportRoutes(): Router {
             orderBy: { startsAt: 'asc' },
           }),
         ]);
+        if (participants.length === 0) {
+          throw new DomainError('NO_PARTICIPANTS', 'No hay participantes registrados para generar credenciales');
+        }
         const datesStr = sessions.length > 0
           ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
           : null;

@@ -374,5 +374,118 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
     }
   });
 
+  // Verificación pública de certificados (por CI + código de verificación).
+  router.post(
+    '/certificates/verify',
+    validateBody(
+      z.object({
+        ci: z.string().trim().min(3).max(30),
+        code: z.string().trim().min(3).max(64),
+      })
+    ),
+    async (req, res, next) => {
+      const start = Date.now();
+      try {
+        const { ci, code } = req.body as { ci: string; code: string };
+        const cleanCi = ci.trim().toLowerCase();
+        const cleanCode = code.trim();
+        const prisma = getPrisma();
+
+        let matched: {
+          eventTitle: string;
+          eventDate: string | null;
+          recipientName: string;
+          role: string;
+        } | null = null;
+
+        // 1. Buscar en participantes (rol ASISTENTE)
+        const participant = await prisma.participant.findUnique({
+          where: { certificateCode: cleanCode },
+          include: {
+            event: {
+              include: { sessions: { orderBy: { startsAt: 'asc' } } },
+            },
+          },
+        });
+
+        if (participant && participant.ci.trim().toLowerCase() === cleanCi) {
+          const sessions = participant.event.sessions;
+          const dateStr = sessions.length > 0 ? sessions[0].startsAt.toISOString() : null;
+          const parts = `${participant.firstName} ${participant.lastName}`.trim().split(/\s+/).filter(Boolean);
+          const maskedName =
+            parts.length <= 1
+              ? parts[0] ?? ''
+              : `${parts[0]} ${parts.slice(1).map((p) => `${p[0].toUpperCase()}.`).join(' ')}`;
+          matched = {
+            eventTitle: participant.event.title,
+            eventDate: dateStr,
+            recipientName: maskedName,
+            role: 'ASISTENTE',
+          };
+        } else {
+          // 2. Buscar en receptores manuales (EXPOSITOR, ORGANIZADOR, OTRO)
+          const recipient = await prisma.certificateRecipient.findUnique({
+            where: { certificateCode: cleanCode },
+            include: {
+              event: {
+                include: { sessions: { orderBy: { startsAt: 'asc' } } },
+              },
+            },
+          });
+
+          if (recipient) {
+            const noteLower = (recipient.note ?? '').toLowerCase();
+            const ciMatched = noteLower.includes(cleanCi);
+            if (ciMatched) {
+              const sessions = recipient.event.sessions;
+              const dateStr = sessions.length > 0 ? sessions[0].startsAt.toISOString() : null;
+              const parts = recipient.fullName.trim().split(/\s+/).filter(Boolean);
+              const maskedName =
+                parts.length <= 1
+                  ? parts[0] ?? ''
+                  : `${parts[0]} ${parts.slice(1).map((p) => `${p[0].toUpperCase()}.`).join(' ')}`;
+              matched = {
+                eventTitle: recipient.event.title,
+                eventDate: dateStr,
+                recipientName: maskedName,
+                role: recipient.roleKind,
+              };
+            }
+          }
+        }
+
+        // Mitigación de timing attack (respuesta uniforme ~120-170ms)
+        const elapsed = Date.now() - start;
+        const targetDelay = Math.floor(120 + Math.random() * 50);
+        if (elapsed < targetDelay) {
+          await new Promise((resolve) => setTimeout(resolve, targetDelay - elapsed));
+        }
+
+        const maskedCi =
+          cleanCi.length > 3 ? `${cleanCi.slice(0, 2)}***${cleanCi.slice(-1)}` : '***';
+        logger.info('public_certificate_verify_attempt', {
+          maskedCi,
+          codeLength: cleanCode.length,
+          success: Boolean(matched),
+        });
+
+        if (!matched) {
+          res.status(200).json({
+            valid: false,
+            message: 'No se encontró un certificado válido con los datos proporcionados',
+          });
+          return;
+        }
+
+        res.status(200).json({
+          valid: true,
+          certificate: matched,
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   return router;
 }
