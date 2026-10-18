@@ -34,7 +34,7 @@
     "seed": "node dist/prisma/seed.js",
     "seed:reference": "node dist/prisma/seedReference.js",
     "create-admin": "node dist/scripts/create-admin.js",
-    "cleanup:test-events": "node dist/scripts/cleanup-test-events.js",
+    "seed:showcase": "node scripts/seed-production-showcase.mjs",
     "start": "node dist/src/api/app.js",
     "test": "vitest run --fileParallelism=false"
   },
