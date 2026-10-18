@@ -22,6 +22,7 @@ export interface CertificateJob {
   pageHeightMm: number;
   name: string;
   nameBox: PdfNameBox;
+  code?: string;
   printBackground?: boolean;
 }
 
@@ -80,6 +81,16 @@ export async function renderCertificates(
     layout.lines.forEach((line, lineIndex) => {
       doc.text(line, xPt, yPt + lineIndex * lineHeight, { width: boxWPt, align: box.align });
     });
+    if (job.code) {
+      doc
+        .font(fonts.sans)
+        .fontSize(7)
+        .fillColor('#666666')
+        .text(`Cód. de verificación: ${job.code}`, 0, pageH - 20, {
+          width: pageW,
+          align: 'center',
+        });
+    }
     report.generated = index + 1;
     void first;
   }

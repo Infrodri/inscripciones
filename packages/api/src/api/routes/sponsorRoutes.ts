@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getPrisma } from '../../infrastructure/prisma.js';
 import { validateBody } from '../middlewares/validateMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
+import type { AuthRequest } from '../middlewares/authMiddleware.js';
+import { DomainError } from '../../domain/errors.js';
 
 const sponsorSchema = z.object({
   eventId: z.string().uuid(),
@@ -14,18 +16,37 @@ const sponsorUpdateSchema = sponsorSchema.partial().omit({ eventId: true });
 
 export function sponsorRoutes(): Router {
   const router = Router();
-  router.get('/event/:eventId', async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const items = await prisma.sponsor.findMany({
-        where: { eventId: req.params.eventId },
-        orderBy: { position: 'asc' },
-      });
-      res.json({ data: items });
-    } catch (err) {
-      next(err);
+  router.get(
+    '/event/:eventId',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const event = await prisma.event.findUnique({
+          where: { id: req.params.eventId },
+          select: { id: true, createdBy: true, creator: { select: { role: true } } },
+        });
+        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        if (
+          req.user?.role === 'STAFF' &&
+          event.createdBy !== req.user.id &&
+          event.creator?.role === 'STAFF'
+        ) {
+          throw new DomainError(
+            'FORBIDDEN',
+            'No tiene permiso para ver los auspiciantes de este evento'
+          );
+        }
+        const items = await prisma.sponsor.findMany({
+          where: { eventId: req.params.eventId },
+          orderBy: { position: 'asc' },
+        });
+        res.json({ data: items });
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
   router.post('/', requireRole('ADMIN'), validateBody(sponsorSchema), async (req, res, next) => {
     try {
       const prisma = getPrisma();

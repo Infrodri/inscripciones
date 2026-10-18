@@ -77,10 +77,15 @@ function drawBadgeCard(
     .fillColor('#E5E7EB')
     .fontSize(5.5)
     .font('Helvetica')
-    .text(p.eventInstitution ?? 'Facultad de Derecho, Ciencias Políticas y Sociales', x + 6, y + 13, {
-      width: w - 12,
-      align: 'center',
-    });
+    .text(
+      p.eventInstitution ?? 'Facultad de Derecho, Ciencias Políticas y Sociales',
+      x + 6,
+      y + 13,
+      {
+        width: w - 12,
+        align: 'center',
+      }
+    );
 
   // Event title in header
   doc

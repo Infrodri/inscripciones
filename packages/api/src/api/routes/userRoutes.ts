@@ -60,48 +60,58 @@ export function userRoutes(): Router {
   });
 
   // Modificar usuario (nombre, rol, estado y opcionalmente contraseña)
-  router.patch('/:id', requireRole('ADMIN'), validateBody(updateUserSchema), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const user = await prisma.user.findUnique({ where: { id: req.params.id } });
-      if (!user) throw new DomainError('NOT_FOUND', 'Usuario no encontrado');
+  router.patch(
+    '/:id',
+    requireRole('ADMIN'),
+    validateBody(updateUserSchema),
+    async (req, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+        if (!user) throw new DomainError('NOT_FOUND', 'Usuario no encontrado');
 
-      const dataToUpdate: Record<string, unknown> = {};
-      if (req.body.name !== undefined) dataToUpdate.name = req.body.name;
-      if (req.body.role !== undefined) dataToUpdate.role = req.body.role;
-      if (req.body.active !== undefined) dataToUpdate.active = req.body.active;
-      if (req.body.password) {
-        dataToUpdate.passwordHash = await hashPassword(req.body.password);
+        const dataToUpdate: Record<string, unknown> = {};
+        if (req.body.name !== undefined) dataToUpdate.name = req.body.name;
+        if (req.body.role !== undefined) dataToUpdate.role = req.body.role;
+        if (req.body.active !== undefined) dataToUpdate.active = req.body.active;
+        if (req.body.password) {
+          dataToUpdate.passwordHash = await hashPassword(req.body.password);
+        }
+
+        const updated = await prisma.user.update({
+          where: { id: req.params.id },
+          data: dataToUpdate,
+          select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
+        });
+        res.json(updated);
+      } catch (err) {
+        next(err);
       }
-
-      const updated = await prisma.user.update({
-        where: { id: req.params.id },
-        data: dataToUpdate,
-        select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
-      });
-      res.json(updated);
-    } catch (err) {
-      next(err);
     }
-  });
+  );
 
   // Cambiar contraseña directamente por ADMIN
-  router.patch('/:id/password', requireRole('ADMIN'), validateBody(changePasswordSchema), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const user = await prisma.user.findUnique({ where: { id: req.params.id } });
-      if (!user) throw new DomainError('NOT_FOUND', 'Usuario no encontrado');
+  router.patch(
+    '/:id/password',
+    requireRole('ADMIN'),
+    validateBody(changePasswordSchema),
+    async (req, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+        if (!user) throw new DomainError('NOT_FOUND', 'Usuario no encontrado');
 
-      const passwordHash = await hashPassword(req.body.password);
-      await prisma.user.update({
-        where: { id: req.params.id },
-        data: { passwordHash },
-      });
-      res.json({ ok: true, message: 'Contraseña actualizada correctamente' });
-    } catch (err) {
-      next(err);
+        const passwordHash = await hashPassword(req.body.password);
+        await prisma.user.update({
+          where: { id: req.params.id },
+          data: { passwordHash },
+        });
+        res.json({ ok: true, message: 'Contraseña actualizada correctamente' });
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   // Eliminar usuario
   router.delete('/:id', requireRole('ADMIN'), async (req: AuthRequest, res, next) => {

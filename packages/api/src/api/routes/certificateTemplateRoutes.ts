@@ -7,6 +7,7 @@ import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
 import { validateBody } from '../middlewares/validateMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
+import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import type { FileStorage } from '@inscripciones/infrastructure/fileStorage.js';
 import { detectPageSize } from '@inscripciones/infrastructure/certificates.js';
 import { renderCertificates } from '@inscripciones/infrastructure/pdf.js';
@@ -62,22 +63,41 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
   // router.use sirven aquí: rechazarían el STAFF de rutas montadas después.
   const admin = requireRole('ADMIN');
 
-  router.get('/events/:eventId/certificate-templates', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const roleKind = typeof req.query.roleKind === 'string' ? req.query.roleKind : undefined;
-      const items = await prisma.certificateTemplate.findMany({
-        where: {
-          eventId: req.params.eventId,
-          ...(roleKind ? { roleKind: roleKind as never } : {}),
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-      res.json({ data: items });
-    } catch (err) {
-      next(err);
+  router.get(
+    '/events/:eventId/certificate-templates',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const event = await prisma.event.findUnique({
+          where: { id: req.params.eventId },
+          select: { id: true, createdBy: true, creator: { select: { role: true } } },
+        });
+        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        if (
+          req.user?.role === 'STAFF' &&
+          event.createdBy !== req.user.id &&
+          event.creator?.role === 'STAFF'
+        ) {
+          throw new DomainError(
+            'FORBIDDEN',
+            'No tiene permiso para ver las plantillas de este evento'
+          );
+        }
+        const roleKind = typeof req.query.roleKind === 'string' ? req.query.roleKind : undefined;
+        const items = await prisma.certificateTemplate.findMany({
+          where: {
+            eventId: req.params.eventId,
+            ...(roleKind ? { roleKind: roleKind as never } : {}),
+          },
+          orderBy: { createdAt: 'asc' },
+        });
+        res.json({ data: items });
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   // Subida: imagen PNG/JPG (máx. 15 MB) + rol. Multipart trae todo como
   // texto: nameBox llega como JSON serializado y se parsea aquí.
@@ -212,20 +232,24 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
   );
 
   // Archivo de plantilla (ADMIN y STAFF para previsualización).
-  router.get('/certificate-templates/:id/file', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const template = await prisma.certificateTemplate.findUnique({
-        where: { id: req.params.id },
-      });
-      if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
-      const buffer = await privateStorage.read(template.filePath);
-      res.header('Content-Type', 'image/jpeg');
-      res.send(buffer);
-    } catch (err) {
-      next(err);
+  router.get(
+    '/certificate-templates/:id/file',
+    requireRole('ADMIN', 'STAFF'),
+    async (req, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const template = await prisma.certificateTemplate.findUnique({
+          where: { id: req.params.id },
+        });
+        if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
+        const buffer = await privateStorage.read(template.filePath);
+        res.header('Content-Type', 'image/jpeg');
+        res.send(buffer);
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   // Plantillas compartidas por otros eventos (solo ADMIN; STAFF no ve otros eventos).
   router.get('/certificate-templates/shared', admin, async (req, res, next) => {
@@ -303,49 +327,53 @@ export function certificateTemplateRoutes(privateStorage: FileStorage): Router {
   });
 
   // Vista previa de 1 página antes del lote (ADMIN y STAFF).
-  router.get('/certificate-templates/:id/preview.pdf', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const template = await prisma.certificateTemplate.findUnique({
-        where: { id: req.params.id },
-      });
-      if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
-      const sampleName =
-        typeof req.query.sampleName === 'string' && req.query.sampleName !== ''
-          ? req.query.sampleName
-          : 'Nombre de muestra';
-      const image = await privateStorage.read(template.filePath);
-      const nameBox = template.nameBox as unknown as {
-        xPct: number;
-        yPct: number;
-        wPct: number;
-        hPct: number;
-        fontKey: 'sans' | 'serif' | 'script';
-        sizePt: number;
-        color: string;
-        align: 'left' | 'center' | 'right';
-        nameCase: 'UPPER' | 'TITLE' | 'AS_TYPED';
-        autoShrink: true;
-      };
-      res.header('Content-Type', 'application/pdf');
-      await renderCertificates(
-        [
-          {
-            image,
-            widthPx: template.widthPx,
-            pageWidthMm: template.pageWidthMm,
-            pageHeightMm: template.pageHeightMm,
-            name: formatPrintedName(sampleName, nameBox.nameCase),
-            nameBox,
-          },
-        ],
-        fontPaths(),
-        res
-      );
-    } catch (err) {
-      next(err);
+  router.get(
+    '/certificate-templates/:id/preview.pdf',
+    requireRole('ADMIN', 'STAFF'),
+    async (req, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const template = await prisma.certificateTemplate.findUnique({
+          where: { id: req.params.id },
+        });
+        if (!template) throw new DomainError('NOT_FOUND', 'Plantilla no encontrada');
+        const sampleName =
+          typeof req.query.sampleName === 'string' && req.query.sampleName !== ''
+            ? req.query.sampleName
+            : 'Nombre de muestra';
+        const image = await privateStorage.read(template.filePath);
+        const nameBox = template.nameBox as unknown as {
+          xPct: number;
+          yPct: number;
+          wPct: number;
+          hPct: number;
+          fontKey: 'sans' | 'serif' | 'script';
+          sizePt: number;
+          color: string;
+          align: 'left' | 'center' | 'right';
+          nameCase: 'UPPER' | 'TITLE' | 'AS_TYPED';
+          autoShrink: true;
+        };
+        res.header('Content-Type', 'application/pdf');
+        await renderCertificates(
+          [
+            {
+              image,
+              widthPx: template.widthPx,
+              pageWidthMm: template.pageWidthMm,
+              pageHeightMm: template.pageHeightMm,
+              name: formatPrintedName(sampleName, nameBox.nameCase),
+              nameBox,
+            },
+          ],
+          fontPaths(),
+          res
+        );
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   return router;
 }

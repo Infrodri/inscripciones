@@ -53,8 +53,7 @@ export async function cleanupTestEvents(): Promise<CleanupSummary> {
       event.title === 'Evento H1' ||
       event.title === 'Copia H1' ||
       event.title.startsWith('Evento E2E');
-    const slugMatch =
-      event.slug.startsWith('h1-') || event.slug.startsWith('e2e-');
+    const slugMatch = event.slug.startsWith('h1-') || event.slug.startsWith('e2e-');
 
     return titleMatch || slugMatch;
   });
@@ -96,10 +95,7 @@ export async function cleanupTestEvents(): Promise<CleanupSummary> {
     // 1. Delete Attendances (linked by session or participant)
     const delAttendances = await tx.attendance.deleteMany({
       where: {
-        OR: [
-          { sessionId: { in: testSessionIds } },
-          { participantId: { in: testParticipantIds } },
-        ],
+        OR: [{ sessionId: { in: testSessionIds } }, { participantId: { in: testParticipantIds } }],
       },
     });
 
@@ -223,14 +219,14 @@ export async function verifyMainEvent(): Promise<void> {
   const now = new Date();
   if (event.registrationDeadline && event.registrationDeadline < now) {
     throw new Error(
-      `Registration deadline is in the past: ${event.registrationDeadline.toISOString()}`,
+      `Registration deadline is in the past: ${event.registrationDeadline.toISOString()}`
     );
   }
   // eslint-disable-next-line no-console
   console.log(
     `Registration Deadline: ${
       event.registrationDeadline ? event.registrationDeadline.toISOString() : 'None (open)'
-    } (Active/Valid)`,
+    } (Active/Valid)`
   );
 
   // eslint-disable-next-line no-console
@@ -239,7 +235,7 @@ export async function verifyMainEvent(): Promise<void> {
     const isFuture = s.startsAt > now;
     // eslint-disable-next-line no-console
     console.log(
-      `  - [${s.id}] startsAt=${s.startsAt.toISOString()} label="${s.label ?? ''}" (future: ${isFuture})`,
+      `  - [${s.id}] startsAt=${s.startsAt.toISOString()} label="${s.label ?? ''}" (future: ${isFuture})`
     );
   }
   if (event.sessions.length === 0) {
@@ -250,9 +246,7 @@ export async function verifyMainEvent(): Promise<void> {
   console.log(`Participants count: ${event.participants.length}`);
   if (event.participants.length !== 10) {
     // eslint-disable-next-line no-console
-    console.warn(
-      `Warning: Expected 10 participants, found ${event.participants.length}`,
-    );
+    console.warn(`Warning: Expected 10 participants, found ${event.participants.length}`);
   } else {
     // eslint-disable-next-line no-console
     console.log('10 registered participants verified successfully.');

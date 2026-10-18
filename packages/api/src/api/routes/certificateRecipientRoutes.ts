@@ -60,22 +60,41 @@ async function assertNoDuplicate(
 export function certificateRecipientRoutes(): Router {
   const router = Router();
 
-  router.get('/events/:eventId/certificate-recipients', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const roleKind = typeof req.query.roleKind === 'string' ? req.query.roleKind : undefined;
-      const items = await prisma.certificateRecipient.findMany({
-        where: {
-          eventId: req.params.eventId,
-          ...(roleKind ? { roleKind: roleKind as never } : {}),
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-      res.json({ data: items });
-    } catch (err) {
-      next(err);
+  router.get(
+    '/events/:eventId/certificate-recipients',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const event = await prisma.event.findUnique({
+          where: { id: req.params.eventId },
+          select: { id: true, createdBy: true, creator: { select: { role: true } } },
+        });
+        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        if (
+          req.user?.role === 'STAFF' &&
+          event.createdBy !== req.user.id &&
+          event.creator?.role === 'STAFF'
+        ) {
+          throw new DomainError(
+            'FORBIDDEN',
+            'No tiene permiso para ver los receptores de este evento'
+          );
+        }
+        const roleKind = typeof req.query.roleKind === 'string' ? req.query.roleKind : undefined;
+        const items = await prisma.certificateRecipient.findMany({
+          where: {
+            eventId: req.params.eventId,
+            ...(roleKind ? { roleKind: roleKind as never } : {}),
+          },
+          orderBy: { createdAt: 'asc' },
+        });
+        res.json({ data: items });
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
 
   router.post(
     '/events/:eventId/certificate-recipients',

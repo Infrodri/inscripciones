@@ -4,6 +4,7 @@ import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
 import { validateBody } from '../middlewares/validateMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
+import type { AuthRequest } from '../middlewares/authMiddleware.js';
 
 const sessionSchema = z.object({
   eventId: z.string().uuid(),
@@ -17,31 +18,67 @@ const sessionUpdateSchema = sessionSchema.partial().omit({ eventId: true });
 
 export function sessionRoutes(): Router {
   const router = Router();
-  router.get('/:id', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
+  router.get('/:id', requireRole('ADMIN', 'STAFF'), async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
       const session = await prisma.session.findUnique({
         where: { id: req.params.id },
-        include: { event: { select: { id: true, title: true, minAttendancePercent: true } } },
+        include: {
+          event: {
+            select: {
+              id: true,
+              title: true,
+              createdBy: true,
+              creator: { select: { role: true } },
+              minAttendancePercent: true,
+            },
+          },
+        },
       });
       if (!session) throw new DomainError('NOT_FOUND', 'Sesión no encontrada');
+      if (
+        req.user?.role === 'STAFF' &&
+        session.event.createdBy !== req.user.id &&
+        session.event.creator?.role === 'STAFF'
+      ) {
+        throw new DomainError('FORBIDDEN', 'No tiene permiso para acceder a esta sesión');
+      }
       res.json(session);
     } catch (err) {
       next(err);
     }
   });
-  router.get('/event/:eventId', async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const items = await prisma.session.findMany({
-        where: { eventId: req.params.eventId },
-        orderBy: { startsAt: 'asc' },
-      });
-      res.json({ data: items });
-    } catch (err) {
-      next(err);
+  router.get(
+    '/event/:eventId',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const event = await prisma.event.findUnique({
+          where: { id: req.params.eventId },
+          select: { id: true, createdBy: true, creator: { select: { role: true } } },
+        });
+        if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        if (
+          req.user?.role === 'STAFF' &&
+          event.createdBy !== req.user.id &&
+          event.creator?.role === 'STAFF'
+        ) {
+          throw new DomainError(
+            'FORBIDDEN',
+            'No tiene permiso para ver las sesiones de este evento'
+          );
+        }
+        const items = await prisma.session.findMany({
+          where: { eventId: req.params.eventId },
+          orderBy: { startsAt: 'asc' },
+        });
+        res.json({ data: items });
+      } catch (err) {
+        next(err);
+      }
     }
-  });
+  );
   router.post('/', requireRole('ADMIN'), validateBody(sessionSchema), async (req, res, next) => {
     try {
       const startsAt = new Date(req.body.startsAt);

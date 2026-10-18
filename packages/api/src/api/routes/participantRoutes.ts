@@ -22,88 +22,107 @@ import { parseEnv } from '../env.js';
 // Listado con datos personales: solo ADMIN/STAFF autenticados (STAFF lo usa en puerta).
 export function participantRoutes(): Router {
   const router = Router();
-  router.get('/event/:eventId', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
-    try {
-      const prisma = getPrisma();
-      const params = parsePagination(req.query);
-      const query =
-        typeof req.query.q === 'string' && req.query.q.trim() !== '' ? req.query.q.trim() : null;
-      const typeFilter =
-        typeof req.query.type === 'string' && req.query.type !== '' ? req.query.type : null;
-      const where = {
-        eventId: req.params.eventId,
-        ...(typeFilter ? { type: typeFilter as never } : {}),
-        ...(query
-          ? {
-              OR: [
-                { firstName: { contains: query } },
-                { lastName: { contains: query } },
-                { ci: { contains: query } },
-                { email: { contains: query } },
-              ],
-            }
-          : {}),
-      };
-      const [items, total] = await Promise.all([
-        prisma.participant.findMany({
-          where,
-          skip: (params.page - 1) * params.pageSize,
-          take: params.pageSize,
-          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-        }),
-        prisma.participant.count({ where }),
-      ]);
-      // Con ?stats=1 agrega asistencia y aptitud por inscrito (filtros y diplomas).
-      if (req.query.stats === '1') {
+  router.get(
+    '/event/:eventId',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
         const event = await prisma.event.findUnique({
           where: { id: req.params.eventId },
-          include: { sessions: { select: { id: true } } },
+          select: { id: true, createdBy: true, creator: { select: { role: true } } },
         });
         if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-        const totalSessions = event.sessions.length;
-        const onlyEligible = req.query.eligible;
-        // El filtro de aptitud se calcula por fila: sin paginar en BD.
-        const base = await prisma.participant.findMany({
-          where,
-          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-          ...(onlyEligible
-            ? {}
-            : { skip: (params.page - 1) * params.pageSize, take: params.pageSize }),
-        });
-        const withStats = await Promise.all(
-          base.map(async (participant) => {
-            const attended = await prisma.attendance.count({
-              where: { participantId: participant.id, voidedAt: null },
-            });
-            const pct = attendancePercentage(attended, totalSessions);
-            return {
-              ...participant,
-              attended,
-              pct,
-              eligible: event.issuesCertificate && pct >= event.minAttendancePercent,
-            };
-          })
-        );
-        const filtered =
-          onlyEligible === 'true'
-            ? withStats.filter((p) => p.eligible)
-            : onlyEligible === 'false'
-              ? withStats.filter((p) => !p.eligible)
-              : withStats;
-        const page = onlyEligible
-          ? filtered.slice((params.page - 1) * params.pageSize, params.page * params.pageSize)
-          : filtered;
-        res.json({
-          ...paginatedResponse(page, onlyEligible ? filtered.length : total, params),
-          totalSessions,
-        });
-        return;
+        if (
+          req.user?.role === 'STAFF' &&
+          event.createdBy !== req.user.id &&
+          event.creator?.role === 'STAFF'
+        ) {
+          throw new DomainError(
+            'FORBIDDEN',
+            'No tiene permiso para ver los participantes de este evento'
+          );
+        }
+        const params = parsePagination(req.query);
+        const query =
+          typeof req.query.q === 'string' && req.query.q.trim() !== '' ? req.query.q.trim() : null;
+        const typeFilter =
+          typeof req.query.type === 'string' && req.query.type !== '' ? req.query.type : null;
+        const where = {
+          eventId: req.params.eventId,
+          ...(typeFilter ? { type: typeFilter as never } : {}),
+          ...(query
+            ? {
+                OR: [
+                  { firstName: { contains: query } },
+                  { lastName: { contains: query } },
+                  { ci: { contains: query } },
+                  { email: { contains: query } },
+                ],
+              }
+            : {}),
+        };
+        const [items, total] = await Promise.all([
+          prisma.participant.findMany({
+            where,
+            skip: (params.page - 1) * params.pageSize,
+            take: params.pageSize,
+            orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+          }),
+          prisma.participant.count({ where }),
+        ]);
+        // Con ?stats=1 agrega asistencia y aptitud por inscrito (filtros y diplomas).
+        if (req.query.stats === '1') {
+          const event = await prisma.event.findUnique({
+            where: { id: req.params.eventId },
+            include: { sessions: { select: { id: true } } },
+          });
+          if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+          const totalSessions = event.sessions.length;
+          const onlyEligible = req.query.eligible;
+          // El filtro de aptitud se calcula por fila: sin paginar en BD.
+          const base = await prisma.participant.findMany({
+            where,
+            orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+            ...(onlyEligible
+              ? {}
+              : { skip: (params.page - 1) * params.pageSize, take: params.pageSize }),
+          });
+          const withStats = await Promise.all(
+            base.map(async (participant) => {
+              const attended = await prisma.attendance.count({
+                where: { participantId: participant.id, voidedAt: null },
+              });
+              const pct = attendancePercentage(attended, totalSessions);
+              return {
+                ...participant,
+                attended,
+                pct,
+                eligible: event.issuesCertificate && pct >= event.minAttendancePercent,
+              };
+            })
+          );
+          const filtered =
+            onlyEligible === 'true'
+              ? withStats.filter((p) => p.eligible)
+              : onlyEligible === 'false'
+                ? withStats.filter((p) => !p.eligible)
+                : withStats;
+          const page = onlyEligible
+            ? filtered.slice((params.page - 1) * params.pageSize, params.page * params.pageSize)
+            : filtered;
+          res.json({
+            ...paginatedResponse(page, onlyEligible ? filtered.length : total, params),
+            totalSessions,
+          });
+          return;
+        }
+        res.json(paginatedResponse(items, total, params));
+      } catch (err) {
+        next(err);
       }
-      res.json(paginatedResponse(items, total, params));
-    } catch (err) {
-      next(err);
     }
-  });
+  );
 
   router.get('/:id/attendances', requireRole('ADMIN', 'STAFF'), async (req, res, next) => {
     try {
