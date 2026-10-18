@@ -103,16 +103,25 @@ export function AdminChrome({ children }: { children: ReactNode }) {
       >
         {/* University Crest & Title */}
         <div className="p-4 border-b border-white/10 bg-navy-light/40">
-          <Link href="/admin/eventos" className="block !text-white hover:opacity-95 transition-opacity">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gold">
-              U.M.R.P.S.F.X.CH.
-            </p>
-            <h1 className="font-serif text-base font-bold text-white leading-tight">
-              San Francisco Xavier
-            </h1>
-            <p className="text-[11px] text-white/70 mt-0.5">
-              Sistema de Eventos Académicos
-            </p>
+          <Link href="/admin/eventos" className="flex items-center gap-2.5 !text-white hover:opacity-95 transition-opacity">
+            <div className="h-9 w-9 rounded-lg border border-gold/40 overflow-hidden shrink-0 shadow-soft">
+              <img
+                src="/facultad-derecho-usfx.jpg"
+                alt="Facultad de Derecho USFX"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gold">
+                U.M.R.P.S.F.X.CH.
+              </p>
+              <h1 className="font-serif text-sm font-bold text-white leading-tight truncate">
+                San Francisco Xavier
+              </h1>
+              <p className="text-[10px] text-white/70 truncate">
+                Derecho y Cs. Políticas
+              </p>
+            </div>
           </Link>
         </div>
 
@@ -187,6 +196,13 @@ export function AdminChrome({ children }: { children: ReactNode }) {
         {/* Desktop Top Header Bar ("Head de actividad") */}
         <header className="sticky top-0 z-20 hidden md:flex h-14 items-center justify-between border-b border-line bg-surface/90 px-6 backdrop-blur-md">
           <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full border border-gold overflow-hidden shrink-0 shadow-xs bg-white/10">
+              <img
+                src="/facultad-derecho-usfx.jpg"
+                alt="Facultad de Derecho USFX"
+                className="h-full w-full object-cover"
+              />
+            </div>
             <span className="font-serif font-bold text-navy text-base">{currentTitle}</span>
             <span className="text-muted/40">•</span>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">

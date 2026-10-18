@@ -11,8 +11,12 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
             {/* University Identity */}
             <Link href="/" className="!text-white hover:opacity-95 transition-opacity flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-gold/20 border border-gold flex items-center justify-center font-serif font-black text-gold text-sm shrink-0">
-                USFX
+              <div className="h-11 w-11 rounded-full border-2 border-gold overflow-hidden shrink-0 shadow-soft bg-white/10">
+                <img
+                  src="/facultad-derecho-usfx.jpg"
+                  alt="Facultad de Derecho USFX"
+                  className="h-full w-full object-cover"
+                />
               </div>
               <div className="leading-tight">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-gold">
@@ -22,7 +26,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
                   San Francisco Xavier de Chuquisaca
                 </p>
                 <p className="text-[11px] text-white/70 hidden sm:block">
-                  Sistema de Gestión de Eventos y Certificados Académicos
+                  Facultad de Derecho, Ciencias Políticas y Sociales
                 </p>
               </div>
             </Link>

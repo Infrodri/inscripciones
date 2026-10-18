@@ -77,18 +77,31 @@ export default function HomePage() {
 
   return (
     <div className="space-y-12">
-      {/* Hero Banner Carousel Section (Inspired by eventos.usfx.bo) */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-navy via-navy to-navy-light text-white py-12 sm:py-16 px-4 border-b-2 border-gold shadow-soft">
-        <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-8">
+      {/* Hero Banner Section (Inspired by eventos.usfx.bo) */}
+      <section className="relative overflow-hidden text-white py-14 sm:py-20 px-4 border-b-4 border-gold shadow-card">
+        {/* Background photo of Facultad de Derecho USFX with institutional gradient overlays */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat transform scale-105"
+          style={{ backgroundImage: `url('/facultad-derecho-usfx.jpg')` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-navy/95 via-navy/90 to-navy/80" />
+        <div className="absolute inset-0 bg-gradient-to-t from-navy via-transparent to-navy/40" />
+
+        <div className="relative z-10 max-w-6xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-8">
           <div className="max-w-2xl text-center lg:text-left space-y-4">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-gold text-navy shadow-soft">
-              <BookOpen className="h-3.5 w-3.5" />
-              Portal de Eventos Académicos
-            </span>
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-gold text-navy shadow-soft">
+                <BookOpen className="h-3.5 w-3.5" />
+                Portal de Eventos Académicos
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white/90 border border-white/20 backdrop-blur-xs">
+                Facultad de Derecho, Cs. Políticas y Sociales
+              </span>
+            </div>
             <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight">
               Bienvenidos al sistema de eventos de la USFX
             </h1>
-            <p className="text-white/80 text-sm sm:text-base leading-relaxed">
+            <p className="text-white/90 text-sm sm:text-base leading-relaxed">
               Participe en los Congresos Internacionales, Simposios y Jornadas de formación organizadas por las Facultades y Centros de Investigación de San Francisco Xavier de Chuquisaca.
             </p>
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
