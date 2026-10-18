@@ -15,6 +15,7 @@ import { ResumenTab } from '@/components/admin/event-tabs/ResumenTab';
 import { InscripcionTab } from '@/components/admin/event-tabs/InscripcionTab';
 import { AsistenciaTabConReporte } from '@/components/admin/event-tabs/AsistenciaTab';
 import { DatosTab } from '@/components/admin/event-tabs/DatosTab';
+import { PersonalTab } from '@/components/admin/event-tabs/PersonalTab';
 import { ParticipantsTable } from '@/components/admin/ParticipantsTable';
 
 interface EventDetail {
@@ -23,6 +24,9 @@ interface EventDetail {
   title: string;
   status: string;
   location: string;
+  isOwner?: boolean;
+  ownership?: 'propio' | 'asignado';
+  accessLevel?: 'ADMIN' | 'OWNER' | 'MANAGER' | 'OPERATOR';
 }
 
 const TABS = [
@@ -31,6 +35,7 @@ const TABS = [
   { id: 'asistencia', etiqueta: 'Asistencia' },
   { id: 'inscritos', etiqueta: 'Inscritos' },
   { id: 'certificados', etiqueta: 'Certificados' },
+  { id: 'personal', etiqueta: 'Personal' },
   { id: 'datos', etiqueta: 'Datos' },
 ];
 
@@ -44,13 +49,20 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
   const rawTab = searchParams.get('tab');
   const sessionUser = getSessionUser();
   const isAdmin = sessionUser?.role === 'ADMIN';
-  const visibleTabs = TABS.filter((t) => t.id !== 'certificados' || isAdmin);
-  const tab = rawTab && VALID_TABS.has(rawTab) ? rawTab : 'resumen';
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['event', id],
     queryFn: async (): Promise<EventDetail> => (await api.get(`/events/${id}`)).data,
   });
+
+  const canManageCertificates =
+    isAdmin || data?.accessLevel === 'OWNER' || data?.accessLevel === 'MANAGER';
+  const visibleTabs = TABS.filter((t) => {
+    if (t.id === 'certificados') return canManageCertificates;
+    if (t.id === 'personal') return isAdmin;
+    return true;
+  });
+  const tab = rawTab && VALID_TABS.has(rawTab) ? rawTab : 'resumen';
   const sessionsQuery = useQuery({
     queryKey: ['sessions', id],
     queryFn: async (): Promise<{ data: Array<{ startsAt: string }> }> =>
@@ -199,6 +211,7 @@ export default function EventoDetailPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         ) : null}
+        {tab === 'personal' && isAdmin ? <PersonalTab eventId={id} /> : null}
         {tab === 'datos' ? <DatosTab eventId={id} /> : null}
       </div>
     </div>

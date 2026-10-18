@@ -23,17 +23,21 @@ interface EventRow {
   participantsCount?: number;
   speakersCount?: number;
   sessionsCount?: number;
+  ownership?: 'propio' | 'asignado';
+  accessLevel?: 'ADMIN' | 'OWNER' | 'MANAGER' | 'OPERATOR';
+  isOwner?: boolean;
 }
 
 interface EventCardProps {
   event: EventRow;
+  isAdmin?: boolean;
   onDelete?: (event: EventRow) => void;
   participants?: number;
   onSelect?: (id: string, selected: boolean) => void;
   selected?: boolean;
 }
 
-function EventCard({ event, onDelete, participants, onSelect, selected }: EventCardProps) {
+function EventCard({ event, isAdmin, onDelete, participants, onSelect, selected }: EventCardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const stats = useQuery({
@@ -71,13 +75,15 @@ function EventCard({ event, onDelete, participants, onSelect, selected }: EventC
   return (
     <Card className="bg-surface border-line shadow-soft rounded-[var(--radius-md)]">
       <div className="flex items-start gap-2">
-        <input
-          type="checkbox"
-          checked={!!selected}
-          onChange={(e) => onSelect?.(event.id, e.target.checked)}
-          className="mt-1 h-4 w-4 rounded border-line text-navy focus:ring-navy"
-          aria-label={`Seleccionar ${event.title}`}
-        />
+        {onSelect && (
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={(e) => onSelect?.(event.id, e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-line text-navy focus:ring-navy"
+            aria-label={`Seleccionar ${event.title}`}
+          />
+        )}
         <div className="flex-1 min-w-0">
           <p className="font-medium text-ink truncate">
             <Link href={`/admin/eventos/${event.id}`} className="hover:underline text-navy-hover">
@@ -86,6 +92,13 @@ function EventCard({ event, onDelete, participants, onSelect, selected }: EventC
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
             <Badge tono={event.status}>{event.status}</Badge>
+            {event.ownership === 'asignado' ? (
+              <Badge tono="aviso">
+                {event.accessLevel === 'MANAGER' ? 'Asignado (Manager)' : 'Asignado (Operador)'}
+              </Badge>
+            ) : event.ownership === 'propio' && !isAdmin ? (
+              <Badge tono="neutro">Propio</Badge>
+            ) : null}
             {first ? <span>desde {formatFecha(first)}</span> : <span>sin fecha</span>}
             {last && last !== first ? <span>hasta {formatFecha(last)}</span> : null}
             <span className="font-medium text-ink">Inscritos: {inscritosCount}</span>
@@ -100,9 +113,11 @@ function EventCard({ event, onDelete, participants, onSelect, selected }: EventC
             <Button asChild variant="primario" size="sm">
               <Link href={`/admin/eventos/${event.id}`}>Abrir</Link>
             </Button>
-            <Button variant="secundario" size="sm" onClick={() => void duplicate()}>
-              Duplicar
-            </Button>
+            {event.accessLevel !== 'OPERATOR' && (
+              <Button variant="secundario" size="sm" onClick={() => void duplicate()}>
+                Duplicar
+              </Button>
+            )}
             {onDelete && (
               <Button variant="peligro" size="sm" onClick={() => onDelete(event)}>
                 Eliminar
@@ -251,9 +266,10 @@ export default function EventosPage() {
           <EventCard
             key={e.id}
             event={e}
+            isAdmin={isAdmin}
             onDelete={isAdmin ? (event) => setDeleteTarget(event) : undefined}
             participants={e.participants}
-            onSelect={toggleSelect}
+            onSelect={isAdmin ? toggleSelect : undefined}
             selected={selectedIds.includes(e.id)}
           />
         ))}
