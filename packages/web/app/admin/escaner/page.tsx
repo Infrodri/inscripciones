@@ -77,10 +77,11 @@ export default function EscanerPage() {
   const now = Date.now();
 
   const handleCopiarEnlace = async (sessionId: string): Promise<void> => {
-    const origin =
-      typeof window !== 'undefined'
-        ? (process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin)
-        : '';
+    const origin = (
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_SITE_URL ?? '')
+    ).replace(/\/+$/, '');
     const url = `${origin}/scan/${sessionId}`;
     try {
       if (navigator?.clipboard?.writeText) {

@@ -144,45 +144,283 @@ export function exportRoutes(): Router {
           res.send(Buffer.from(buffer));
           return;
         }
-        if (req.params.kind === 'badges.pdf') {
-          const [participants, sessions] = await Promise.all([
-            prisma.participant.findMany({
-              where: participantWhere,
-              orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-            }),
-            prisma.session.findMany({
-              where: { eventId: event.id },
-              orderBy: { startsAt: 'asc' },
-            }),
-          ]);
-          if (participants.length === 0) {
-            throw new DomainError(
-              'NO_PARTICIPANTS',
-              'No hay participantes registrados para generar credenciales'
-            );
+        if (
+          req.params.kind === 'badges.pdf' ||
+          req.params.kind === 'speakers-badges.pdf' ||
+          req.params.kind === 'organizers-badges.pdf' ||
+          req.params.kind === 'sponsors-badges.pdf'
+        ) {
+          const target =
+            typeof req.query.target === 'string'
+              ? req.query.target.toLowerCase()
+              : req.params.kind === 'speakers-badges.pdf'
+                ? 'speakers'
+                : req.params.kind === 'organizers-badges.pdf'
+                  ? 'organizers'
+                  : req.params.kind === 'sponsors-badges.pdf'
+                    ? 'sponsors'
+                    : null;
+
+          const typeParam =
+            typeof req.query.type === 'string' && req.query.type.trim() !== ''
+              ? req.query.type.trim().toUpperCase()
+              : null;
+
+          let includeParticipants = true;
+          let includeSpeakers = true;
+          let includeOrganizers = true;
+          let includeSponsors = false;
+
+          if (
+            target === 'speakers' ||
+            target === 'expositores' ||
+            typeParam === 'EXPOSITOR' ||
+            typeParam === 'MODERADOR'
+          ) {
+            includeParticipants = false;
+            includeSpeakers = true;
+            includeOrganizers = false;
+            includeSponsors = false;
+          } else if (
+            target === 'organizers' ||
+            target === 'organizadores' ||
+            target === 'organization' ||
+            typeParam === 'ORGANIZADOR'
+          ) {
+            includeParticipants = false;
+            includeSpeakers = false;
+            includeOrganizers = true;
+            includeSponsors = false;
+          } else if (
+            target === 'sponsors' ||
+            target === 'auspiciantes' ||
+            typeParam === 'AUSPICIANTE' ||
+            typeParam === 'SPONSOR'
+          ) {
+            includeParticipants = false;
+            includeSpeakers = false;
+            includeOrganizers = false;
+            includeSponsors = true;
+          } else if (
+            target === 'participants' ||
+            (typeParam && ['ESTUDIANTE', 'DOCENTE', 'PROFESIONAL', 'PUBLICO'].includes(typeParam))
+          ) {
+            includeParticipants = true;
+            includeSpeakers = false;
+            includeOrganizers = false;
+            includeSponsors = false;
+          } else if (target === 'all') {
+            includeParticipants = true;
+            includeSpeakers = true;
+            includeOrganizers = true;
+            includeSponsors = true;
+          } else {
+            includeParticipants = true;
+            includeSpeakers = true;
+            includeOrganizers = true;
+            includeSponsors = false;
           }
+
+          const sessions = await prisma.session.findMany({
+            where: { eventId: event.id },
+            orderBy: { startsAt: 'asc' },
+          });
+
           const datesStr =
             sessions.length > 0
               ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
               : null;
-          const badgeList = await Promise.all(
-            participants.map(async (p) => ({
-              fullName: `${p.firstName} ${p.lastName}`.trim(),
-              ci: p.ci,
-              type: p.type,
-              institution: p.institution,
-              career: p.career,
+
+          const [participants, speakers, organizers, sponsors] = await Promise.all([
+            includeParticipants
+              ? prisma.participant.findMany({
+                  where: participantWhere,
+                  orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+                })
+              : Promise.resolve([]),
+            includeSpeakers
+              ? prisma.speaker.findMany({
+                  where: {
+                    eventId: event.id,
+                    ...(typeParam === 'EXPOSITOR' || typeParam === 'MODERADOR'
+                      ? { role: typeParam as 'EXPOSITOR' | 'MODERADOR' }
+                      : {}),
+                    ...(query
+                      ? {
+                          OR: [
+                            { fullName: { contains: query } },
+                            { institution: { contains: query } },
+                            { titleProfession: { contains: query } },
+                          ],
+                        }
+                      : {}),
+                  },
+                  include: { recipients: true },
+                  orderBy: [{ position: 'asc' }, { fullName: 'asc' }],
+                })
+              : Promise.resolve([]),
+            includeOrganizers
+              ? prisma.certificateRecipient.findMany({
+                  where: {
+                    eventId: event.id,
+                    roleKind: 'ORGANIZADOR',
+                    ...(query
+                      ? {
+                          OR: [
+                            { fullName: { contains: query } },
+                            { email: { contains: query } },
+                            { note: { contains: query } },
+                          ],
+                        }
+                      : {}),
+                  },
+                  orderBy: { fullName: 'asc' },
+                })
+              : Promise.resolve([]),
+            includeSponsors
+              ? prisma.sponsor.findMany({
+                  where: {
+                    eventId: event.id,
+                    ...(query ? { name: { contains: query } } : {}),
+                  },
+                  orderBy: { position: 'asc' },
+                })
+              : Promise.resolve([]),
+          ]);
+
+          const eventParticipantsForMatch = includeParticipants
+            ? participants
+            : await prisma.participant.findMany({
+                where: { eventId: event.id },
+                select: { id: true, firstName: true, lastName: true, ci: true, email: true, qrToken: true },
+              });
+
+          function findMatchingParticipant(
+            name: string,
+            email?: string | null
+          ): { id: string; ci: string; qrToken: string } | null {
+            const normName = name.trim().toLowerCase();
+            const normEmail = email?.trim().toLowerCase();
+            return (
+              eventParticipantsForMatch.find((p) => {
+                if (normEmail && p.email?.trim().toLowerCase() === normEmail) return true;
+                const pName = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
+                return pName === normName;
+              }) ?? null
+            );
+          }
+
+          const speakerBadges = await Promise.all(
+            speakers.map(async (s) => {
+              const speakerEmail = s.recipients.find((r) => r.email)?.email;
+              const match = findMatchingParticipant(s.fullName, speakerEmail);
+              const qrPayload = match?.qrToken ?? `SPEAKER:${s.id}:${event.slug}`;
+              return {
+                fullName: s.fullName.trim(),
+                ci: match?.ci ?? null,
+                type: s.role === 'MODERADOR' ? 'MODERADOR' : 'EXPOSITOR',
+                institution: s.institution ?? s.titleProfession ?? event.institution,
+                career: s.titleProfession ?? (s.role === 'MODERADOR' ? 'Moderador' : 'Expositor Invitado'),
+                eventTitle: event.title,
+                eventInstitution: event.institution,
+                eventDates: datesStr,
+                eventLocation: event.location,
+                qrPngBuffer: await qrPngBuffer(qrPayload),
+                _matchedParticipantId: match?.id,
+              };
+            })
+          );
+
+          const organizerBadges = await Promise.all(
+            organizers.map(async (o) => {
+              const match = findMatchingParticipant(o.fullName, o.email);
+              const qrPayload = match?.qrToken ?? o.certificateCode ?? `ORGANIZER:${o.id}:${event.slug}`;
+              return {
+                fullName: o.fullName.trim(),
+                ci: match?.ci ?? null,
+                type: 'ORGANIZADOR',
+                institution: o.note ?? event.institution ?? 'Comité Organizador',
+                career: 'Comité Organizador',
+                eventTitle: event.title,
+                eventInstitution: event.institution,
+                eventDates: datesStr,
+                eventLocation: event.location,
+                qrPngBuffer: await qrPngBuffer(qrPayload),
+                _matchedParticipantId: match?.id,
+              };
+            })
+          );
+
+          const sponsorBadges = await Promise.all(
+            sponsors.map(async (sp) => ({
+              fullName: sp.name.trim(),
+              ci: null,
+              type: 'AUSPICIANTE',
+              institution: event.institution,
+              career: 'Auspiciador Oficial',
               eventTitle: event.title,
               eventInstitution: event.institution,
               eventDates: datesStr,
               eventLocation: event.location,
-              qrPngBuffer: await qrPngBuffer(p.qrToken),
+              qrPngBuffer: await qrPngBuffer(`SPONSOR:${sp.id}:${event.slug}`),
+              _matchedParticipantId: undefined,
             }))
           );
+
+          const claimedParticipantIds = new Set<string>();
+          for (const b of speakerBadges) {
+            if (b._matchedParticipantId) claimedParticipantIds.add(b._matchedParticipantId);
+          }
+          for (const b of organizerBadges) {
+            if (b._matchedParticipantId) claimedParticipantIds.add(b._matchedParticipantId);
+          }
+
+          const participantBadges = await Promise.all(
+            participants
+              .filter((p) => !claimedParticipantIds.has(p.id))
+              .map(async (p) => ({
+                fullName: `${p.firstName} ${p.lastName}`.trim(),
+                ci: p.ci,
+                type: p.type,
+                institution: p.institution,
+                career: p.career,
+                eventTitle: event.title,
+                eventInstitution: event.institution,
+                eventDates: datesStr,
+                eventLocation: event.location,
+                qrPngBuffer: await qrPngBuffer(p.qrToken),
+              }))
+          );
+
+          const badgeList = [
+            ...speakerBadges.map(({ _matchedParticipantId, ...rest }) => rest),
+            ...organizerBadges.map(({ _matchedParticipantId, ...rest }) => rest),
+            ...sponsorBadges.map(({ _matchedParticipantId, ...rest }) => rest),
+            ...participantBadges,
+          ];
+
+          if (badgeList.length === 0) {
+            throw new DomainError(
+              'NO_PARTICIPANTS',
+              'No se encontraron registros para generar credenciales'
+            );
+          }
+
+          let filenameSuffix = '';
+          if (target === 'speakers' || typeParam === 'EXPOSITOR' || typeParam === 'MODERADOR') {
+            filenameSuffix = '-expositores';
+          } else if (target === 'organizers' || typeParam === 'ORGANIZADOR') {
+            filenameSuffix = '-organizadores';
+          } else if (target === 'sponsors' || typeParam === 'AUSPICIANTE') {
+            filenameSuffix = '-auspiciantes';
+          } else if (target === 'participants') {
+            filenameSuffix = '-participantes';
+          }
+
           res.header('Content-Type', 'application/pdf');
           res.header(
             'Content-Disposition',
-            `attachment; filename="credenciales-${event.slug}.pdf"`
+            `attachment; filename="credenciales${filenameSuffix}-${event.slug}.pdf"`
           );
           await renderBadgeSheet(badgeList, res);
           return;

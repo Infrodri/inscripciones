@@ -92,19 +92,23 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
           }
           if (query.scope === 'eligible') {
             const total = sessions.length;
-            const eligible: typeof participants = [];
-            for (const participant of participants) {
-              const attended = await prisma.attendance.count({
-                where: { participantId: participant.id, voidedAt: null },
-              });
-              if (
+            const pIds = participants.map((p) => p.id);
+            const attendanceCounts =
+              pIds.length > 0
+                ? await prisma.attendance.groupBy({
+                    by: ['participantId'],
+                    where: { participantId: { in: pIds }, voidedAt: null },
+                    _count: { id: true },
+                  })
+                : [];
+            const countMap = new Map(attendanceCounts.map((c) => [c.participantId, c._count.id]));
+            participants = participants.filter((p) => {
+              const attended = countMap.get(p.id) ?? 0;
+              return (
                 event.issuesCertificate &&
                 attendancePercentage(attended, total) >= event.minAttendancePercent
-              ) {
-                eligible.push(participant);
-              }
-            }
-            participants = eligible;
+              );
+            });
           }
           const image = await imageFor(template.filePath);
           const nameBox = template.nameBox as unknown as NameBox;

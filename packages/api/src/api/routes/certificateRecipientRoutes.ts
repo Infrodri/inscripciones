@@ -132,6 +132,55 @@ export function certificateRecipientRoutes(): Router {
     }
   );
 
+  router.put(
+    '/certificate-recipients/:id',
+    staffOrAdmin,
+    validateBody(
+      z.object({
+        fullName: z.string().min(1).optional(),
+        email: z.preprocess(
+          (value) => (typeof value !== 'string' || value.trim() === '' ? undefined : value),
+          z.string().trim().toLowerCase().pipe(z.string().email('El correo no es válido')).optional().nullable()
+        ),
+        note: z.string().nullable().optional(),
+        templateId: z.string().uuid().optional(),
+      })
+    ),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const recipient = await prisma.certificateRecipient.findUnique({
+          where: { id: req.params.id },
+        });
+        if (!recipient) throw new DomainError('NOT_FOUND', 'Receptor no encontrado');
+        await assertEventAccess(prisma, req.user, recipient.eventId, 'MANAGER');
+
+        const data: {
+          fullName?: string;
+          email?: string | null;
+          note?: string | null;
+          templateId?: string;
+        } = {};
+
+        if (req.body.fullName) data.fullName = normalizeName(req.body.fullName);
+        if (req.body.email !== undefined) data.email = req.body.email;
+        if (req.body.note !== undefined) data.note = req.body.note?.trim() || null;
+        if (req.body.templateId) {
+          await assertTemplateRole(recipient.eventId, recipient.roleKind, req.body.templateId);
+          data.templateId = req.body.templateId;
+        }
+
+        const updated = await prisma.certificateRecipient.update({
+          where: { id: req.params.id },
+          data,
+        });
+        res.json(updated);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   // Alta masiva: un nombre por línea conceptual; reporta creados y duplicados.
   router.post(
     '/events/:eventId/certificate-recipients/bulk',

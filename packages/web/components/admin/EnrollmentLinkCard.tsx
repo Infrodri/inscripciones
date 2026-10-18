@@ -9,11 +9,15 @@ import { CopyBroadcastButton } from '@/components/CopyBroadcastButton';
 
 export function EnrollmentLinkCard({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
-  const site =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (typeof window !== 'undefined' ? window.location.origin : '');
+  const site = (
+    typeof window !== 'undefined' && window.location.origin
+      ? window.location.origin
+      : (process.env.NEXT_PUBLIC_SITE_URL ?? '')
+  ).replace(/\/+$/, '');
   const url = `${site}/e/${slug}`;
-  const qrPng = apiUrl(`/public/events/${slug}/link-qr.png`);
+  const qrPng = apiUrl(
+    `/public/events/${slug}/link-qr.png${site ? `?origin=${encodeURIComponent(site)}` : ''}`
+  );
 
   async function copy(): Promise<void> {
     try {
@@ -53,7 +57,7 @@ export function EnrollmentLinkCard({ slug }: { slug: string }) {
             <Button asChild variant="secundario" size="sm">
               <a href={url}>Abrir</a>
             </Button>
-            <CopyBroadcastButton slug={slug} />
+            <CopyBroadcastButton slug={slug} size="sm" />
           </div>
         </div>
 

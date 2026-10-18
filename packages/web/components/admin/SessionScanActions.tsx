@@ -9,7 +9,11 @@ export function SessionScanActions({ sessionId }: { sessionId: string }) {
   const [copied, setCopied] = useState(false);
 
   async function copyLink(): Promise<void> {
-    const site = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+    const site = (
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_SITE_URL ?? '')
+    ).replace(/\/+$/, '');
     try {
       await navigator.clipboard.writeText(`${site}${scanPath(sessionId)}`);
       setCopied(true);

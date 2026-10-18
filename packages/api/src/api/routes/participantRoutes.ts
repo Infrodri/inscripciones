@@ -75,20 +75,26 @@ export function participantRoutes(): Router {
               ? {}
               : { skip: (params.page - 1) * params.pageSize, take: params.pageSize }),
           });
-          const withStats = await Promise.all(
-            base.map(async (participant) => {
-              const attended = await prisma.attendance.count({
-                where: { participantId: participant.id, voidedAt: null },
-              });
-              const pct = attendancePercentage(attended, totalSessions);
-              return {
-                ...participant,
-                attended,
-                pct,
-                eligible: event.issuesCertificate && pct >= event.minAttendancePercent,
-              };
-            })
-          );
+          const baseIds = base.map((p) => p.id);
+          const attendanceCounts =
+            baseIds.length > 0
+              ? await prisma.attendance.groupBy({
+                  by: ['participantId'],
+                  where: { participantId: { in: baseIds }, voidedAt: null },
+                  _count: { id: true },
+                })
+              : [];
+          const countMap = new Map(attendanceCounts.map((c) => [c.participantId, c._count.id]));
+          const withStats = base.map((participant) => {
+            const attended = countMap.get(participant.id) ?? 0;
+            const pct = attendancePercentage(attended, totalSessions);
+            return {
+              ...participant,
+              attended,
+              pct,
+              eligible: event.issuesCertificate && pct >= event.minAttendancePercent,
+            };
+          });
           const filtered =
             onlyEligible === 'true'
               ? withStats.filter((p) => p.eligible)

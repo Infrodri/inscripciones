@@ -6,6 +6,8 @@ import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { DomainError } from '../../domain/errors.js';
 import { assertEventAccess } from '../../application/accessControl.js';
+import { renderSingleBadge, type BadgeParticipant } from '@inscripciones/infrastructure/badges.js';
+import { qrPngBuffer } from '@inscripciones/infrastructure/qr.js';
 
 const speakerSchema = z.object({
   eventId: z.string().uuid(),
@@ -87,5 +89,54 @@ export function speakerRoutes(): Router {
       next(err);
     }
   });
+
+  router.get(
+    '/:id/badge.pdf',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const speaker = await prisma.speaker.findUnique({
+          where: { id: req.params.id },
+          include: {
+            event: {
+              include: { sessions: { orderBy: { startsAt: 'asc' } } },
+            },
+          },
+        });
+        if (!speaker) throw new DomainError('NOT_FOUND', 'Expositor no encontrado');
+        await assertEventAccess(prisma, req.user, speaker.eventId, 'OPERATOR');
+
+        const sessions = speaker.event.sessions;
+        const datesStr =
+          sessions.length > 0
+            ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
+            : null;
+
+        const badgeData: BadgeParticipant = {
+          fullName: speaker.fullName,
+          ci: speaker.titleProfession ?? 'EXPOSITOR',
+          type: speaker.role,
+          institution: speaker.institution ?? speaker.event.institution,
+          career: speaker.titleProfession ?? 'Expositor Invitado',
+          eventTitle: speaker.event.title,
+          eventInstitution: speaker.event.institution,
+          eventDates: datesStr,
+          eventLocation: speaker.event.location,
+          qrPngBuffer: await qrPngBuffer(`SPEAKER:${speaker.id}:${speaker.event.slug}`),
+        };
+
+        res.header('Content-Type', 'application/pdf');
+        res.header(
+          'Content-Disposition',
+          `attachment; filename="credencial-expositor-${speaker.id.slice(0, 8)}.pdf"`
+        );
+        await renderSingleBadge(badgeData, res);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   return router;
 }

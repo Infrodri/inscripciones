@@ -6,8 +6,11 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { api, apiErrorMessage, apiUrl, getToken } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
+import { Dialog } from '@/components/ui/Dialog';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import { EstadoEnvio } from '@/components/admin/EstadoEnvio';
+import { Edit2, Trash2, IdCard } from 'lucide-react';
 
 interface Template {
   id: string;
@@ -48,7 +51,7 @@ async function downloadPdf(url: string, filename: string): Promise<void> {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(objectUrl);
-  toast.success('PDF generado');
+  toast.success('PDF generado exitosamente');
 }
 
 export function ExpositoresTab({ eventId }: { eventId: string }) {
@@ -59,6 +62,19 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
   const [speakerId, setSpeakerId] = useState('');
   const [note, setNote] = useState('');
 
+  // Edit and Delete States
+  const [editingRecipient, setEditingRecipient] = useState<{
+    id: string;
+    fullName: string;
+    email: string;
+    note: string;
+  } | null>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    fullName: string;
+  } | null>(null);
+
   const templates = useQuery({
     queryKey: ['templates-expositor', eventId],
     queryFn: async (): Promise<{ data: Template[] }> =>
@@ -68,6 +84,7 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
         })
       ).data,
   });
+
   const recipients = useQuery({
     queryKey: ['recipients-expositor', eventId],
     queryFn: async (): Promise<{ data: Recipient[] }> =>
@@ -77,6 +94,7 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
         })
       ).data,
   });
+
   const speakers = useQuery({
     queryKey: ['speakers', eventId],
     queryFn: async (): Promise<{ data: Speaker[] }> =>
@@ -106,7 +124,7 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
       setNote('');
       setSpeakerId('');
       await queryClient.invalidateQueries({ queryKey: ['recipients-expositor', eventId] });
-      toast.success('Expositor agregado');
+      toast.success('Expositor agregado para certificado');
     } catch (error) {
       if (!axios.isAxiosError(error) || error.response?.status !== 401)
         toast.error(apiErrorMessage(error));
@@ -130,8 +148,40 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
     }
   }
 
+  async function handleUpdateRecipient(): Promise<void> {
+    if (!editingRecipient) return;
+    if (!editingRecipient.fullName.trim()) {
+      toast.error('El nombre no puede estar vacío');
+      return;
+    }
+    try {
+      await api.put(`/certificate-recipients/${editingRecipient.id}`, {
+        fullName: editingRecipient.fullName.trim(),
+        email: editingRecipient.email.trim() || null,
+        note: editingRecipient.note.trim() || null,
+      });
+      await queryClient.invalidateQueries({ queryKey: ['recipients-expositor', eventId] });
+      setEditingRecipient(null);
+      toast.success('Expositor actualizado');
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
+    }
+  }
+
+  async function handleDeleteRecipient(): Promise<void> {
+    if (!deleteTarget) return;
+    try {
+      await api.delete(`/certificate-recipients/${deleteTarget.id}`);
+      await queryClient.invalidateQueries({ queryKey: ['recipients-expositor', eventId] });
+      setDeleteTarget(null);
+      toast.success('Expositor eliminado de la lista');
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
+    }
+  }
+
   return (
-    <div>
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <Button
           variant="secundario"
@@ -148,7 +198,14 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
           </p>
         )}
       </div>
-      <form onSubmit={(e) => void submit(e)} className="mt-3 grid max-w-xl gap-3">
+
+      <form
+        onSubmit={(e) => void submit(e)}
+        className="rounded-xl border border-line bg-surface p-5 shadow-soft grid max-w-2xl gap-3"
+      >
+        <h3 className="font-serif text-base font-semibold text-navy">
+          Registrar expositor para emisión de certificados
+        </h3>
         <Input
           id="exp-nombre"
           etiqueta="Nombre completo con título, tal como debe imprimirse"
@@ -157,82 +214,241 @@ export function ExpositoresTab({ eventId }: { eventId: string }) {
           required
           placeholder="Dr. César Suárez Saavedra"
         />
-        <Input
-          id="exp-plantilla"
-          etiqueta="Plantilla (solo EXPOSITOR)"
-          desplegable
-          value={templateId}
-          onChange={(e) => setTemplateId(e.target.value)}
-        >
-          <option value="">Predeterminada</option>
-          {(templates.data?.data ?? []).map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-              {t.isDefault ? ' (predeterminada)' : ''}
-            </option>
-          ))}
-        </Input>
-        <Input
-          id="exp-speaker"
-          etiqueta="Vínculo a expositor"
-          opcional=" (opcional)"
-          desplegable
-          value={speakerId}
-          onChange={(e) => setSpeakerId(e.target.value)}
-        >
-          <option value="">Sin vínculo</option>
-          {(speakers.data?.data ?? []).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.fullName} ({s.role})
-            </option>
-          ))}
-        </Input>
-        <Input
-          id="exp-correo"
-          etiqueta="Correo"
-          opcional=" (opcional, para envío)"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Input
-          id="exp-nota"
-          etiqueta="Nota interna (no se imprime)"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
-        <div>
-          <Button type="submit">Agregar expositor</Button>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input
+            id="exp-plantilla"
+            etiqueta="Plantilla (solo EXPOSITOR)"
+            desplegable
+            value={templateId}
+            onChange={(e) => setTemplateId(e.target.value)}
+          >
+            <option value="">Predeterminada</option>
+            {(templates.data?.data ?? []).map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+                {t.isDefault ? ' (predeterminada)' : ''}
+              </option>
+            ))}
+          </Input>
+          <Input
+            id="exp-speaker"
+            etiqueta="Vínculo a expositor"
+            opcional=" (opcional)"
+            desplegable
+            value={speakerId}
+            onChange={(e) => setSpeakerId(e.target.value)}
+          >
+            <option value="">Sin vínculo</option>
+            {(speakers.data?.data ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.fullName} ({s.role})
+              </option>
+            ))}
+          </Input>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input
+            id="exp-correo"
+            etiqueta="Correo electrónico"
+            opcional=" (opcional, para envío)"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Input
+            id="exp-nota"
+            etiqueta="Nota interna (no se imprime)"
+            opcional=" (opcional)"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+        <div className="flex justify-end pt-2">
+          <Button variant="primario" type="submit">
+            Agregar expositor
+          </Button>
         </div>
       </form>
-      <ul className="mt-4 space-y-2">
-        {(recipients.data?.data ?? []).map((r) => (
-          <li key={r.id} className="text-sm">
-            <span>
-              {r.fullName} — {r.certificateCode ? 'exportado' : 'pendiente'}
-            </span>{' '}
-            <EstadoEnvio
-              recipientId={r.id}
-              email={r.email}
-              emailedAt={r.certificateEmailedAt}
-              error={r.certificateEmailError}
-              queryKey={['recipients-expositor', eventId]}
-            />
-          </li>
-        ))}
-      </ul>
-      <div className="mt-3">
-        <Button
-          onClick={() =>
-            void downloadPdf(
-              `/events/${eventId}/exports/certificates.pdf?roleKind=EXPOSITOR&scope=all`,
-              'certificados-expositores.pdf'
-            )
+
+      <div className="rounded-xl border border-line bg-surface p-5 shadow-soft space-y-3">
+        <div className="flex items-center justify-between border-b border-line pb-2">
+          <h3 className="font-serif text-base font-semibold text-navy">
+            Expositores registrados para certificados
+          </h3>
+          <span className="text-xs text-muted font-medium">
+            Total: {(recipients.data?.data ?? []).length}
+          </span>
+        </div>
+
+        <ul className="divide-y divide-line/60">
+          {(recipients.data?.data ?? []).length === 0 ? (
+            <li className="text-xs text-muted italic py-4 text-center">
+              No hay expositores registrados para certificados en este evento.
+            </li>
+          ) : (
+            (recipients.data?.data ?? []).map((r) => (
+              <li
+                key={r.id}
+                className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm"
+              >
+                <div>
+                  <div className="font-semibold text-navy">{r.fullName}</div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted mt-0.5">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        r.certificateCode ? 'bg-emerald-100 text-emerald-800' : 'bg-canvas text-muted'
+                      }`}
+                    >
+                      {r.certificateCode ? 'Exportado' : 'Pendiente'}
+                    </span>
+                    {r.email && <span>📧 {r.email}</span>}
+                    {r.note && <span className="italic">Nota: {r.note}</span>}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <EstadoEnvio
+                    recipientId={r.id}
+                    email={r.email}
+                    emailedAt={r.certificateEmailedAt}
+                    error={r.certificateEmailError}
+                    queryKey={['recipients-expositor', eventId]}
+                  />
+
+                  {r.speakerId && (
+                    <Button
+                      variant="secundario"
+                      size="sm"
+                      onClick={() =>
+                        void downloadPdf(
+                          `/speakers/${r.speakerId}/badge.pdf`,
+                          `credencial-${r.fullName.replace(/\s+/g, '_')}.pdf`
+                        )
+                      }
+                      title="Imprimir credencial individual"
+                      className="text-xs"
+                    >
+                      <IdCard className="h-3.5 w-3.5 mr-1 text-gold" />
+                      Credencial
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="fantasma"
+                    size="sm"
+                    onClick={() =>
+                      setEditingRecipient({
+                        id: r.id,
+                        fullName: r.fullName,
+                        email: r.email ?? '',
+                        note: r.note ?? '',
+                      })
+                    }
+                    title="Editar datos del expositor"
+                  >
+                    <Edit2 className="h-3.5 w-3.5 mr-1" />
+                    Editar
+                  </Button>
+
+                  <Button
+                    variant="peligro"
+                    size="sm"
+                    onClick={() =>
+                      setDeleteTarget({
+                        id: r.id,
+                        fullName: r.fullName,
+                      })
+                    }
+                    title="Eliminar expositor"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+
+        {(recipients.data?.data ?? []).length > 0 && (
+          <div className="pt-3 border-t border-line flex justify-end">
+            <Button
+              variant="primario"
+              onClick={() =>
+                void downloadPdf(
+                  `/events/${eventId}/exports/certificates.pdf?roleKind=EXPOSITOR&scope=all`,
+                  'certificados-expositores.pdf'
+                )
+              }
+            >
+              Exportar todos los certificados (PDF)
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* DIÁLOGO DE EDICIÓN DE RECEPTOR */}
+      {editingRecipient && (
+        <Dialog
+          open={true}
+          titulo="Editar datos de expositor"
+          onCerrar={() => setEditingRecipient(null)}
+          accion={
+            <Button variant="primario" onClick={() => void handleUpdateRecipient()}>
+              Guardar cambios
+            </Button>
           }
         >
-          Exportar expositores
-        </Button>
-      </div>
+          <div className="space-y-3">
+            <Input
+              id="edit-recip-nombre"
+              etiqueta="Nombre completo tal como se imprimirá en el certificado"
+              value={editingRecipient.fullName}
+              onChange={(e) =>
+                setEditingRecipient((prev) =>
+                  prev ? { ...prev, fullName: e.target.value } : null
+                )
+              }
+              required
+            />
+            <Input
+              id="edit-recip-correo"
+              etiqueta="Correo electrónico"
+              opcional=" (opcional)"
+              type="email"
+              value={editingRecipient.email}
+              onChange={(e) =>
+                setEditingRecipient((prev) => (prev ? { ...prev, email: e.target.value } : null))
+              }
+            />
+            <Input
+              id="edit-recip-nota"
+              etiqueta="Nota interna"
+              opcional=" (opcional)"
+              value={editingRecipient.note}
+              onChange={(e) =>
+                setEditingRecipient((prev) => (prev ? { ...prev, note: e.target.value } : null))
+              }
+            />
+          </div>
+        </Dialog>
+      )}
+
+      {/* DIÁLOGO ÚNICO DE CONFIRMACIÓN DE ELIMINACIÓN (Anti-Regression Rule 2) */}
+      {deleteTarget && (
+        <ConfirmDialog
+          open={true}
+          titulo="¿Eliminar expositor de certificados?"
+          mensaje={
+            <p className="text-sm text-ink">
+              ¿Está seguro de eliminar a <strong>{deleteTarget.fullName}</strong> de la lista de
+              certificados? Esta acción no se puede deshacer.
+            </p>
+          }
+          confirmar="Eliminar"
+          onConfirmar={() => void handleDeleteRecipient()}
+          onCerrar={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }

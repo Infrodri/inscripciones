@@ -18,7 +18,7 @@ import {
 } from '../../application/registrationService.js';
 import { registrationReason } from '../../application/registrationState.js';
 import { buildConfirmationMail } from '../../application/confirmationMail.js';
-import { bannerPublicUrl, filePublicUrl, qrPngUrl, type PublicUrlEnv } from '../../shared/urls.js';
+import { bannerPublicUrl, filePublicUrl, qrPngUrl, resolveOrigin, type PublicUrlEnv } from '../../shared/urls.js';
 import { logger } from '../../shared/logger.js';
 import type { AppEnv } from '../env.js';
 
@@ -356,7 +356,8 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
         select: { id: true },
       });
       if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
-      const png = await qrPngBuffer(`${env.PUBLIC_SITE_URL}/e/${req.params.slug}`);
+      const origin = resolveOrigin(req, env.PUBLIC_SITE_URL);
+      const png = await qrPngBuffer(`${origin}/e/${req.params.slug}`);
       res.header('Content-Type', 'image/png');
       res.send(png);
     } catch (err) {

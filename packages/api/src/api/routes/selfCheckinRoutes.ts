@@ -18,6 +18,7 @@ import {
 import { logger } from '../../shared/logger.js';
 import type { AppEnv } from '../env.js';
 import { assertSessionAccess } from '../../application/accessControl.js';
+import { resolveOrigin } from '../../shared/urls.js';
 
 const admin = requireRole('ADMIN', 'STAFF');
 
@@ -120,8 +121,9 @@ export function selfCheckinAdminRoutes(env: AppEnv): Router {
       const prisma = getPrisma();
       const session = await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
       const token = issueSelfCheckinToken(env.JWT_SECRET, session.id);
+      const origin = resolveOrigin(req, env.PUBLIC_SITE_URL);
       res.json({
-        url: `${env.PUBLIC_SITE_URL}/a/${token}`,
+        url: `${origin}/a/${token}`,
         qrPngUrl: `/api/v1/sessions/${session.id}/self-checkin/qr.png`,
         expiresAt: windowEndsAt(currentWindow()),
       });
@@ -136,7 +138,8 @@ export function selfCheckinAdminRoutes(env: AppEnv): Router {
       const prisma = getPrisma();
       const session = await assertSessionAccess(prisma, req.user, req.params.id, 'OPERATOR');
       const token = issueSelfCheckinToken(env.JWT_SECRET, session.id);
-      const png = await qrPngBuffer(`${env.PUBLIC_SITE_URL}/a/${token}`);
+      const origin = resolveOrigin(req, env.PUBLIC_SITE_URL);
+      const png = await qrPngBuffer(`${origin}/a/${token}`);
       res.header('Content-Type', 'image/png');
       res.send(png);
     } catch (err) {

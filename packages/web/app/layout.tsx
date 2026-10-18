@@ -4,8 +4,27 @@ import { Inter, Source_Serif_4 } from 'next/font/google';
 import { Toaster } from 'sonner';
 import './globals.css';
 
+function getMetadataBase(): URL {
+  const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (envUrl) {
+    try {
+      return new URL(envUrl.startsWith('http') ? envUrl : `https://${envUrl}`);
+    } catch {
+      // ignore and fall through
+    }
+  }
+  if (process.env.VERCEL_URL) {
+    try {
+      return new URL(`https://${process.env.VERCEL_URL}`);
+    } catch {
+      // ignore and fall through
+    }
+  }
+  return new URL('http://localhost:3000');
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://inscripciones-eight.vercel.app'),
+  metadataBase: getMetadataBase(),
   title: 'Sistema de Eventos Académicos - USFX',
   description:
     'Facultad de Derecho, Ciencias Políticas y Sociales - Universidad Mayor, Real y Pontificia de San Francisco Xavier de Chuquisaca',

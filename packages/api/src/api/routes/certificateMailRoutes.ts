@@ -327,19 +327,23 @@ export function certificateMailRoutes(
           }
           if (req.body.scope === 'eligible') {
             const total = sessions.length;
-            const filtered = [];
-            for (const p of participants) {
-              const attended = await prisma.attendance.count({
-                where: { participantId: p.id, voidedAt: null },
-              });
-              if (
+            const pIds = participants.map((p) => p.id);
+            const attendanceCounts =
+              pIds.length > 0
+                ? await prisma.attendance.groupBy({
+                    by: ['participantId'],
+                    where: { participantId: { in: pIds }, voidedAt: null },
+                    _count: { id: true },
+                  })
+                : [];
+            const countMap = new Map(attendanceCounts.map((c) => [c.participantId, c._count.id]));
+            participants = participants.filter((p) => {
+              const attended = countMap.get(p.id) ?? 0;
+              return (
                 event.issuesCertificate &&
                 attendancePercentage(attended, total) >= event.minAttendancePercent
-              ) {
-                filtered.push(p);
-              }
-            }
-            participants = filtered;
+              );
+            });
           }
           for (const p of participants) {
             candidates.push({

@@ -80,30 +80,41 @@ export function walkinRoutes(): Router {
           where: { eventId: event.id },
           orderBy: { startsAt: 'asc' },
         });
-        const [participantIds, perSession] = await Promise.all([
+        const [participants, sessionAttendances, participantAttendances] = await Promise.all([
           prisma.participant.findMany({ where: { eventId: event.id }, select: { id: true } }),
-          Promise.all(
-            sessions.map(async (session) => ({
-              id: session.id,
-              label: session.label,
-              startsAt: session.startsAt,
-              checkedIn: await prisma.attendance.count({
-                where: { sessionId: session.id, voidedAt: null },
-              }),
-            }))
-          ),
+          prisma.attendance.groupBy({
+            by: ['sessionId'],
+            where: { session: { eventId: event.id }, voidedAt: null },
+            _count: { id: true },
+          }),
+          prisma.attendance.groupBy({
+            by: ['participantId'],
+            where: { session: { eventId: event.id }, voidedAt: null },
+            _count: { id: true },
+          }),
         ]);
+
+        const sessionCountMap = new Map(sessionAttendances.map((s) => [s.sessionId, s._count.id]));
+        const perSession = sessions.map((session) => ({
+          id: session.id,
+          label: session.label,
+          startsAt: session.startsAt,
+          checkedIn: sessionCountMap.get(session.id) ?? 0,
+        }));
+
         const totalSessions = sessions.length;
         let eligible = 0;
-        for (const participant of participantIds) {
-          const attended = await prisma.attendance.count({
-            where: { participantId: participant.id, voidedAt: null },
-          });
-          if (attendancePercentage(attended, totalSessions) >= event.minAttendancePercent)
+        const participantCountMap = new Map(
+          participantAttendances.map((p) => [p.participantId, p._count.id])
+        );
+        for (const p of participants) {
+          const attended = participantCountMap.get(p.id) ?? 0;
+          if (attendancePercentage(attended, totalSessions) >= event.minAttendancePercent) {
             eligible += 1;
+          }
         }
         res.json({
-          participants: participantIds.length,
+          participants: participants.length,
           sessions: totalSessions,
           perSession,
           eligible,

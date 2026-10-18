@@ -6,6 +6,8 @@ import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { DomainError } from '../../domain/errors.js';
 import { assertEventAccess } from '../../application/accessControl.js';
+import { renderSingleBadge, type BadgeParticipant } from '@inscripciones/infrastructure/badges.js';
+import { qrPngBuffer } from '@inscripciones/infrastructure/qr.js';
 
 const sponsorSchema = z.object({
   eventId: z.string().uuid(),
@@ -84,5 +86,54 @@ export function sponsorRoutes(): Router {
       next(err);
     }
   });
+
+  router.get(
+    '/:id/badge.pdf',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        const sponsor = await prisma.sponsor.findUnique({
+          where: { id: req.params.id },
+          include: {
+            event: {
+              include: { sessions: { orderBy: { startsAt: 'asc' } } },
+            },
+          },
+        });
+        if (!sponsor) throw new DomainError('NOT_FOUND', 'Auspiciante no encontrado');
+        await assertEventAccess(prisma, req.user, sponsor.eventId, 'OPERATOR');
+
+        const sessions = sponsor.event.sessions;
+        const datesStr =
+          sessions.length > 0
+            ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
+            : null;
+
+        const badgeData: BadgeParticipant = {
+          fullName: sponsor.name,
+          ci: 'AUSPICIANTE',
+          type: 'AUSPICIANTE',
+          institution: sponsor.event.institution,
+          career: 'Auspiciador Oficial',
+          eventTitle: sponsor.event.title,
+          eventInstitution: sponsor.event.institution,
+          eventDates: datesStr,
+          eventLocation: sponsor.event.location,
+          qrPngBuffer: await qrPngBuffer(`SPONSOR:${sponsor.id}:${sponsor.event.slug}`),
+        };
+
+        res.header('Content-Type', 'application/pdf');
+        res.header(
+          'Content-Disposition',
+          `attachment; filename="credencial-auspiciante-${sponsor.id.slice(0, 8)}.pdf"`
+        );
+        await renderSingleBadge(badgeData, res);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   return router;
 }
