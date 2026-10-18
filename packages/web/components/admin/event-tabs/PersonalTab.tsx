@@ -74,7 +74,7 @@ export function PersonalTab({ eventId }: { eventId: string }) {
   const assignments = data?.data ?? [];
   const assignedUserIds = new Set(assignments.map((a) => a.userId));
   const availableStaff = (usersQuery.data?.data ?? []).filter(
-    (u) => u.role === 'STAFF' && u.active && !assignedUserIds.has(u.id)
+    (u) => u.active && !assignedUserIds.has(u.id)
   );
 
   function resetForm() {
@@ -515,10 +515,10 @@ export function PersonalTab({ eventId }: { eventId: string }) {
                       value={selectedUserId}
                       onChange={(e) => setSelectedUserId(e.target.value)}
                     >
-                      <option value="">-- Seleccionar Usuario Staff --</option>
+                      <option value="">-- Seleccionar Usuario --</option>
                       {availableStaff.map((u) => (
                         <option key={u.id} value={u.id}>
-                          {u.name} ({u.email})
+                          {u.name} ({u.email}) · {u.role}
                         </option>
                       ))}
                     </select>

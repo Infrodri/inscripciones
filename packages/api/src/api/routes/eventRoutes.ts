@@ -734,7 +734,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
   router.post('/:id/staff', staffOrAdmin, async (req: AuthRequest, res, next) => {
     try {
       const schema = z.object({
-        userId: z.string().uuid(),
+        userId: z.string().min(1, 'El usuario es requerido'),
         accessLevel: z.enum(['OPERATOR', 'MANAGER']).default('OPERATOR'),
         commission: z.string().optional().nullable(),
         registerAsOrganizer: z.boolean().optional().default(false),
@@ -750,14 +750,24 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
       ]);
       if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
       if (!targetUser) throw new DomainError('NOT_FOUND', 'Usuario no encontrado');
-      if (targetUser.role !== 'STAFF') {
+      if (targetUser.role !== 'STAFF' && targetUser.role !== 'ADMIN') {
         throw new DomainError(
           'VALIDATION_ERROR',
-          'Solo se puede delegar eventos a usuarios con rol STAFF'
+          'Solo se puede delegar eventos a usuarios del sistema'
         );
       }
       if (!targetUser.active) {
         throw new DomainError('VALIDATION_ERROR', 'El usuario seleccionado está inactivo');
+      }
+
+      // Validar si el usuario autenticado existe en la BD para no violar Foreign Key
+      let safeAssignedBy: string | null = null;
+      if (req.user?.id) {
+        const assigner = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { id: true },
+        });
+        if (assigner) safeAssignedBy = assigner.id;
       }
 
       const existing = await prisma.eventStaff.findUnique({
@@ -765,24 +775,32 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
           eventId_userId: { eventId: event.id, userId: targetUser.id },
         },
       });
-      if (existing) {
-        throw new DomainError(
-          'VALIDATION_ERROR',
-          'El usuario ya tiene acceso asignado a este evento'
-        );
-      }
 
-      const assignment = await prisma.eventStaff.create({
-        data: {
-          eventId: event.id,
-          userId: targetUser.id,
-          accessLevel: body.accessLevel,
-          assignedBy: req.user?.id,
-        },
-        include: {
-          user: { select: { id: true, name: true, email: true, role: true, active: true } },
-        },
-      });
+      let assignment;
+      if (existing) {
+        assignment = await prisma.eventStaff.update({
+          where: { id: existing.id },
+          data: {
+            accessLevel: body.accessLevel,
+            assignedBy: safeAssignedBy,
+          },
+          include: {
+            user: { select: { id: true, name: true, email: true, role: true, active: true } },
+          },
+        });
+      } else {
+        assignment = await prisma.eventStaff.create({
+          data: {
+            eventId: event.id,
+            userId: targetUser.id,
+            accessLevel: body.accessLevel,
+            assignedBy: safeAssignedBy,
+          },
+          include: {
+            user: { select: { id: true, name: true, email: true, role: true, active: true } },
+          },
+        });
+      }
 
       // Si se solicita registrar como Organizador para certificado de reconocimiento
       if (body.registerAsOrganizer) {
@@ -838,14 +856,14 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
                 email: targetUser.email,
                 templateId: orgTemplate.id,
                 note: body.commission?.trim() || 'Comité Organizador',
-                createdBy: req.user?.id,
+                createdBy: safeAssignedBy,
               },
             });
           }
         }
       }
 
-      res.status(201).json(assignment);
+      res.status(200).json(assignment);
     } catch (err) {
       next(err);
     }
@@ -869,6 +887,16 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
 
       const event = await prisma.event.findUnique({ where: { id: req.params.id } });
       if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+
+      // Validar si el usuario autenticado existe en la BD para no violar Foreign Key
+      let safeAssignedBy: string | null = null;
+      if (req.user?.id) {
+        const assigner = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { id: true },
+        });
+        if (assigner) safeAssignedBy = assigner.id;
+      }
 
       // Buscar si el usuario ya existe por email
       let user = await prisma.user.findUnique({
@@ -908,7 +936,10 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
       if (existing) {
         assignment = await prisma.eventStaff.update({
           where: { id: existing.id },
-          data: { accessLevel: body.accessLevel },
+          data: {
+            accessLevel: body.accessLevel,
+            assignedBy: safeAssignedBy,
+          },
           include: {
             user: { select: { id: true, name: true, email: true, role: true, active: true } },
           },
@@ -919,7 +950,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
             eventId: event.id,
             userId: user.id,
             accessLevel: body.accessLevel,
-            assignedBy: req.user?.id,
+            assignedBy: safeAssignedBy,
           },
           include: {
             user: { select: { id: true, name: true, email: true, role: true, active: true } },
@@ -981,7 +1012,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
                 email: user.email,
                 templateId: orgTemplate.id,
                 note: body.commission?.trim() || 'Comité Organizador',
-                createdBy: req.user?.id,
+                createdBy: safeAssignedBy,
               },
             });
           }

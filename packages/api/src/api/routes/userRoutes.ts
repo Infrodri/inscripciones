@@ -28,7 +28,7 @@ const changePasswordSchema = z.object({
 export function userRoutes(): Router {
   const router = Router();
 
-  router.get('/', requireRole('ADMIN'), async (_req, res, next) => {
+  router.get('/', requireRole('ADMIN', 'STAFF'), async (_req, res, next) => {
     try {
       const prisma = getPrisma();
       const users = await prisma.user.findMany({
@@ -156,7 +156,7 @@ export function userRoutes(): Router {
     }
   });
 
-  // Asignar/sincronizar eventos delegados a un usuario STAFF (ADMIN)
+  // Asignar/sincronizar eventos delegados a un usuario STAFF o ADMIN
   router.put(
     '/:id/events',
     requireRole('ADMIN'),
@@ -164,7 +164,7 @@ export function userRoutes(): Router {
       z.object({
         assignments: z.array(
           z.object({
-            eventId: z.string().uuid(),
+            eventId: z.string().min(1, 'El ID del evento es requerido'),
             accessLevel: z.enum(['OPERATOR', 'MANAGER']).default('OPERATOR'),
           })
         ),
@@ -175,10 +175,10 @@ export function userRoutes(): Router {
         const prisma = getPrisma();
         const user = await prisma.user.findUnique({ where: { id: req.params.id } });
         if (!user) throw new DomainError('NOT_FOUND', 'Usuario no encontrado');
-        if (user.role !== 'STAFF') {
+        if (user.role !== 'STAFF' && user.role !== 'ADMIN') {
           throw new DomainError(
             'VALIDATION_ERROR',
-            'Solo se pueden delegar eventos a usuarios con rol STAFF'
+            'Solo se pueden delegar eventos a usuarios del sistema'
           );
         }
 
@@ -187,31 +187,60 @@ export function userRoutes(): Router {
           accessLevel: 'OPERATOR' | 'MANAGER';
         }>;
 
+        // Validar si el usuario que asigna existe en la BD para evitar fallos de Foreign Key
+        let safeAssignedBy: string | null = null;
+        if (req.user?.id) {
+          const assigner = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { id: true },
+          });
+          if (assigner) safeAssignedBy = assigner.id;
+        }
+
         await prisma.$transaction(async (tx) => {
           const targetEventIds = assignments.map((a) => a.eventId);
 
+          // Verificar cuáles eventos existen realmente para no violar integridad referencial
+          const existingEvents =
+            targetEventIds.length > 0
+              ? await tx.event.findMany({
+                  where: { id: { in: targetEventIds } },
+                  select: { id: true },
+                })
+              : [];
+          const existingEventIds = new Set(existingEvents.map((e) => e.id));
+          const validAssignments = assignments.filter((a) => existingEventIds.has(a.eventId));
+          const validEventIds = Array.from(existingEventIds);
+
           // Remover asignaciones que ya no estén en la lista
-          await tx.eventStaff.deleteMany({
-            where: {
-              userId: user.id,
-              eventId: { notIn: targetEventIds },
-            },
-          });
+          if (validEventIds.length === 0) {
+            await tx.eventStaff.deleteMany({
+              where: { userId: user.id },
+            });
+          } else {
+            await tx.eventStaff.deleteMany({
+              where: {
+                userId: user.id,
+                eventId: { notIn: validEventIds },
+              },
+            });
+          }
 
           // Crear o actualizar asignaciones seleccionadas
-          for (const item of assignments) {
+          for (const item of validAssignments) {
             await tx.eventStaff.upsert({
               where: {
                 eventId_userId: { eventId: item.eventId, userId: user.id },
               },
               update: {
                 accessLevel: item.accessLevel,
+                assignedBy: safeAssignedBy,
               },
               create: {
                 eventId: item.eventId,
                 userId: user.id,
                 accessLevel: item.accessLevel,
-                assignedBy: req.user?.id,
+                assignedBy: safeAssignedBy,
               },
             });
           }
@@ -220,7 +249,7 @@ export function userRoutes(): Router {
         const updated = await prisma.eventStaff.findMany({
           where: { userId: user.id },
           include: {
-            event: { select: { id: true, title: true, slug: true, status: true } },
+            event: { select: { id: true, title: true, slug: true, status: true, location: true } },
           },
         });
 

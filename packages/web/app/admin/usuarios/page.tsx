@@ -580,16 +580,23 @@ function DelegarEventosModal({
   });
 
   useEffect(() => {
-    if (userEventsQuery.data?.data) {
+    const rawList = userEventsQuery.data?.data ?? userEventsQuery.data;
+    if (Array.isArray(rawList)) {
       const map: Record<string, 'OPERATOR' | 'MANAGER'> = {};
-      for (const item of userEventsQuery.data.data) {
-        map[item.eventId] = item.accessLevel;
+      for (const item of rawList) {
+        if (item?.eventId) {
+          map[item.eventId] = item.accessLevel ?? 'OPERATOR';
+        }
       }
       setAssignmentsMap(map);
     }
   }, [userEventsQuery.data]);
 
-  const allEvents = eventsQuery.data?.data ?? [];
+  const allEvents = Array.isArray(eventsQuery.data?.data)
+    ? eventsQuery.data.data
+    : Array.isArray(eventsQuery.data)
+    ? eventsQuery.data
+    : [];
   const filteredEvents = allEvents.filter(
     (e) =>
       !filterQuery.trim() ||
@@ -619,10 +626,12 @@ function DelegarEventosModal({
   async function handleSave() {
     setIsSaving(true);
     try {
-      const assignments = Object.entries(assignmentsMap).map(([eventId, accessLevel]) => ({
-        eventId,
-        accessLevel,
-      }));
+      const assignments = Object.entries(assignmentsMap)
+        .filter(([eventId]) => Boolean(eventId && eventId.trim()))
+        .map(([eventId, accessLevel]) => ({
+          eventId,
+          accessLevel,
+        }));
       await api.put(`/users/${user.id}/events`, { assignments });
       await queryClient.invalidateQueries({ queryKey: ['user-events', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['events'] });

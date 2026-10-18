@@ -97,6 +97,7 @@ export function apiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const code = error.response?.data?.error?.code;
     const message = error.response?.data?.error?.message;
+    const details = error.response?.data?.error?.details;
     if (code === 'NO_DEFAULT_TEMPLATE') {
       return typeof message === 'string' && message !== ''
         ? message
@@ -106,6 +107,16 @@ export function apiErrorMessage(error: unknown): string {
       return typeof message === 'string' && message !== ''
         ? message
         : 'No hay participantes registrados para generar este documento.';
+    }
+    if (Array.isArray(details) && details.length > 0) {
+      const firstIssue = details[0] as { path?: unknown[]; message?: string };
+      const issuePath = Array.isArray(firstIssue?.path) ? firstIssue.path.join('.') : '';
+      const issueMsg = firstIssue?.message || '';
+      if (issueMsg) {
+        return issuePath
+          ? `${message || 'Error de validación'}: ${issuePath} (${issueMsg})`
+          : `${message || 'Error de validación'}: ${issueMsg}`;
+      }
     }
     if (typeof message === 'string' && message !== '') return message;
     if (error.code === 'ERR_NETWORK') return 'No se pudo conectar con el servidor';
