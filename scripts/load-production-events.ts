@@ -45,7 +45,7 @@ async function main() {
   }
 
   // 1. Autenticación en API de producción
-  console.log(`1. Autenticando con usuario administrador (${email})...`);
+  console.log('1. Autenticando con usuario administrador en la API...');
   const loginRes = await fetch(`${apiUrl}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -53,7 +53,7 @@ async function main() {
   });
 
   if (!loginRes.ok) {
-    console.error(`Error en login (${loginRes.status}): ${await loginRes.text()}`);
+    console.error(`Error en login (${loginRes.status}): Credenciales no válidas o error en el servicio`);
     process.exit(1);
   }
 
