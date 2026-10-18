@@ -246,18 +246,46 @@ export function certificateRecipientRoutes(): Router {
     try {
       const prisma = getPrisma();
       await assertEventAccess(prisma, req.user, req.params.eventId, 'MANAGER');
-      const template =
+      let template =
         (await prisma.certificateTemplate.findFirst({
           where: { eventId: req.params.eventId, roleKind: 'EXPOSITOR', isDefault: true },
         })) ??
         (await prisma.certificateTemplate.findFirst({
           where: { eventId: req.params.eventId, roleKind: 'EXPOSITOR' },
         }));
-      if (!template)
-        throw new DomainError(
-          'NO_DEFAULT_TEMPLATE',
-          'No hay plantilla predeterminada para EXPOSITOR'
-        );
+
+      if (!template) {
+        // Fallback: Si el evento tiene cualquier plantilla (ej. ASISTENTE o predeterminada), clonarla para EXPOSITOR
+        const base =
+          (await prisma.certificateTemplate.findFirst({
+            where: { eventId: req.params.eventId, isDefault: true },
+          })) ??
+          (await prisma.certificateTemplate.findFirst({
+            where: { eventId: req.params.eventId },
+          }));
+
+        if (base) {
+          template = await prisma.certificateTemplate.create({
+            data: {
+              eventId: req.params.eventId,
+              roleKind: 'EXPOSITOR',
+              name: 'Certificado de Expositor / Ponente',
+              filePath: base.filePath,
+              widthPx: base.widthPx,
+              heightPx: base.heightPx,
+              pageWidthMm: base.pageWidthMm,
+              pageHeightMm: base.pageHeightMm,
+              nameBox: base.nameBox as never,
+              isDefault: false,
+            },
+          });
+        } else {
+          throw new DomainError(
+            'NO_DEFAULT_TEMPLATE',
+            'No hay plantillas de certificados configuradas para este evento. Configure el diseño gráfico en la pestaña Plantillas.'
+          );
+        }
+      }
       const speakers = await prisma.speaker.findMany({
         where: { eventId: req.params.eventId },
         orderBy: { position: 'asc' },

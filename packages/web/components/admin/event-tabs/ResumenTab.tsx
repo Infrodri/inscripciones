@@ -11,6 +11,7 @@ interface Stats {
   eligible: number;
   sessions: number;
   perSession: Array<{ checkedIn: number }>;
+  totalAttendees?: number;
   isFree?: boolean;
   cost?: number;
   totalRecaudado?: number;
@@ -85,6 +86,7 @@ export function ResumenTab({ eventId }: { eventId: string }) {
   const cost = Number(event.data?.cost ?? stats.data?.cost ?? 0);
   const inscritos = stats.data?.participants ?? 0;
   const totalRecaudado = stats.data?.totalRecaudado ?? (inscritos * cost);
+  const totalAsistentes = stats.data?.totalAttendees ?? last?.checkedIn ?? 0;
 
   return (
     <div className="space-y-6">
@@ -99,7 +101,7 @@ export function ResumenTab({ eventId }: { eventId: string }) {
             </span>
           </div>
           <p className="mt-4 font-serif text-3xl md:text-4xl font-bold text-navy">
-            {stats.data?.participants ?? 0}
+            {inscritos}
           </p>
           <span className="mt-2 text-xs text-muted">Participantes registrados</span>
         </Card>
@@ -107,16 +109,20 @@ export function ResumenTab({ eventId }: { eventId: string }) {
         <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-              Asistentes
+              Asistencia
             </span>
             <span className="h-8 w-8 rounded-full bg-ok-bg flex items-center justify-center text-ok font-bold text-sm">
               ✓
             </span>
           </div>
           <p className="mt-4 font-serif text-3xl md:text-4xl font-bold text-ok">
-            {last?.checkedIn ?? 0}
+            {totalAsistentes}
           </p>
-          <span className="mt-2 text-xs text-muted">En la última sesión realizada</span>
+          <span className="mt-2 text-xs text-muted">
+            {stats.data?.totalAttendees !== undefined
+              ? `${totalAsistentes} de ${inscritos} inscritos (${inscritos > 0 ? Math.round((totalAsistentes / inscritos) * 100) : 0}%)`
+              : 'En la última sesión realizada'}
+          </span>
         </Card>
 
         <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft flex flex-col justify-between">

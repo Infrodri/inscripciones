@@ -117,6 +117,7 @@ export function walkinRoutes(): Router {
           participants: participants.length,
           sessions: totalSessions,
           perSession,
+          totalAttendees: participantAttendances.length,
           eligible,
           minAttendancePercent: event.minAttendancePercent,
           isFree: event.isFree,
