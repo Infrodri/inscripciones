@@ -205,8 +205,8 @@ export function AdminChrome({ children }: { children: ReactNode }) {
             </div>
             <span className="font-serif font-bold text-navy text-base">{currentTitle}</span>
             <span className="text-muted/40">•</span>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ok bg-ok-bg px-2.5 py-0.5 rounded-full border border-ok/30">
+              <span className="h-1.5 w-1.5 rounded-full bg-ok animate-pulse" />
               API En Línea
             </span>
           </div>

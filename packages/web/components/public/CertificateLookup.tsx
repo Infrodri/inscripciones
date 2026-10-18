@@ -145,16 +145,16 @@ export function CertificateLookup() {
         )}
 
         {status === 'encontrado' && result?.certificate && (
-          <div className="p-5 sm:p-6 rounded-xl border-2 border-emerald-500/40 bg-emerald-50/60 dark:bg-emerald-950/20 space-y-3">
-            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm sm:text-base">
+          <div className="p-5 sm:p-6 rounded-xl border border-ok/40 bg-ok-bg/50 space-y-3">
+            <div className="flex items-center gap-2 text-ok font-bold text-sm sm:text-base">
               <CheckCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span>Certificado Auténtico y Válido</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-emerald-500/20 text-xs sm:text-sm text-ink">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-ok/20 text-xs sm:text-sm text-ink">
               <div>
                 <span className="block text-muted text-xs font-medium">Evento Académico</span>
-                <span className="font-semibold text-navy dark:text-gold">
+                <span className="font-semibold text-navy">
                   {result.certificate.eventTitle}
                 </span>
               </div>

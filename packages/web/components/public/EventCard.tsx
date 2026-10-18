@@ -33,10 +33,10 @@ export function EventCard({ event }: EventCardProps) {
             </div>
 
             <span
-              className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+              className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                 event.isFree
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-500/30'
-                  : 'bg-gold/15 text-navy dark:text-gold border border-gold/30'
+                  ? 'bg-ok-bg text-ok border-ok/30'
+                  : 'bg-gold/15 text-navy border-gold/40'
               }`}
             >
               {costLabel}
@@ -95,15 +95,15 @@ export function EventCard({ event }: EventCardProps) {
         <div className="flex items-center justify-between gap-2 pt-3 border-t border-line text-xs">
           <div className="flex items-center gap-1.5">
             {event.registrationOpen ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[11px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-xs bg-ok-bg text-ok border border-ok/30">
+                <span className="h-2 w-2 rounded-full bg-ok animate-pulse shrink-0" />
                 Inscripciones abiertas
                 {typeof event.spotsLeft === 'number' && event.spotsLeft <= 20 && (
                   <span className="ml-1 font-bold">({event.spotsLeft} cupos)</span>
                 )}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[11px] bg-canvas text-muted">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-xs bg-canvas text-muted border border-line">
                 {event.registrationReason === 'FULL'
                   ? 'Cupos agotados'
                   : event.registrationReason === 'PAST_DEADLINE'
