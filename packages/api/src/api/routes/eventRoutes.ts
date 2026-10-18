@@ -271,6 +271,24 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
     }
   );
 
+  router.delete(
+    '/:id/banner',
+    requireRole('ADMIN', 'STAFF'),
+    async (req: AuthRequest, res, next) => {
+      try {
+        const prisma = getPrisma();
+        await assertEventAccess(prisma, req.user, req.params.id, 'MANAGER');
+        await prisma.event.update({
+          where: { id: req.params.id },
+          data: { bannerPath: null, shareImagePath: null },
+        });
+        res.json({ ok: true, bannerPath: null, shareImagePath: null });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   const qrUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 2 * 1024 * 1024 },
