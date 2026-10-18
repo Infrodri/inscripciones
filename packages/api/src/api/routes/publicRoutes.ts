@@ -327,6 +327,14 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
         sessions.length > 0
           ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
           : null;
+      let headerImageBuffer: Buffer | null = null;
+      if (participant.event.bannerPath && storage) {
+        try {
+          headerImageBuffer = await storage.read(participant.event.bannerPath);
+        } catch {
+          headerImageBuffer = null;
+        }
+      }
       const badgeData: BadgeParticipant = {
         fullName: `${participant.firstName} ${participant.lastName}`.trim(),
         ci: participant.ci,
@@ -338,6 +346,7 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
         eventDates: datesStr,
         eventLocation: participant.event.location,
         qrPngBuffer: await qrPngBuffer(participant.qrToken),
+        headerImageBuffer: headerImageBuffer ?? undefined,
       };
       res.header('Content-Type', 'application/pdf');
       res.header('Content-Disposition', `attachment; filename="credencial-${participant.ci}.pdf"`);

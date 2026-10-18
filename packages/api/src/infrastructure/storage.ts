@@ -2,6 +2,7 @@ import path from 'node:path';
 import { DiskFileStorage } from '@inscripciones/infrastructure/diskStorage.js';
 import { SupabaseFileStorage } from '@inscripciones/infrastructure/supabaseStorage.js';
 import type { FileStorage } from '@inscripciones/infrastructure/fileStorage.js';
+export type { FileStorage };
 import type { AppEnv } from '../api/env.js';
 
 export interface StorageClients {

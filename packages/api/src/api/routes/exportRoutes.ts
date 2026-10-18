@@ -8,6 +8,8 @@ import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { assertEventAccess } from '../../application/accessControl.js';
 
+import type { FileStorage } from '../../infrastructure/storage.js';
+
 const PARTICIPANT_COLUMNS = [
   'first_name',
   'last_name',
@@ -33,7 +35,7 @@ function toCsv(rows: Array<Record<string, unknown>>): string {
   ].join('\n');
 }
 
-export function exportRoutes(): Router {
+export function exportRoutes(storage?: FileStorage): Router {
   const router = Router();
   router.get(
     '/events/:id/exports/:kind',
@@ -231,6 +233,15 @@ export function exportRoutes(): Router {
               ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
               : null;
 
+          let headerImageBuffer: Buffer | null = null;
+          if (event.bannerPath && storage) {
+            try {
+              headerImageBuffer = await storage.read(event.bannerPath);
+            } catch {
+              headerImageBuffer = null;
+            }
+          }
+
           const [participants, speakers, organizers, sponsors] = await Promise.all([
             includeParticipants
               ? prisma.participant.findMany({
@@ -326,6 +337,7 @@ export function exportRoutes(): Router {
                 eventDates: datesStr,
                 eventLocation: event.location,
                 qrPngBuffer: await qrPngBuffer(qrPayload),
+                headerImageBuffer: headerImageBuffer ?? undefined,
                 _matchedParticipantId: match?.id,
               };
             })
@@ -346,6 +358,7 @@ export function exportRoutes(): Router {
                 eventDates: datesStr,
                 eventLocation: event.location,
                 qrPngBuffer: await qrPngBuffer(qrPayload),
+                headerImageBuffer: headerImageBuffer ?? undefined,
                 _matchedParticipantId: match?.id,
               };
             })
@@ -363,6 +376,7 @@ export function exportRoutes(): Router {
               eventDates: datesStr,
               eventLocation: event.location,
               qrPngBuffer: await qrPngBuffer(`SPONSOR:${sp.id}:${event.slug}`),
+              headerImageBuffer: headerImageBuffer ?? undefined,
               _matchedParticipantId: undefined,
             }))
           );
@@ -389,6 +403,7 @@ export function exportRoutes(): Router {
                 eventDates: datesStr,
                 eventLocation: event.location,
                 qrPngBuffer: await qrPngBuffer(p.qrToken),
+                headerImageBuffer: headerImageBuffer ?? undefined,
               }))
           );
 

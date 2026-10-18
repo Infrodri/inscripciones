@@ -6,6 +6,7 @@ import { requireRole } from '../middlewares/roleMiddleware.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import { DomainError } from '../../domain/errors.js';
 import { assertEventAccess } from '../../application/accessControl.js';
+import type { FileStorage } from '../../infrastructure/storage.js';
 import { renderSingleBadge, type BadgeParticipant } from '@inscripciones/infrastructure/badges.js';
 import { qrPngBuffer } from '@inscripciones/infrastructure/qr.js';
 
@@ -17,7 +18,7 @@ const sponsorSchema = z.object({
 
 const sponsorUpdateSchema = sponsorSchema.partial().omit({ eventId: true });
 
-export function sponsorRoutes(): Router {
+export function sponsorRoutes(storage?: FileStorage): Router {
   const router = Router();
   router.get(
     '/event/:eventId',
@@ -110,9 +111,18 @@ export function sponsorRoutes(): Router {
             ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
             : null;
 
+        let headerImageBuffer: Buffer | null = null;
+        if (sponsor.event.bannerPath && storage) {
+          try {
+            headerImageBuffer = await storage.read(sponsor.event.bannerPath);
+          } catch {
+            headerImageBuffer = null;
+          }
+        }
+
         const badgeData: BadgeParticipant = {
           fullName: sponsor.name,
-          ci: 'AUSPICIANTE',
+          ci: null,
           type: 'AUSPICIANTE',
           institution: sponsor.event.institution,
           career: 'Auspiciador Oficial',
@@ -121,6 +131,7 @@ export function sponsorRoutes(): Router {
           eventDates: datesStr,
           eventLocation: sponsor.event.location,
           qrPngBuffer: await qrPngBuffer(`SPONSOR:${sponsor.id}:${sponsor.event.slug}`),
+          headerImageBuffer: headerImageBuffer ?? undefined,
         };
 
         res.header('Content-Type', 'application/pdf');

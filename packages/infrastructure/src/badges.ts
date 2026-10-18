@@ -14,6 +14,7 @@ export interface BadgeParticipant {
   eventDates?: string | null;
   eventLocation?: string | null;
   qrPngBuffer: Buffer;
+  headerImageBuffer?: Buffer | null;
 }
 
 // Convert mm to PostScript points (72 points / inch, 25.4 mm / inch)
@@ -114,7 +115,7 @@ function drawBadgeCard(
   doc.save();
   doc.roundedRect(x, y, w, h, 8).clip();
 
-  const headerImg = getHeaderImage();
+  const headerImg = p.headerImageBuffer ?? getHeaderImage();
   if (headerImg) {
     try {
       doc.image(headerImg, x, y, {

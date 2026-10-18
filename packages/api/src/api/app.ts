@@ -121,10 +121,10 @@ export function buildApp(env: AppEnv): express.Express {
     certificateMailRoutes(env, storage.privateStorage)
   );
   app.use('/api/v1', authMiddleware(env.JWT_SECRET), walkinRoutes());
-  app.use('/api/v1', authMiddleware(env.JWT_SECRET), exportRoutes());
+  app.use('/api/v1', authMiddleware(env.JWT_SECRET), exportRoutes(storage.publicStorage));
   app.use('/api/v1/sessions', authMiddleware(env.JWT_SECRET), sessionRoutes());
-  app.use('/api/v1/speakers', authMiddleware(env.JWT_SECRET), speakerRoutes());
-  app.use('/api/v1/sponsors', authMiddleware(env.JWT_SECRET), sponsorRoutes());
+  app.use('/api/v1/speakers', authMiddleware(env.JWT_SECRET), speakerRoutes(storage.publicStorage));
+  app.use('/api/v1/sponsors', authMiddleware(env.JWT_SECRET), sponsorRoutes(storage.publicStorage));
   app.use('/api/v1/users', authMiddleware(env.JWT_SECRET), userRoutes());
   app.use(errorMiddleware);
   return app;
