@@ -86,7 +86,9 @@ describe('EventosPage dialog regression & trigger isolation', () => {
 
     const activeDialogs = document.querySelectorAll('[role="dialog"], [role="alertdialog"]');
     expect(activeDialogs.length).toBe(1);
-    expect(screen.getByText('¿Eliminar "Evento 1"? Esta acción no se puede deshacer.')).toBeDefined();
+    expect(
+      screen.getByText('¿Eliminar "Evento 1"? Esta acción no se puede deshacer.')
+    ).toBeDefined();
 
     // Closing the dialog restores count to 0
     const cancelButton = screen.getByText('Cancelar');

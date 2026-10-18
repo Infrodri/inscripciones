@@ -33,8 +33,18 @@ describe('EscanerPage - Mejoras institucionales', () => {
         return {
           data: {
             data: [
-              { id: 'e-activo', title: 'Evento Activo', status: 'ABIERTO', checkinWindowMinutes: 60 },
-              { id: 'e-borrador', title: 'Evento Borrador', status: 'BORRADOR', checkinWindowMinutes: 60 },
+              {
+                id: 'e-activo',
+                title: 'Evento Activo',
+                status: 'ABIERTO',
+                checkinWindowMinutes: 60,
+              },
+              {
+                id: 'e-borrador',
+                title: 'Evento Borrador',
+                status: 'BORRADOR',
+                checkinWindowMinutes: 60,
+              },
             ],
           },
         };
@@ -122,9 +132,27 @@ describe('EscanerPage - Mejoras institucionales', () => {
         return {
           data: {
             data: [
-              { id: 's-hoy', startsAt: nowIso, endsAt: null, label: 'Sesión de Hoy', location: 'Auditorio A' },
-              { id: 's-futuro', startsAt: futureIso, endsAt: null, label: 'Sesión Futura', location: 'Auditorio B' },
-              { id: 's-pasado', startsAt: pastIso, endsAt: null, label: 'Sesión Pasada', location: 'Auditorio C' },
+              {
+                id: 's-hoy',
+                startsAt: nowIso,
+                endsAt: null,
+                label: 'Sesión de Hoy',
+                location: 'Auditorio A',
+              },
+              {
+                id: 's-futuro',
+                startsAt: futureIso,
+                endsAt: null,
+                label: 'Sesión Futura',
+                location: 'Auditorio B',
+              },
+              {
+                id: 's-pasado',
+                startsAt: pastIso,
+                endsAt: null,
+                label: 'Sesión Pasada',
+                location: 'Auditorio C',
+              },
             ],
           },
         };

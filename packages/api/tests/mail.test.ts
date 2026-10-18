@@ -8,7 +8,7 @@ import { hashPassword } from '../src/infrastructure/passwordHasher.js';
 import { __setTestTransport } from '../src/application/certificateMail.js';
 
 process.env.MAIL_DAILY_LIMIT = '4';
-process.env.SMTP_HOST ??= 'test-smtp';
+process.env.SMTP_HOST = 'test-smtp';
 
 const stamp = Date.now();
 let baseUrl = '';

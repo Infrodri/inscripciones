@@ -42,11 +42,15 @@ describe('Regresión: clases de color conflictivas en components/ui', () => {
         }
 
         // Buscar dos clases text-* de color diferentes sin pasar por cn()
-        const textColorClasses = line.match(/text-(white|black|gray|red|blue|green|yellow|purple|pink|indigo|orange|teal|cyan|emerald|rose|amber|lime|sky|violet|fuchsia|slate|zinc|neutral|stone)-\d+/g);
+        const textColorClasses = line.match(
+          /text-(white|black|gray|red|blue|green|yellow|purple|pink|indigo|orange|teal|cyan|emerald|rose|amber|lime|sky|violet|fuchsia|slate|zinc|neutral|stone)-\d+/g
+        );
         if (textColorClasses && textColorClasses.length > 1) {
           const uniqueColors = [...new Set(textColorClasses)];
           if (uniqueColors.length > 1 && !line.includes('cn(')) {
-            violations.push(`${file}:${lineNum + 1}: múltiples text-* sin cn(): ${uniqueColors.join(', ')}`);
+            violations.push(
+              `${file}:${lineNum + 1}: múltiples text-* sin cn(): ${uniqueColors.join(', ')}`
+            );
           }
         }
       });

@@ -68,6 +68,18 @@ async function main(): Promise<void> {
     return `HTTP ${res.status}`;
   });
 
+  await check('verificacion-certificados-anti-enumeracion', async () => {
+    const res = await fetch(`${api}/public/certificates/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ci: '1234567', code: 'cert-inexistente' }),
+    });
+    assertStatus(res, 200, 'verificacion publica');
+    const data = (await res.json()) as { valid: boolean };
+    if (data.valid !== false) throw new Error('debería responder valid: false');
+    return 'anti-enumeracion ok';
+  });
+
   for (const r of results)
     console.log(`${r.ok ? 'OK  ' : 'FALLO'} ${r.name}${r.detail ? ` — ${r.detail}` : ''}`);
   if (results.some((r) => !r.ok)) process.exitCode = 1;
