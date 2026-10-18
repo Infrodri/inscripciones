@@ -15,7 +15,8 @@ const field =
 
 interface Base {
   id: string;
-  etiqueta: string;
+  etiqueta?: string;
+  label?: string;
   error?: string;
   opcional?: string;
   obligatorio?: boolean;
@@ -57,18 +58,22 @@ function ErrorText({ message }: { message?: string }): ReactElement | null {
 function Label({
   id,
   etiqueta,
+  label,
   opcional,
   isRequired,
 }: {
   id: string;
-  etiqueta: string;
+  etiqueta?: string;
+  label?: string;
   opcional?: string;
   isRequired?: boolean;
 }): ReactElement {
+  const text = etiqueta ?? label ?? '';
+  if (!text) return <></>;
   return (
     <div className="flex items-center gap-0.5">
       <label htmlFor={id} className="block text-sm font-medium text-ink">
-        {etiqueta}
+        {text}
         {opcional ? <span className="font-normal text-muted text-xs"> {opcional.trim()}</span> : null}
       </label>
       {isRequired ? (
@@ -165,12 +170,12 @@ export function Input(props: InputProps | AreaProps | SelectProps): ReactElement
   const isRequired = Boolean(props.obligatorio || ('required' in props && props.required));
 
   if ('desplegable' in props && props.desplegable) {
-    const { id, etiqueta, error, opcional, obligatorio: _ob, desplegable: _d, children, ...rest } = props;
+    const { id, etiqueta, label, error, opcional, obligatorio: _ob, desplegable: _d, children, ...rest } = props;
     void _ob;
     void _d;
     return (
       <div>
-        <Label id={id} etiqueta={etiqueta} opcional={opcional} isRequired={isRequired} />
+        <Label id={id} etiqueta={etiqueta} label={label} opcional={opcional} isRequired={isRequired} />
         <ErrorText message={error} />
         <select id={id} {...rest} className={getFieldClass(Boolean(error))}>
           {children}
@@ -179,18 +184,18 @@ export function Input(props: InputProps | AreaProps | SelectProps): ReactElement
     );
   }
   if ('multiline' in props && props.multiline) {
-    const { id, etiqueta, error, opcional, obligatorio: _ob, multiline: _m, ...rest } = props;
+    const { id, etiqueta, label, error, opcional, obligatorio: _ob, multiline: _m, ...rest } = props;
     void _ob;
     void _m;
     return (
       <div>
-        <Label id={id} etiqueta={etiqueta} opcional={opcional} isRequired={isRequired} />
+        <Label id={id} etiqueta={etiqueta} label={label} opcional={opcional} isRequired={isRequired} />
         <ErrorText message={error} />
         <textarea id={id} {...rest} className={getFieldClass(Boolean(error))} />
       </div>
     );
   }
-  const { id, etiqueta, error, opcional, obligatorio: _ob, multiline: _m2, desplegable: _d2, ...rest } = props;
+  const { id, etiqueta, label, error, opcional, obligatorio: _ob, multiline: _m2, desplegable: _d2, ...rest } = props;
   void _ob;
   void _m2;
   void _d2;
@@ -198,7 +203,7 @@ export function Input(props: InputProps | AreaProps | SelectProps): ReactElement
   if (rest.type === 'password') {
     return (
       <div>
-        <Label id={id} etiqueta={etiqueta} opcional={opcional} isRequired={isRequired} />
+        <Label id={id} etiqueta={etiqueta} label={label} opcional={opcional} isRequired={isRequired} />
         <ErrorText message={error} />
         <PasswordInputField id={id} fieldClass={getFieldClass(Boolean(error))} {...rest} />
       </div>
@@ -207,7 +212,7 @@ export function Input(props: InputProps | AreaProps | SelectProps): ReactElement
 
   return (
     <div>
-      <Label id={id} etiqueta={etiqueta} opcional={opcional} isRequired={isRequired} />
+      <Label id={id} etiqueta={etiqueta} label={label} opcional={opcional} isRequired={isRequired} />
       <ErrorText message={error} />
       <input id={id} {...rest} className={getFieldClass(Boolean(error))} />
     </div>
