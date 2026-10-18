@@ -22,6 +22,7 @@ export interface CertificateJob {
   pageHeightMm: number;
   name: string;
   nameBox: PdfNameBox;
+  printBackground?: boolean;
 }
 
 export interface PdfReport {
@@ -57,7 +58,9 @@ export async function renderCertificates(
     const pageW = mmToPt(job.pageWidthMm);
     const pageH = mmToPt(job.pageHeightMm);
     doc.addPage({ size: [pageW, pageH], margin: 0 });
-    doc.image(job.image, 0, 0, { width: pageW, height: pageH });
+    if (job.printBackground !== false) {
+      doc.image(job.image, 0, 0, { width: pageW, height: pageH });
+    }
     if (dpiAtSize(job.widthPx, job.pageWidthMm) < 150) report.lowDpi += 1;
     const box = job.nameBox;
     const fontPath = fonts[box.fontKey];

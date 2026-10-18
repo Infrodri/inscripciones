@@ -134,10 +134,19 @@ export function exportRoutes(): Router {
         return;
       }
       if (req.params.kind === 'badges.pdf') {
-        const participants = await prisma.participant.findMany({
-          where: participantWhere,
-          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-        });
+        const [participants, sessions] = await Promise.all([
+          prisma.participant.findMany({
+            where: participantWhere,
+            orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+          }),
+          prisma.session.findMany({
+            where: { eventId: event.id },
+            orderBy: { startsAt: 'asc' },
+          }),
+        ]);
+        const datesStr = sessions.length > 0
+          ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
+          : null;
         const badgeList = await Promise.all(
           participants.map(async (p) => ({
             fullName: `${p.firstName} ${p.lastName}`.trim(),
@@ -147,6 +156,8 @@ export function exportRoutes(): Router {
             career: p.career,
             eventTitle: event.title,
             eventInstitution: event.institution,
+            eventDates: datesStr,
+            eventLocation: event.location,
             qrPngBuffer: await qrPngBuffer(p.qrToken),
           }))
         );

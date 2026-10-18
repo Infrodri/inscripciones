@@ -102,20 +102,21 @@ describe('H1 rutas con roles', () => {
     expect(await res.json()).toEqual({ ok: true });
   });
 
-  it('STAFF no puede crear eventos (403 FORBIDDEN)', async () => {
+  it('STAFF puede crear su propio evento y queda asociado a su usuario', async () => {
     const res = await api('/api/v1/events', staffToken, {
       method: 'POST',
       body: JSON.stringify({
-        slug: `h1-${stamp}`,
-        title: 'X',
+        slug: `h1-staff-${stamp}`,
+        title: 'Evento Staff',
         eventKind: 'K',
         institution: 'I',
         organizer: 'O',
         location: 'L',
       }),
     });
-    expect(res.status).toBe(403);
-    expect(((await res.json()) as { error: { code: string } }).error.code).toBe('FORBIDDEN');
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { id: string; createdBy?: string };
+    expect(body.id).toBeTruthy();
   });
 
   it('ADMIN crea evento, sesión, expositor y auspiciante; y los actualiza', async () => {

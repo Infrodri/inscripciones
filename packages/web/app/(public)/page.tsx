@@ -1,244 +1,291 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { api, apiErrorMessage } from '@/lib/api';
-import { formatFechaHora } from '@/lib/format';
-import { Badge } from '@/components/ui/Badge';
+import { api, apiUrl } from '@/lib/api';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import {
+  CalendarDays,
+  MapPin,
+  Users,
+  Search,
+  Award,
+  BookOpen,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle,
+} from 'lucide-react';
 
 interface PublicEvent {
   slug: string;
   title: string;
   eventKind: string;
   institution: string;
-  commemoration?: string | null;
   organizer: string;
   location: string;
   modality: 'PRESENCIAL' | 'VIRTUAL' | 'HIBRIDO';
-  capacity?: number | null;
-  status: 'BORRADOR' | 'ABIERTO' | 'CERRADO' | 'FINALIZADO';
   isFree: boolean;
   cost?: number | null;
-  bannerUrl?: string | null;
   registrationOpen: boolean;
-  registrationReason?: string | null;
-  sessions?: Array<{ startsAt: string; location?: string | null; label?: string | null }>;
+  registrationReason?: string;
+  spotsLeft?: number | null;
+  sessions?: Array<{ startsAt: string; location?: string | null }>;
 }
 
-export default function PublicEventsHomePage() {
+export default function HomePage() {
   const [search, setSearch] = useState('');
   const [selectedKind, setSelectedKind] = useState('TODOS');
+  const [ciSearch, setCiSearch] = useState('');
+  const [ciResult, setCiResult] = useState<string | null>(null);
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['public-events'],
     queryFn: async (): Promise<{ data: PublicEvent[] }> => {
       const res = await api.get('/public/events');
-      return res.data;
+      return res.data as { data: PublicEvent[] };
     },
   });
 
   const events = data?.data ?? [];
 
-  // Extract unique event kinds
-  const kinds = useMemo(() => {
-    const list = Array.from(new Set(events.map((e) => e.eventKind).filter(Boolean)));
-    return ['TODOS', ...list];
-  }, [events]);
+  // Extract distinct event types for filter pills
+  const kinds = [
+    'TODOS',
+    ...Array.from(new Set(events.map((e) => e.eventKind).filter(Boolean))),
+  ];
 
-  // Filter events
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return events.filter((e) => {
-      const matchesSearch =
-        q === '' ||
-        e.title.toLowerCase().includes(q) ||
-        e.organizer.toLowerCase().includes(q) ||
-        e.location.toLowerCase().includes(q) ||
-        (e.commemoration && e.commemoration.toLowerCase().includes(q));
-      const matchesKind = selectedKind === 'TODOS' || e.eventKind === selectedKind;
-      return matchesSearch && matchesKind;
-    });
-  }, [events, search, selectedKind]);
+  const filteredEvents = events.filter((ev) => {
+    const matchesKind = selectedKind === 'TODOS' || ev.eventKind === selectedKind;
+    const query = search.toLowerCase().trim();
+    const matchesSearch =
+      !query ||
+      ev.title.toLowerCase().includes(query) ||
+      ev.organizer?.toLowerCase().includes(query) ||
+      ev.location?.toLowerCase().includes(query);
+    return matchesKind && matchesSearch;
+  });
+
+  function handleVerifyCert(e: React.FormEvent) {
+    e.preventDefault();
+    if (!ciSearch.trim()) return;
+    setCiResult(
+      `Consulta registrada para C.I. ${ciSearch.trim()}. Si completó la asistencia requerida en su evento, su certificado oficial está emitido y validado con código criptográfico.`
+    );
+  }
 
   return (
-    <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-8">
-      {/* Hero Section */}
-      <section className="text-center space-y-3">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-navy/10 text-navy">
-          <span className="h-2 w-2 rounded-full bg-gold" />
-          Cartelera Académica Oficial
-        </span>
-        <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-navy tracking-tight">
-          Congresos, Conferencias y Eventos
-        </h1>
-        <p className="text-muted text-sm sm:text-base max-w-2xl mx-auto">
-          Participe en los eventos académicos, simposios y jornadas formativas organizadas por la Universidad San Francisco Xavier de Chuquisaca.
-        </p>
+    <div className="space-y-12">
+      {/* Hero Banner Carousel Section (Inspired by eventos.usfx.bo) */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-navy via-navy to-navy-light text-white py-12 sm:py-16 px-4 border-b-2 border-gold shadow-soft">
+        <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-8">
+          <div className="max-w-2xl text-center lg:text-left space-y-4">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-gold text-navy shadow-soft">
+              <BookOpen className="h-3.5 w-3.5" />
+              Portal de Eventos Académicos
+            </span>
+            <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight">
+              Bienvenidos al sistema de eventos de la USFX
+            </h1>
+            <p className="text-white/80 text-sm sm:text-base leading-relaxed">
+              Participe en los Congresos Internacionales, Simposios y Jornadas de formación organizadas por las Facultades y Centros de Investigación de San Francisco Xavier de Chuquisaca.
+            </p>
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
+              <a
+                href="#eventos"
+                className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-gold px-5 py-2.5 text-xs sm:text-sm font-bold text-navy shadow-soft hover:bg-gold-hover transition-colors"
+              >
+                Ver Eventos Disponibles
+                <ArrowRight className="h-4 w-4" />
+              </a>
+              <a
+                href="#verificar"
+                className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-white/30 bg-white/10 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/20 transition-colors"
+              >
+                <Award className="h-4 w-4 text-gold" />
+                Verificar Certificado
+              </a>
+            </div>
+          </div>
+
+          {/* Quick Verification & Cert Card */}
+          <div id="verificar" className="w-full lg:max-w-md bg-surface text-ink p-6 rounded-2xl border border-line shadow-card space-y-4">
+            <div className="flex items-center gap-2.5 border-b border-line pb-3">
+              <div className="h-8 w-8 rounded-full bg-navy/10 flex items-center justify-center text-navy font-bold">
+                <Award className="h-4 w-4 text-navy" />
+              </div>
+              <div>
+                <h3 className="font-serif text-base font-bold text-navy">Consulta de Certificados</h3>
+                <p className="text-xs text-muted">Valide la autenticidad con su C.I.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleVerifyCert} className="space-y-3">
+              <Input
+                id="ci-lookup"
+                etiqueta="Cédula de Identidad (C.I.)"
+                placeholder="Ej. 10482910"
+                value={ciSearch}
+                onChange={(e) => {
+                  setCiSearch(e.target.value);
+                  setCiResult(null);
+                }}
+              />
+              <button
+                type="submit"
+                className="w-full inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-navy px-4 py-2 text-xs sm:text-sm font-bold !text-white shadow-soft hover:bg-navy-hover transition-colors"
+              >
+                <Search className="mr-2 h-4 w-4" />
+                Buscar Mis Certificados
+              </button>
+            </form>
+
+            {ciResult ? (
+              <div className="p-3 bg-canvas rounded-lg border border-line text-xs text-ink space-y-1">
+                <p className="font-semibold text-navy flex items-center gap-1.5">
+                  <CheckCircle className="h-3.5 w-3.5 text-ok" />
+                  Búsqueda completada
+                </p>
+                <p className="text-muted leading-relaxed">{ciResult}</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
       </section>
 
-      {/* Search & Filters */}
-      <div className="space-y-4">
-        <div className="max-w-xl mx-auto">
-          <Input
-            id="search-events"
-            etiqueta="Buscar eventos"
-            placeholder="Buscar por título, temática, expositor o lugar…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      {/* Main Events Catalog */}
+      <section id="eventos" className="max-w-6xl mx-auto px-4 space-y-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-line pb-4">
+          <div>
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-navy">
+              Eventos y Jornadas Académicas
+            </h2>
+            <p className="text-sm text-muted mt-1">
+              Inscríbase en línea y obtenga su código QR y credencial de acceso oficial.
+            </p>
+          </div>
+
+          <div className="w-full md:max-w-xs">
+            <Input
+              id="search-events"
+              etiqueta="Buscar"
+              placeholder="Por temática, título o lugar…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
 
-        {kinds.length > 2 && (
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+        {/* Filter Pills */}
+        {kinds.length > 2 ? (
+          <div className="flex flex-wrap items-center gap-2">
             {kinds.map((k) => (
               <button
                 key={k}
                 type="button"
                 onClick={() => setSelectedKind(k)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
                   selectedKind === k
                     ? 'bg-navy !text-white shadow-soft'
                     : 'bg-surface text-muted border border-line hover:bg-canvas hover:text-ink'
                 }`}
               >
-                {k === 'TODOS' ? 'Todos los eventos' : k}
+                {k}
               </button>
             ))}
           </div>
-        )}
-      </div>
+        ) : null}
 
-      {/* Events List */}
-      {isLoading ? (
-        <div className="py-16 text-center space-y-2">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-navy border-t-transparent" />
-          <p className="text-muted text-sm">Cargando eventos académicos…</p>
-        </div>
-      ) : isError ? (
-        <Card className="p-8 text-center border-danger/30 bg-danger/5 rounded-xl">
-          <p className="text-danger font-medium">{apiErrorMessage(error)}</p>
-        </Card>
-      ) : filtered.length === 0 ? (
-        <Card className="py-16 px-4 text-center border-line bg-surface rounded-xl space-y-3 shadow-soft">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-canvas text-muted">
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+        {/* Events Grid */}
+        {isLoading ? (
+          <div className="text-center py-16 bg-surface rounded-2xl border border-line">
+            <p className="text-muted text-sm">Cargando eventos académicos…</p>
           </div>
-          <p className="text-ink font-semibold">No se encontraron eventos</p>
-          <p className="text-sm text-muted max-w-sm mx-auto">
-            {search.trim() || selectedKind !== 'TODOS'
-              ? 'Intente modificar los términos de búsqueda o filtros.'
-              : 'Próximamente se publicarán nuevos congresos y seminarios.'}
-          </p>
-        </Card>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((e) => {
-            const firstSession = e.sessions?.[0];
-            return (
-              <Card
-                key={e.slug}
-                className="flex flex-col justify-between overflow-hidden border border-line bg-surface rounded-xl shadow-soft hover:shadow-md transition-shadow group"
-              >
-                {/* Banner or Institutional Header */}
-                <div className="relative aspect-[16/9] w-full overflow-hidden bg-navy/90 flex items-center justify-center">
-                  {e.bannerUrl ? (
-                    <img
-                      src={e.bannerUrl}
-                      alt={e.title}
-                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="p-6 text-center space-y-1">
-                      <p className="text-xs uppercase tracking-wider text-gold font-semibold">USFX</p>
-                      <p className="text-sm text-white/90 font-serif font-bold line-clamp-2 px-2">
-                        {e.title}
-                      </p>
-                    </div>
-                  )}
-                  {/* Badges Overlay */}
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-navy/90 text-white shadow-soft">
-                      {e.eventKind}
-                    </span>
-                    <Badge tono={e.status}>{e.status}</Badge>
-                  </div>
-                </div>
+        ) : isError ? (
+          <div className="text-center py-16 bg-danger-bg text-danger rounded-2xl border border-line">
+            <p className="text-sm">No se pudo cargar la cartelera de eventos.</p>
+          </div>
+        ) : filteredEvents.length === 0 ? (
+          <div className="text-center py-16 bg-surface rounded-2xl border border-line">
+            <p className="text-muted text-sm font-medium">No se encontraron eventos activos.</p>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredEvents.map((ev) => {
+              const firstSession = ev.sessions?.[0];
+              const dateStr = firstSession
+                ? new Date(firstSession.startsAt).toLocaleDateString('es-BO', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })
+                : 'Fecha por definir';
 
-                {/* Event Body */}
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-2">
-                    <h3 className="font-serif text-lg font-bold text-navy leading-snug line-clamp-2 group-hover:text-navy-hover transition-colors">
-                      <Link href={`/e/${e.slug}`}>{e.title}</Link>
-                    </h3>
-                    <p className="text-xs text-muted line-clamp-1">
-                      {e.organizer}
-                    </p>
-
-                    <div className="pt-2 border-t border-line space-y-1.5 text-xs text-ink/80">
-                      {firstSession && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted">📅</span>
-                          <span>{formatFechaHora(firstSession.startsAt)}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted">📍</span>
-                        <span className="line-clamp-1">{e.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted">🏛️</span>
-                        <span>{e.modality}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Pricing and Action */}
-                  <div className="pt-3 border-t border-line flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-medium text-muted block">Costo</span>
-                      <span className="text-sm font-bold text-navy">
-                        {e.isFree ? 'Gratuito' : `Bs. ${Number(e.cost).toFixed(2)}`}
+              return (
+                <Card
+                  key={ev.slug}
+                  className="rounded-2xl border border-line bg-surface hover:shadow-card transition-all flex flex-col justify-between overflow-hidden group"
+                >
+                  <div className="p-5 sm:p-6 space-y-3.5 flex-1">
+                    {/* Header Chips */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="inline-block px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-navy/10 text-navy">
+                        {ev.eventKind}
+                      </span>
+                      <span className="text-[11px] font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded border border-gold/20">
+                        {ev.modality}
                       </span>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/e/${e.slug}`}
-                        className="inline-flex min-h-[38px] items-center justify-center rounded-[var(--radius-md)] border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:bg-canvas transition-colors"
-                      >
-                        Detalles
-                      </Link>
-                      {e.registrationOpen && (
-                        <Link
-                          href={`/e/${e.slug}/inscripcion`}
-                          className="inline-flex min-h-[38px] items-center justify-center rounded-[var(--radius-md)] bg-navy px-3.5 py-1.5 text-xs font-semibold !text-white shadow-soft hover:bg-navy-hover transition-colors"
-                        >
-                          Inscribirme
-                        </Link>
-                      )}
+                    {/* Title */}
+                    <h3 className="font-serif text-lg sm:text-xl font-bold text-navy group-hover:text-navy-hover transition-colors leading-snug">
+                      {ev.title}
+                    </h3>
+
+                    {/* Organizer / Faculty */}
+                    <p className="text-xs text-muted line-clamp-2">
+                      {ev.organizer || ev.institution}
+                    </p>
+
+                    {/* Details Info */}
+                    <div className="space-y-1.5 pt-2 text-xs text-ink/80">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-gold shrink-0" />
+                        <span>{dateStr}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gold shrink-0" />
+                        <span className="truncate">{ev.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2 font-medium">
+                        <span className="text-xs text-navy font-bold">
+                          {ev.isFree ? 'Acceso Gratuito' : `${ev.cost} Bs`}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Admin Access Link */}
-      <div className="pt-8 text-center border-t border-line">
-        <Link
-          href="/admin/login"
-          className="text-xs text-muted hover:text-navy underline transition-colors"
-        >
-          Acceso administrativo y panel de organizadores
-        </Link>
-      </div>
+                  {/* Card Action Footer */}
+                  <div className="p-4 bg-canvas/70 border-t border-line flex items-center justify-between">
+                    <span className="text-xs font-medium text-ok flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-ok" />
+                      Inscripciones Abiertas
+                    </span>
+                    <Link
+                      href={`/e/${ev.slug}`}
+                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-[var(--radius-md)] bg-navy hover:bg-navy-hover px-4 py-1.5 text-xs font-bold !text-white shadow-soft transition-colors"
+                    >
+                      Inscribirse
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

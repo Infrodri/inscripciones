@@ -18,11 +18,13 @@ export interface Miga {
 
 export function PageHeader({
   titulo,
+  descripcion,
   accion,
   migas,
   volverA,
 }: {
   titulo: string;
+  descripcion?: string;
   accion?: ReactNode;
   migas?: Miga[];
   volverA?: string;
@@ -73,6 +75,7 @@ export function PageHeader({
         <h1 className="font-serif text-2xl text-[#0A2A5E]">{titulo}</h1>
         {accion}
       </div>
+      {descripcion ? <p className="mt-1 text-sm text-[#5B6677]">{descripcion}</p> : null}
     </div>
   );
 }

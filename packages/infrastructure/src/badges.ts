@@ -9,6 +9,8 @@ export interface BadgeParticipant {
   career?: string | null;
   eventTitle: string;
   eventInstitution?: string | null;
+  eventDates?: string | null;
+  eventLocation?: string | null;
   qrPngBuffer: Buffer;
 }
 
@@ -56,7 +58,7 @@ function drawBadgeCard(
   }
 
   // Header band (Institutional Navy)
-  const headerHeight = mmToPt(26);
+  const headerHeight = mmToPt(32);
   doc.rect(x, y, w, headerHeight).fill('#0A2A5E');
   // Gold accent strip below header
   doc.rect(x, y + headerHeight - 3, w, 3).fill('#C9A227');
@@ -64,19 +66,19 @@ function drawBadgeCard(
   // University Header Text
   doc
     .fillColor('#C9A227')
-    .fontSize(6.5)
+    .fontSize(6)
     .font('Helvetica-Bold')
-    .text('UNIVERSIDAD SAN FRANCISCO XAVIER', x + 8, y + 6, {
-      width: w - 16,
+    .text('UNIVERSIDAD SAN FRANCISCO XAVIER DE CHUQUISACA', x + 6, y + 5, {
+      width: w - 12,
       align: 'center',
     });
 
   doc
-    .fillColor('#FFFFFF')
+    .fillColor('#E5E7EB')
     .fontSize(5.5)
     .font('Helvetica')
-    .text(p.eventInstitution ?? 'Facultad de Derecho, Ciencias Políticas y Sociales', x + 8, y + 14, {
-      width: w - 16,
+    .text(p.eventInstitution ?? 'Facultad de Derecho, Ciencias Políticas y Sociales', x + 6, y + 13, {
+      width: w - 12,
       align: 'center',
     });
 
@@ -85,26 +87,42 @@ function drawBadgeCard(
     .fillColor('#FFFFFF')
     .fontSize(7.5)
     .font('Helvetica-Bold')
-    .text(p.eventTitle, x + 8, y + 21, {
-      width: w - 16,
+    .text(p.eventTitle, x + 6, y + 20, {
+      width: w - 12,
       align: 'center',
       ellipsis: true,
-      height: 12,
+      height: 10,
     });
+
+  // Event Dates / Location strip
+  const dateLoc = [p.eventDates, p.eventLocation].filter(Boolean).join(' • ');
+  let currentY = y + headerHeight + mmToPt(3);
+  if (dateLoc) {
+    doc
+      .fillColor('#6B7280')
+      .fontSize(6)
+      .font('Helvetica')
+      .text(dateLoc, x + 6, currentY, {
+        width: w - 12,
+        align: 'center',
+        ellipsis: true,
+      });
+    currentY += mmToPt(4);
+  }
 
   // Role Pill
   const role = getRoleColors(p.type);
-  const pillY = y + headerHeight + mmToPt(4);
-  const pillW = mmToPt(44);
-  const pillH = mmToPt(7.5);
+  const pillY = currentY;
+  const pillW = mmToPt(42);
+  const pillH = mmToPt(7);
   const pillX = x + (w - pillW) / 2;
 
   doc.roundedRect(pillX, pillY, pillW, pillH, 4).fill(role.bg);
   doc
     .fillColor(role.text)
-    .fontSize(8)
+    .fontSize(7.5)
     .font('Helvetica-Bold')
-    .text(role.label, pillX, pillY + 2.5, {
+    .text(role.label, pillX, pillY + 2, {
       width: pillW,
       align: 'center',
     });

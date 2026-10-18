@@ -71,12 +71,14 @@ async function validateBanner(
 export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Router {
   const router = Router();
 
-  router.get('/', async (req, res, next) => {
+  router.get('/', async (req: AuthRequest, res, next) => {
     try {
       const prisma = getPrisma();
       const params = parsePagination(req.query);
+      const whereClause = req.user?.role === 'STAFF' ? { createdBy: req.user.id } : {};
       const [items, total] = await Promise.all([
         prisma.event.findMany({
+          where: whereClause,
           skip: (params.page - 1) * params.pageSize,
           take: params.pageSize,
           orderBy: { createdAt: 'desc' },
@@ -90,7 +92,7 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
             },
           },
         }),
-        prisma.event.count(),
+        prisma.event.count({ where: whereClause }),
       ]);
       const enriched = items.map((item) => ({
         ...item,
@@ -107,7 +109,6 @@ export function eventRoutes(publicStorage: FileStorage, env?: PublicUrlEnv): Rou
 
   router.post(
     '/',
-    requireRole('ADMIN'),
     validateBody(eventSchema),
     async (req: AuthRequest, res, next) => {
       try {

@@ -327,9 +327,13 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
       const prisma = getPrisma();
       const participant = await prisma.participant.findUnique({
         where: { qrToken: req.params.qrToken },
-        include: { event: true },
+        include: { event: { include: { sessions: { orderBy: { startsAt: 'asc' } } } } },
       });
       if (!participant) throw new DomainError('INVALID_QR', 'El código QR no es válido');
+      const sessions = participant.event.sessions;
+      const datesStr = sessions.length > 0
+        ? `${sessions[0].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}${sessions.length > 1 ? ` - ${sessions[sessions.length - 1].startsAt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}` : ` ${sessions[0].startsAt.getFullYear()}`}`
+        : null;
       const badgeData: BadgeParticipant = {
         fullName: `${participant.firstName} ${participant.lastName}`.trim(),
         ci: participant.ci,
@@ -338,6 +342,8 @@ export function publicRoutes(env: AppEnv, storage?: FileStorage): Router {
         career: participant.career,
         eventTitle: participant.event.title,
         eventInstitution: participant.event.institution,
+        eventDates: datesStr,
+        eventLocation: participant.event.location,
         qrPngBuffer: await qrPngBuffer(participant.qrToken),
       };
       res.header('Content-Type', 'application/pdf');

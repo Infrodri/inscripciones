@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getPrisma } from '../../infrastructure/prisma.js';
 import { DomainError } from '../../domain/errors.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
+import type { AuthRequest } from '../middlewares/authMiddleware.js';
 import type { FileStorage } from '@inscripciones/infrastructure/fileStorage.js';
 import { renderCertificates, type CertificateJob } from '@inscripciones/infrastructure/pdf.js';
 import { fontPaths } from '../../shared/fonts.js';
@@ -35,8 +36,7 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
   const router = Router();
   router.get(
     '/events/:id/exports/certificates.pdf',
-    requireRole('ADMIN'),
-    async (req, res, next) => {
+    async (req: AuthRequest, res, next) => {
       try {
         const query = z
           .object({
@@ -44,6 +44,9 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
             scope: z.enum(['eligible', 'all', 'selected']).default('eligible'),
             templateId: z.string().uuid().optional(),
             ids: z.string().optional(),
+            printBackground: z
+              .preprocess((val) => val === 'false' || val === false ? false : true, z.boolean())
+              .default(true),
           })
           .parse(req.query);
         const prisma = getPrisma();
@@ -52,6 +55,9 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
           include: { sessions: true },
         });
         if (!event) throw new DomainError('NOT_FOUND', 'Evento no encontrado');
+        if (req.user?.role === 'STAFF' && event.createdBy !== req.user.id) {
+          throw new DomainError('FORBIDDEN', 'No tiene permiso para exportar certificados de este evento');
+        }
         const images = new Map<string, Buffer>();
         async function imageFor(filePath: string): Promise<Buffer> {
           const cached = images.get(filePath);
@@ -123,6 +129,7 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
                 nameBox.nameCase
               ),
               nameBox,
+              printBackground: query.printBackground,
             });
           }
         } else {
@@ -153,6 +160,7 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
               pageHeightMm: template.pageHeightMm,
               name: formatPrintedName(recipient.fullName, nameBox.nameCase),
               nameBox,
+              printBackground: query.printBackground,
             });
           }
         }
