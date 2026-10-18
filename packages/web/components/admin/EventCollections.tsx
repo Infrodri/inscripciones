@@ -113,10 +113,13 @@ export function EventCollections({ eventId }: { eventId: string }) {
         headers: { Authorization: `Bearer ${getToken() ?? ''}` },
       });
       if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error('El servicio de credenciales devolvió 404. La API en Render todavía está desplegando la última versión.');
+        }
         const body = (await res.json().catch(() => null)) as {
           error?: { message?: string };
         } | null;
-        throw new Error(body?.error?.message ?? 'No se pudo descargar el documento');
+        throw new Error(body?.error?.message ?? `Error al generar la credencial (HTTP ${res.status})`);
       }
       const objectUrl = URL.createObjectURL(await res.blob());
       const a = document.createElement('a');

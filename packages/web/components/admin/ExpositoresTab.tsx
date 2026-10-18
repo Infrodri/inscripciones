@@ -41,8 +41,12 @@ async function downloadPdf(url: string, filename: string): Promise<void> {
     headers: { Authorization: `Bearer ${getToken() ?? ''}` },
   });
   if (!res.ok) {
+    if (res.status === 404) {
+      toast.error('El servicio de credenciales devolvió 404. La API en Render todavía está desplegando la última versión.');
+      return;
+    }
     const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-    toast.error(body?.error?.message ?? 'No se pudo exportar');
+    toast.error(body?.error?.message ?? `Error al generar el documento (HTTP ${res.status})`);
     return;
   }
   const objectUrl = URL.createObjectURL(await res.blob());
