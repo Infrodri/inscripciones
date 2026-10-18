@@ -175,6 +175,13 @@ export function ParticipantsTable({
       data: Array<{ id: string; name: string; isDefault: boolean; roleKind: string }>;
     }> => (await api.get(`/events/${eventId}/certificate-templates?roleKind=ASISTENTE`)).data,
   });
+  const event = useQuery({
+    queryKey: ['event', eventId],
+    queryFn: async (): Promise<{
+      isFree?: boolean;
+      cost?: number | string | null;
+    }> => (await api.get(`/events/${eventId}`)).data,
+  });
   const hasAssistantTemplate = Boolean(
     templates.data?.data && templates.data.data.some((t) => t.isDefault || t.roleKind === 'ASISTENTE')
   );
@@ -390,6 +397,19 @@ export function ParticipantsTable({
       </div>
       <p className="mt-2 text-sm">
         Total: <strong>{total}</strong>
+        {!event.data?.isFree && event.data?.cost ? (
+          <>
+            {' · '}
+            Recaudación total:{' '}
+            <strong>
+              Bs{' '}
+              {(total * Number(event.data.cost)).toLocaleString('es-BO', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </strong>
+          </>
+        ) : null}
         {selected.length > 0 ? (
           <>
             {' '}

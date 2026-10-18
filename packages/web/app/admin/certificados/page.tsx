@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, apiUrl, apiErrorMessage } from '@/lib/api';
 import { getToken } from '@/lib/auth';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { PageHeader } from '@/components/ui/Table';
-import { Award, Printer, Palette, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Award, Printer, Palette, CheckCircle2, ExternalLink, RefreshCw } from 'lucide-react';
 
 interface EventItem {
   id: string;
@@ -20,6 +20,15 @@ interface EventItem {
   issuesCertificate?: boolean;
 }
 
+interface EventSpeaker {
+  id: string;
+  fullName: string;
+  titleProfession?: string | null;
+  role: 'EXPOSITOR' | 'MODERADOR';
+  institution?: string | null;
+  position?: number;
+}
+
 interface CertificatePerson {
   id: string;
   firstName?: string;
@@ -27,16 +36,28 @@ interface CertificatePerson {
   fullName?: string;
   ci?: string;
   recipientCi?: string;
+  email?: string | null;
   type?: string;
+  note?: string | null;
   certificateCode?: string | null;
+  speakerId?: string | null;
+  speaker?: {
+    id: string;
+    fullName: string;
+    titleProfession?: string | null;
+    role: string;
+    institution?: string | null;
+  } | null;
 }
 
 export default function CertificadosGlobalPage() {
+  const queryClient = useQueryClient();
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [roleKind, setRoleKind] = useState<'ASISTENTE' | 'EXPOSITOR' | 'ORGANIZADOR'>('ASISTENTE');
   const [scope, setScope] = useState<'eligible' | 'all'>('eligible');
   const [exportingFull, setExportingFull] = useState(false);
   const [exportingBlank, setExportingBlank] = useState(false);
+  const [syncingSpeakers, setSyncingSpeakers] = useState(false);
 
   // 1. Fetch accessible events
   const eventsQuery = useQuery({
@@ -65,7 +86,7 @@ export default function CertificadosGlobalPage() {
         });
         return (res.data?.data ?? []) as CertificatePerson[];
       }
-      const res = await api.get(`/certificate-recipients/event/${selectedEventId}`, {
+      const res = await api.get(`/events/${selectedEventId}/certificate-recipients`, {
         params: { roleKind },
       });
       return (res.data?.data ?? []) as CertificatePerson[];
@@ -73,7 +94,44 @@ export default function CertificadosGlobalPage() {
     enabled: Boolean(selectedEventId),
   });
 
+  // 3. Fetch event speakers if roleKind === 'EXPOSITOR'
+  const speakersQuery = useQuery({
+    queryKey: ['admin-event-speakers', selectedEventId],
+    queryFn: async () => {
+      if (!selectedEventId) return [];
+      const res = await api.get(`/speakers/event/${selectedEventId}`);
+      return (res.data?.data ?? []) as EventSpeaker[];
+    },
+    enabled: Boolean(selectedEventId) && roleKind === 'EXPOSITOR',
+  });
+
   const recipients = participantsQuery.data ?? [];
+  const speakers = speakersQuery.data ?? [];
+  const hasSpeakersOnly =
+    roleKind === 'EXPOSITOR' && recipients.length === 0 && speakers.length > 0;
+  const hasAvailableRecipients = recipients.length > 0 || hasSpeakersOnly;
+
+  async function handleSyncSpeakers() {
+    if (!selectedEventId) return;
+    setSyncingSpeakers(true);
+    try {
+      const res = await api.post(`/events/${selectedEventId}/certificate-recipients/from-speakers`);
+      const data = (res.data ?? {}) as { created?: unknown[]; skipped?: string[] };
+      const createdCount = data.created?.length ?? 0;
+      toast.success(
+        createdCount > 0
+          ? `${createdCount} expositores sincronizados correctamente a certificados`
+          : 'Los expositores ya estaban sincronizados'
+      );
+      await queryClient.invalidateQueries({
+        queryKey: ['admin-cert-recipients', selectedEventId],
+      });
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    } finally {
+      setSyncingSpeakers(false);
+    }
+  }
 
   // Export handler
   async function downloadCertificates(printBackground: boolean) {
@@ -117,6 +175,11 @@ export default function CertificadosGlobalPage() {
           ? 'Diplomas completos descargados con éxito'
           : 'Certificados para hojas preimpresas descargados'
       );
+      if (hasSpeakersOnly) {
+        queryClient.invalidateQueries({
+          queryKey: ['admin-cert-recipients', selectedEventId],
+        });
+      }
     } catch (err) {
       toast.error(apiErrorMessage(err));
     } finally {
@@ -214,7 +277,7 @@ export default function CertificadosGlobalPage() {
                 size="md"
                 cargando={exportingFull}
                 onClick={() => void downloadCertificates(true)}
-                disabled={recipients.length === 0}
+                disabled={!hasAvailableRecipients}
                 className="w-full !text-white shadow-soft justify-center"
               >
                 Descargar Diplomas Completos (PDF)
@@ -238,7 +301,7 @@ export default function CertificadosGlobalPage() {
                 size="md"
                 cargando={exportingBlank}
                 onClick={() => void downloadCertificates(false)}
-                disabled={recipients.length === 0}
+                disabled={!hasAvailableRecipients}
                 className="w-full justify-center"
               >
                 Descargar para Hoja Preimpresa (PDF)
@@ -250,24 +313,94 @@ export default function CertificadosGlobalPage() {
 
       {/* Recipients Summary Table */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-serif font-bold text-navy text-base">
-            Lista de Destinatarios ({recipients.length})
-          </h3>
-          {currentEvent ? (
-            <a
-              href={`/admin/eventos/${currentEvent.id}/certificados`}
-              className="text-xs font-semibold text-navy hover:underline flex items-center gap-1"
-            >
-              Configurar diseño y coordenadas de plantilla
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          ) : null}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h3 className="font-serif font-bold text-navy text-base">
+              Lista de Destinatarios ({recipients.length > 0 ? recipients.length : (hasSpeakersOnly ? speakers.length : 0)})
+            </h3>
+            {hasSpeakersOnly ? (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-warn-bg text-warn border border-warn/20">
+                Pendientes de Sincronización
+              </span>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-3">
+            {hasSpeakersOnly ? (
+              <Button
+                variant="secundario"
+                size="sm"
+                cargando={syncingSpeakers}
+                onClick={() => void handleSyncSpeakers()}
+                className="flex items-center gap-1.5"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${syncingSpeakers ? 'animate-spin' : ''}`} />
+                Sincronizar expositores a certificados
+              </Button>
+            ) : null}
+            {currentEvent ? (
+              <a
+                href={`/admin/eventos/${currentEvent.id}/certificados`}
+                className="text-xs font-semibold text-navy hover:underline flex items-center gap-1"
+              >
+                Configurar diseño y coordenadas de plantilla
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            ) : null}
+          </div>
         </div>
 
-        {participantsQuery.isLoading ? (
+        {participantsQuery.isLoading || (roleKind === 'EXPOSITOR' && speakersQuery.isLoading) ? (
           <div className="p-8 text-center text-sm text-muted bg-surface rounded-xl border border-line">
             Cargando beneficiarios…
+          </div>
+        ) : hasSpeakersOnly ? (
+          <div className="space-y-3">
+            <div className="p-4 rounded-xl border border-line bg-canvas flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <p className="font-semibold text-navy text-sm">
+                  Se encontraron {speakers.length} expositor(es) registrados en el evento
+                </p>
+                <p className="text-xs text-muted">
+                  Aún no están registrados como receptores de certificados. Puede sincronizarlos para personalizar notas o descargar directamente los diplomas en PDF (se generarán automáticamente).
+                </p>
+              </div>
+              <Button
+                variant="secundario"
+                size="sm"
+                cargando={syncingSpeakers}
+                onClick={() => void handleSyncSpeakers()}
+                className="whitespace-nowrap self-start sm:self-center"
+              >
+                Sincronizar expositores a certificados
+              </Button>
+            </div>
+
+            <div className="border border-line rounded-xl overflow-hidden bg-surface shadow-soft">
+              <div className="divide-y divide-line">
+                {speakers.map((s, idx) => (
+                  <div
+                    key={s.id}
+                    className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-canvas/50 transition-colors"
+                  >
+                    <div className="space-y-0.5">
+                      <p className="font-serif font-bold text-navy text-sm">
+                        {idx + 1}. {s.fullName}
+                      </p>
+                      <p className="text-xs text-muted font-sans">
+                        {s.titleProfession ? `${s.titleProfession} • ` : ''}
+                        {s.role}
+                        {s.institution ? ` • ${s.institution}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-xs text-warn font-medium bg-warn-bg px-2.5 py-1 rounded-full border border-warn/20">
+                        Expositor Registrado
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : recipients.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted bg-surface rounded-xl border border-line">
@@ -276,30 +409,54 @@ export default function CertificadosGlobalPage() {
         ) : (
           <div className="border border-line rounded-xl overflow-hidden bg-surface shadow-soft">
             <div className="divide-y divide-line">
-              {recipients.map((r, idx) => (
-                <div
-                  key={r.id}
-                  className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-canvas/50 transition-colors"
-                >
-                  <div className="space-y-0.5">
-                    <p className="font-serif font-bold text-navy text-sm">
-                      {idx + 1}.{' '}
-                      {r.firstName
-                        ? `${r.firstName} ${r.lastName}`
-                        : (r.fullName ?? 'Participante')}
-                    </p>
-                    <p className="text-xs text-muted font-mono">
-                      CI: {r.ci || r.recipientCi || 'S/N'} • Rol: {roleKind}
-                    </p>
+              {recipients.map((r, idx) => {
+                const displayName = r.firstName
+                  ? `${r.firstName} ${r.lastName}`
+                  : (r.fullName ?? 'Destinatario');
+                const roleDesc =
+                  r.speaker?.titleProfession ||
+                  (roleKind === 'EXPOSITOR'
+                    ? 'Expositor'
+                    : roleKind === 'ORGANIZADOR'
+                      ? 'Organizador'
+                      : (r.type || 'Asistente'));
+                const details: string[] = [];
+                if (r.ci || r.recipientCi) details.push(`CI: ${r.ci || r.recipientCi}`);
+                if (r.email) details.push(r.email);
+                if (r.speaker?.institution) details.push(r.speaker.institution);
+                if (r.note) details.push(`Nota: ${r.note}`);
+                if (details.length === 0) details.push(`Rol: ${roleKind}`);
+
+                return (
+                  <div
+                    key={r.id}
+                    className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-canvas/50 transition-colors"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <p className="font-serif font-bold text-navy text-sm">
+                          {idx + 1}. {displayName}
+                        </p>
+                        <span className="text-xs text-muted font-normal">({roleDesc})</span>
+                      </div>
+                      <p className="text-xs text-muted font-sans">
+                        {details.join(' • ')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {r.certificateCode ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-blue font-mono font-medium bg-blue-bg px-2.5 py-1 rounded-full border border-blue/20">
+                          Código: {r.certificateCode}
+                        </span>
+                      ) : null}
+                      <span className="inline-flex items-center gap-1 text-xs text-ok font-medium bg-ok-bg px-2.5 py-1 rounded-full border border-ok/20">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Habilitado para Emisión
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center gap-1 text-xs text-ok font-medium bg-ok-bg px-2.5 py-1 rounded-full border border-ok/20">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Habilitado para Emisión
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

@@ -19,6 +19,8 @@ interface EventRow {
   slug: string;
   title: string;
   status: string;
+  isFree?: boolean;
+  cost?: number | string | null;
   participants?: number;
   participantsCount?: number;
   speakersCount?: number;
@@ -43,7 +45,7 @@ function EventCard({ event, isAdmin, onDelete, participants, onSelect, selected 
   const queryClient = useQueryClient();
   const stats = useQuery({
     queryKey: ['stats', event.id],
-    queryFn: async (): Promise<{ participants: number }> =>
+    queryFn: async (): Promise<{ participants: number; isFree?: boolean; cost?: number }> =>
       (await api.get(`/events/${event.id}/stats`)).data,
     enabled: participants === undefined && event.participants === undefined,
   });
@@ -94,6 +96,9 @@ function EventCard({ event, isAdmin, onDelete, participants, onSelect, selected 
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
             <Badge tono={event.status}>{event.status}</Badge>
+            {!event.isFree && event.cost ? (
+              <Badge tono="aviso">Bs {Number(event.cost).toFixed(2)}</Badge>
+            ) : null}
             {event.ownership === 'asignado' ? (
               <Badge tono="aviso">
                 {event.accessLevel === 'MANAGER' ? 'Asignado (Manager)' : 'Asignado (Operador)'}
@@ -104,6 +109,21 @@ function EventCard({ event, isAdmin, onDelete, participants, onSelect, selected 
             {first ? <span>desde {formatFecha(first)}</span> : <span>sin fecha</span>}
             {last && last !== first ? <span>hasta {formatFecha(last)}</span> : null}
             <span className="font-medium text-ink">Inscritos: {inscritosCount}</span>
+            {!event.isFree && event.cost ? (
+              <span>
+                • Recaudado:{' '}
+                <strong className="font-medium text-ink">
+                  Bs{' '}
+                  {(
+                    (participants ?? event.participants ?? stats.data?.participants ?? 0) *
+                    Number(event.cost)
+                  ).toLocaleString('es-BO', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </strong>
+              </span>
+            ) : null}
             {event.speakersCount !== undefined && event.speakersCount > 0 ? (
               <span>• Expositores: {event.speakersCount}</span>
             ) : null}

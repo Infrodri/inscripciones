@@ -11,6 +11,9 @@ interface Stats {
   eligible: number;
   sessions: number;
   perSession: Array<{ checkedIn: number }>;
+  isFree?: boolean;
+  cost?: number;
+  totalRecaudado?: number;
 }
 
 export function ResumenTab({ eventId }: { eventId: string }) {
@@ -24,6 +27,8 @@ export function ResumenTab({ eventId }: { eventId: string }) {
       status: string;
       bannerPath: string | null;
       slug: string;
+      isFree?: boolean;
+      cost?: number | string | null;
     }> => (await api.get(`/events/${eventId}`)).data,
   });
   const sessions = useQuery({
@@ -74,9 +79,16 @@ export function ResumenTab({ eventId }: { eventId: string }) {
       accion: 'Ir a publicación',
     });
 
+  const isPaid =
+    (!event.data?.isFree && Boolean(event.data?.cost)) ||
+    (!stats.data?.isFree && Boolean(stats.data?.cost));
+  const cost = Number(event.data?.cost ?? stats.data?.cost ?? 0);
+  const inscritos = stats.data?.participants ?? 0;
+  const totalRecaudado = stats.data?.totalRecaudado ?? (inscritos * cost);
+
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className={`grid gap-4 ${isPaid ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
         <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted">
@@ -121,6 +133,29 @@ export function ResumenTab({ eventId }: { eventId: string }) {
           </p>
           <span className="mt-2 text-xs text-muted">Cumplen el % mínimo de asistencia</span>
         </Card>
+
+        {isPaid ? (
+          <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+                Monto Recaudado
+              </span>
+              <span className="h-8 w-8 rounded-full bg-warn-bg flex items-center justify-center text-warn font-bold text-sm">
+                💰
+              </span>
+            </div>
+            <p className="mt-4 font-serif text-3xl md:text-4xl font-bold text-navy">
+              Bs{' '}
+              {totalRecaudado.toLocaleString('es-BO', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+            <span className="mt-2 text-xs text-muted">
+              {inscritos} inscritos × Bs {Number(cost).toFixed(2)}
+            </span>
+          </Card>
+        ) : null}
       </div>
 
       <Card className="rounded-[12px] border border-line bg-surface p-6 shadow-soft">

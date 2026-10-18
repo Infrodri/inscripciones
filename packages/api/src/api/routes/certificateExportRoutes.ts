@@ -10,6 +10,7 @@ import { renderCertificates, type CertificateJob } from '@inscripciones/infrastr
 import { fontPaths } from '../../shared/fonts.js';
 import { logger } from '../../shared/logger.js';
 import { formatPrintedName } from '../../domain/nameFormat.js';
+import { normalizeName } from '../../shared/normalize.js';
 import { attendancePercentage } from '../../application/attendanceService.js';
 import { assertEventAccess } from '../../application/accessControl.js';
 
@@ -146,11 +147,59 @@ export function certificateExportRoutes(privateStorage: FileStorage): Router {
             include: { template: true },
             orderBy: { createdAt: 'asc' },
           });
+
+          if (query.roleKind === 'EXPOSITOR' && recipients.length === 0) {
+            const speakers = await prisma.speaker.findMany({
+              where: { eventId: event.id },
+              orderBy: { position: 'asc' },
+            });
+            if (speakers.length > 0) {
+              const expositorTemplate =
+                (query.templateId
+                  ? await prisma.certificateTemplate.findUnique({ where: { id: query.templateId } })
+                  : null) ??
+                (await prisma.certificateTemplate.findFirst({
+                  where: { eventId: event.id, roleKind: 'EXPOSITOR', isDefault: true },
+                })) ??
+                (await prisma.certificateTemplate.findFirst({
+                  where: { eventId: event.id, roleKind: 'EXPOSITOR' },
+                }));
+
+              if (expositorTemplate) {
+                for (const speaker of speakers) {
+                  const fullName = normalizeName(speaker.fullName);
+                  const code = lazyCode();
+                  await prisma.certificateRecipient.create({
+                    data: {
+                      eventId: event.id,
+                      roleKind: 'EXPOSITOR',
+                      fullName,
+                      templateId: expositorTemplate.id,
+                      speakerId: speaker.id,
+                      certificateCode: code,
+                      createdBy: req.user?.id,
+                    },
+                  });
+                }
+                recipients = await prisma.certificateRecipient.findMany({
+                  where: { eventId: event.id, roleKind: 'EXPOSITOR' },
+                  include: { template: true },
+                  orderBy: { createdAt: 'asc' },
+                });
+              } else {
+                throw new DomainError(
+                  'NO_DEFAULT_TEMPLATE',
+                  'No hay plantilla predeterminada para EXPOSITOR'
+                );
+              }
+            }
+          }
+
           if (query.templateId)
             recipients = recipients.filter((r) => r.templateId === query.templateId);
           if (query.scope === 'selected') {
             const ids = new Set((query.ids ?? '').split(',').filter(Boolean));
-            recipients = recipients.filter((r) => ids.has(r.id));
+            recipients = recipients.filter((r) => ids.has(r.id) || (r.speakerId && ids.has(r.speakerId)));
           }
           const unassignedRecipients = recipients.filter((r) => !r.certificateCode);
           if (unassignedRecipients.length > 0) {

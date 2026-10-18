@@ -61,27 +61,37 @@ async function assertNoDuplicate(
 export function certificateRecipientRoutes(): Router {
   const router = Router();
 
-  router.get(
-    '/events/:eventId/certificate-recipients',
-    staffOrAdmin,
-    async (req: AuthRequest, res, next) => {
-      try {
-        const prisma = getPrisma();
-        await assertEventAccess(prisma, req.user, req.params.eventId, 'OPERATOR');
-        const roleKind = typeof req.query.roleKind === 'string' ? req.query.roleKind : undefined;
-        const items = await prisma.certificateRecipient.findMany({
-          where: {
-            eventId: req.params.eventId,
-            ...(roleKind ? { roleKind: roleKind as never } : {}),
+  const getRecipientsHandler = async (req: AuthRequest, res: any, next: any) => {
+    try {
+      const prisma = getPrisma();
+      await assertEventAccess(prisma, req.user, req.params.eventId, 'OPERATOR');
+      const roleKind = typeof req.query.roleKind === 'string' ? req.query.roleKind : undefined;
+      const items = await prisma.certificateRecipient.findMany({
+        where: {
+          eventId: req.params.eventId,
+          ...(roleKind ? { roleKind: roleKind as never } : {}),
+        },
+        include: {
+          speaker: {
+            select: {
+              id: true,
+              fullName: true,
+              titleProfession: true,
+              role: true,
+              institution: true,
+            },
           },
-          orderBy: { createdAt: 'asc' },
-        });
-        res.json({ data: items });
-      } catch (err) {
-        next(err);
-      }
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      res.json({ data: items });
+    } catch (err) {
+      next(err);
     }
-  );
+  };
+
+  router.get('/events/:eventId/certificate-recipients', staffOrAdmin, getRecipientsHandler);
+  router.get('/certificate-recipients/event/:eventId', staffOrAdmin, getRecipientsHandler);
 
   router.post(
     '/events/:eventId/certificate-recipients',
@@ -232,57 +242,68 @@ export function certificateRecipientRoutes(): Router {
 
   // Carga desde expositores del evento (EXPOSITOR y MODERADOR) con la
   // plantilla default de EXPOSITOR; el admin ajusta antes de confirmar.
+  const fromSpeakersHandler = async (req: AuthRequest, res: any, next: any) => {
+    try {
+      const prisma = getPrisma();
+      await assertEventAccess(prisma, req.user, req.params.eventId, 'MANAGER');
+      const template =
+        (await prisma.certificateTemplate.findFirst({
+          where: { eventId: req.params.eventId, roleKind: 'EXPOSITOR', isDefault: true },
+        })) ??
+        (await prisma.certificateTemplate.findFirst({
+          where: { eventId: req.params.eventId, roleKind: 'EXPOSITOR' },
+        }));
+      if (!template)
+        throw new DomainError(
+          'NO_DEFAULT_TEMPLATE',
+          'No hay plantilla predeterminada para EXPOSITOR'
+        );
+      const speakers = await prisma.speaker.findMany({
+        where: { eventId: req.params.eventId },
+        orderBy: { position: 'asc' },
+      });
+      const created: unknown[] = [];
+      const skipped: string[] = [];
+      for (const speaker of speakers) {
+        const fullName = normalizeName(speaker.fullName);
+        const exists = await prisma.certificateRecipient.findMany({
+          where: { eventId: req.params.eventId, templateId: template.id },
+          select: { fullName: true },
+        });
+        if (
+          exists.some((r) => normalizeName(r.fullName).toLowerCase() === fullName.toLowerCase())
+        ) {
+          skipped.push(fullName);
+          continue;
+        }
+        created.push(
+          await prisma.certificateRecipient.create({
+            data: {
+              eventId: req.params.eventId,
+              roleKind: 'EXPOSITOR',
+              fullName,
+              templateId: template.id,
+              speakerId: speaker.id,
+              createdBy: req.user?.id,
+            },
+          })
+        );
+      }
+      res.status(201).json({ created, skipped });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   router.post(
     '/events/:eventId/certificate-recipients/from-speakers',
     staffOrAdmin,
-    async (req: AuthRequest, res, next) => {
-      try {
-        const prisma = getPrisma();
-        await assertEventAccess(prisma, req.user, req.params.eventId, 'MANAGER');
-        const template = await prisma.certificateTemplate.findFirst({
-          where: { eventId: req.params.eventId, roleKind: 'EXPOSITOR', isDefault: true },
-        });
-        if (!template)
-          throw new DomainError(
-            'NO_DEFAULT_TEMPLATE',
-            'No hay plantilla predeterminada para EXPOSITOR'
-          );
-        const speakers = await prisma.speaker.findMany({
-          where: { eventId: req.params.eventId },
-          orderBy: { position: 'asc' },
-        });
-        const created: unknown[] = [];
-        const skipped: string[] = [];
-        for (const speaker of speakers) {
-          const fullName = normalizeName(speaker.fullName);
-          const exists = await prisma.certificateRecipient.findMany({
-            where: { eventId: req.params.eventId, templateId: template.id },
-            select: { fullName: true },
-          });
-          if (
-            exists.some((r) => normalizeName(r.fullName).toLowerCase() === fullName.toLowerCase())
-          ) {
-            skipped.push(fullName);
-            continue;
-          }
-          created.push(
-            await prisma.certificateRecipient.create({
-              data: {
-                eventId: req.params.eventId,
-                roleKind: 'EXPOSITOR',
-                fullName,
-                templateId: template.id,
-                speakerId: speaker.id,
-                createdBy: req.user?.id,
-              },
-            })
-          );
-        }
-        res.status(201).json({ created, skipped });
-      } catch (err) {
-        next(err);
-      }
-    }
+    fromSpeakersHandler
+  );
+  router.post(
+    '/certificate-recipients/event/:eventId/from-speakers',
+    staffOrAdmin,
+    fromSpeakersHandler
   );
 
   return router;

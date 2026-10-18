@@ -119,6 +119,9 @@ export function walkinRoutes(): Router {
           perSession,
           eligible,
           minAttendancePercent: event.minAttendancePercent,
+          isFree: event.isFree,
+          cost: event.cost ? Number(event.cost) : 0,
+          totalRecaudado: !event.isFree && event.cost ? Number(event.cost) * participants.length : 0,
         });
       } catch (err) {
         next(err);
