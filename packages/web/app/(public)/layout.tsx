@@ -70,28 +70,6 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
               aria-label="Enlaces académicos institucionales"
               className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-ink font-medium"
             >
-              <a
-                href="https://usfx.bo"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-navy-hover transition-colors"
-              >
-                Portal USFX
-              </a>
-              <span className="text-line" aria-hidden="true">
-                •
-              </span>
-              <a
-                href="https://derecho.usfx.bo"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-navy-hover transition-colors"
-              >
-                Facultad de Derecho, Ciencias Políticas y Sociales
-              </a>
-              <span className="text-line" aria-hidden="true">
-                •
-              </span>
               <Link href="/admin/login" className="hover:text-navy-hover transition-colors">
                 Acceso Administrativo
               </Link>
@@ -100,10 +78,8 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
               <p className="font-semibold text-ink">
                 Universidad Mayor, Real y Pontificia de San Francisco Xavier de Chuquisaca
               </p>
-              <p>Sucre - Bolivia • Fundada el 27 de Marzo de 1624</p>
-              <p className="text-[11px] text-muted/70">
-                Dirección de Tecnologías de Información y Comunicación (DTIC)
-              </p>
+              <p>Sucre - Bolivia</p>
+              <p className="text-[11px] text-muted/70">© 2026 Juris - Express Bolivia.</p>
             </div>
           </div>
         </footer>
