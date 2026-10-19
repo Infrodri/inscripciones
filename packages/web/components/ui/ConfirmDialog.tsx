@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Button } from './Button';
+import { useBackdropClose } from './useBackdropClose';
 
 export interface ConfirmDialogProps {
   open?: boolean;
@@ -35,6 +36,7 @@ function ConfirmDialogInner({
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const backdrop = useBackdropClose(onCerrar, !cargando);
 
   // Guardar el elemento que abrió el diálogo para restaurar foco
   useEffect(() => {
@@ -110,9 +112,7 @@ function ConfirmDialogInner({
       aria-modal="true"
       aria-label={titulo}
       className="fixed inset-0 z-50 flex items-center justify-center bg-navy/60 backdrop-blur-xs p-4"
-      onClick={() => {
-        if (!cargando) onCerrar();
-      }}
+      {...backdrop}
       tabIndex={-1}
       ref={dialogRef}
     >

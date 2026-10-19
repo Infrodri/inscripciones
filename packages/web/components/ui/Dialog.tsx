@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useBackdropClose } from './useBackdropClose';
 
 // Dialog accesible: trampa de foco, Esc, clic fuera, botón cerrar visible,
 // ancho máximo en móvil sin desborde.
@@ -23,6 +24,7 @@ export function Dialog({
   const openerRef = useRef<Element | null>(null);
   const onCerrarRef = useRef(onCerrar);
   onCerrarRef.current = onCerrar;
+  const backdrop = useBackdropClose(onCerrar);
 
   useEffect(() => {
     if (!open) return;
@@ -84,7 +86,7 @@ export function Dialog({
       aria-modal="true"
       aria-label={titulo}
       className="fixed inset-0 z-50 flex items-center justify-center bg-navy/70 backdrop-blur-xs p-4"
-      onClick={onCerrar}
+      {...backdrop}
     >
       <div
         ref={panelRef}

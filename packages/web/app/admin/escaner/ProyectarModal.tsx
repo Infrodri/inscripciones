@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/cn';
 import { formatRangoSesion } from '@/lib/format';
+import { useBackdropClose } from '@/components/ui/useBackdropClose';
 
 export interface EnrichedSession {
   id: string;
@@ -47,6 +48,7 @@ function ProyectarModalInner({
   onSelfCheckinToggle?: (sessionId: string, newOpenState: boolean) => void;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const backdrop = useBackdropClose(onCerrar);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
   const [qrBlobUrl, setQrBlobUrl] = useState<string | null>(null);
@@ -202,7 +204,7 @@ function ProyectarModalInner({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-xs"
-      onClick={onCerrar}
+      {...backdrop}
       role="presentation"
     >
       <div

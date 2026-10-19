@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useBackdropClose } from '@/components/ui/useBackdropClose';
 import { EmptyState, PageHeader } from '@/components/ui/Table';
 import { Input } from '@/components/ui/Input';
 
@@ -58,6 +59,11 @@ export default function UsuariosPage() {
 
   // Eliminación de usuario (ConfirmDialog)
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+
+  // Cierre por clic en el fondo: solo si la presión del puntero empezó en el fondo
+  // (evita que seleccionar texto arrastrando fuera del panel cierre el formulario).
+  const backdropNuevo = useBackdropClose(() => setIsCreateOpen(false));
+  const backdropEditar = useBackdropClose(() => setEditTarget(null));
 
   // Manejo de tecla Escape para modales propios
   useEffect(() => {
@@ -374,7 +380,7 @@ export default function UsuariosPage() {
           aria-modal="true"
           aria-label="Nuevo usuario"
           className="fixed inset-0 z-50 flex items-center justify-center bg-navy/70 backdrop-blur-xs p-4"
-          onClick={() => setIsCreateOpen(false)}
+          {...backdropNuevo}
         >
           <div
             className="w-full max-w-lg rounded-[var(--radius-md)] border border-line bg-surface p-6 shadow-soft"
@@ -449,7 +455,7 @@ export default function UsuariosPage() {
           aria-modal="true"
           aria-label="Editar usuario"
           className="fixed inset-0 z-50 flex items-center justify-center bg-navy/70 backdrop-blur-xs p-4"
-          onClick={() => setEditTarget(null)}
+          {...backdropEditar}
         >
           <div
             className="w-full max-w-lg rounded-[var(--radius-md)] border border-line bg-surface p-6 shadow-soft"
@@ -563,6 +569,7 @@ function DelegarEventosModal({
   const [assignmentsMap, setAssignmentsMap] = useState<Record<string, 'OPERATOR' | 'MANAGER'>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [filterQuery, setFilterQuery] = useState('');
+  const backdrop = useBackdropClose(onClose);
 
   // 1. Cargar lista de eventos disponibles
   const eventsQuery = useQuery({
@@ -651,7 +658,7 @@ function DelegarEventosModal({
       aria-modal="true"
       aria-label="Delegar eventos a usuario"
       className="fixed inset-0 z-50 flex items-center justify-center bg-navy/70 backdrop-blur-xs p-4"
-      onClick={onClose}
+      {...backdrop}
     >
       <div
         className="w-full max-w-2xl rounded-[var(--radius-md)] border border-line bg-surface p-6 shadow-soft max-h-[90vh] flex flex-col"

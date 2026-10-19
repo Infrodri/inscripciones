@@ -7,6 +7,7 @@ import { api, apiErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useBackdropClose } from '@/components/ui/useBackdropClose';
 import { formatFecha } from '@/lib/format';
 
 interface StaffUser {
@@ -56,6 +57,7 @@ export function PersonalTab({ eventId }: { eventId: string }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StaffAssignment | null>(null);
+  const backdrop = useBackdropClose(resetForm);
 
   // 1. Obtener personal asignado a este evento
   const { data, isLoading, isError, error } = useQuery({
@@ -314,7 +316,7 @@ export function PersonalTab({ eventId }: { eventId: string }) {
           aria-modal="true"
           aria-label="Gestión de Personal"
           className="fixed inset-0 z-50 flex items-center justify-center bg-navy/70 backdrop-blur-xs p-4"
-          onClick={() => resetForm()}
+          {...backdrop}
         >
           <div
             className="w-full max-w-lg rounded-[var(--radius-md)] border border-line bg-surface p-6 shadow-soft max-h-[90vh] overflow-y-auto"
