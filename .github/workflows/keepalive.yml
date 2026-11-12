@@ -1,0 +1,17 @@
+name: Supabase & Render Keep-Alive
+
+on:
+  schedule:
+    # Corre todos los días a las 10:00 UTC (06:00 hora de Bolivia / 07:00 ART)
+    - cron: '0 10 * * *'
+  workflow_dispatch: # Permite dispararlo manualmente desde la pestaña Actions en GitHub
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API Health Endpoint
+        run: |
+          echo "Pinging API health endpoint..."
+          curl -f -s -S -m 30 "https://inscripciones-api-b67v.onrender.com/health" || exit 1
+          echo "Health check succeeded: Render and Supabase are active."
